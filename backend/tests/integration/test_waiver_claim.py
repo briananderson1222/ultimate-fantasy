@@ -28,8 +28,10 @@ def backend_src_path() -> Path:
 def app_client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
     app_module = importlib.import_module("main")
-    assert hasattr(app_module, "app"), "Expected FastAPI instance named 'app' in main.py"
-    return TestClient(getattr(app_module, "app"))
+    assert hasattr(
+        app_module, "app"
+    ), "Expected FastAPI instance named 'app' in main.py"
+    return TestClient(app_module.app)
 
 
 def create_league(client: TestClient) -> str:
@@ -39,7 +41,9 @@ def create_league(client: TestClient) -> str:
         "league_type": "head_to_head",
         "season": "2025",
     }
-    resp = client.post("/leagues", json=payload, headers={"x-user-id": str(uuid.uuid4())})
+    resp = client.post(
+        "/leagues", json=payload, headers={"x-user-id": str(uuid.uuid4())}
+    )
     assert resp.status_code == 201
     body = resp.json()
     return body.get("league_id") or body.get("id")
@@ -69,5 +73,8 @@ def test_place_waiver_bid_returns_201():
     # If JSON is returned, minimally verify fields are echoed or an id is provided
     if resp.headers.get("content-type", "").startswith("application/json"):
         data = resp.json()
-        assert data.get("league_id") == league_id or data.get("leagueId") == league_id or data.get("waiver_id")
-
+        assert (
+            data.get("league_id") == league_id
+            or data.get("leagueId") == league_id
+            or data.get("waiver_id")
+        )

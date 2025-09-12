@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -20,15 +20,20 @@ def _database_url() -> str:
 # For tests, use a shared connection to avoid isolation issues
 _TEST_ENGINE = None
 
+
 def get_engine() -> Engine:
     global _TEST_ENGINE
     url = _database_url()
-    
+
     # For in-memory SQLite, use a shared connection to avoid isolation
     if url == "sqlite+pysqlite:///:memory:":
         if _TEST_ENGINE is None:
-            _TEST_ENGINE = create_engine(url, future=True, pool_pre_ping=True, 
-                                       connect_args={"check_same_thread": False})
+            _TEST_ENGINE = create_engine(
+                url,
+                future=True,
+                pool_pre_ping=True,
+                connect_args={"check_same_thread": False},
+            )
         return _TEST_ENGINE
     else:
         return create_engine(url, future=True, pool_pre_ping=True)
@@ -44,7 +49,7 @@ def session_scope() -> Iterator[Session]:
     try:
         yield session
         session.commit()
-    except Exception:  # noqa: BLE001
+    except Exception:
         session.rollback()
         raise
     finally:

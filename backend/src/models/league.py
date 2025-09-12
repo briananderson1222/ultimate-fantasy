@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Optional
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -21,7 +20,6 @@ class League(TimestampMixin, Base):
     league_type: Mapped[str] = mapped_column(String(50), nullable=False)
     season: Mapped[str] = mapped_column(String(16), nullable=False)
 
-    commissioner_id: Mapped[Optional[_uuid.UUID]] = mapped_column(
+    commissioner_id: Mapped[_uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True
     )
-

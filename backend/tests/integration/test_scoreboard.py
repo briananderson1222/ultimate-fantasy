@@ -13,8 +13,8 @@ Detailed scoring assertions will be added when ScoringService is implemented (T0
 
 import importlib
 import sys
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -26,8 +26,10 @@ def backend_src_path() -> Path:
 def app_client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
     app_module = importlib.import_module("main")
-    assert hasattr(app_module, "app"), "Expected FastAPI instance named 'app' in main.py"
-    return TestClient(getattr(app_module, "app"))
+    assert hasattr(
+        app_module, "app"
+    ), "Expected FastAPI instance named 'app' in main.py"
+    return TestClient(app_module.app)
 
 
 def test_scoreboard_endpoint_returns_200_for_league():
@@ -56,5 +58,8 @@ def test_scoreboard_endpoint_returns_200_for_league():
     if ct.startswith("application/json"):
         body = sb.json()
         if isinstance(body, dict):
-            assert body.get("league_id") == league_id or body.get("leagueId") == league_id or True
-
+            assert (
+                body.get("league_id") == league_id
+                or body.get("leagueId") == league_id
+                or True
+            )

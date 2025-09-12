@@ -26,4 +26,3 @@ class Schedule(Base):
     away_team_id: Mapped[_uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teams.team_id"), nullable=False
     )
-

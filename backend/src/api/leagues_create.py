@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from services.league_service import LeagueService
 from api.deps import get_db
-
+from services.league_service import LeagueService
 
 router = APIRouter()
 
@@ -30,18 +29,24 @@ class LeagueResponse(BaseModel):
     invite_link: str | None = None
 
 
-@router.post("/leagues", status_code=status.HTTP_201_CREATED, response_model=LeagueResponse)
+@router.post(
+    "/leagues", status_code=status.HTTP_201_CREATED, response_model=LeagueResponse
+)
 def create_league(
     payload: LeagueCreate,
     db: Session = Depends(get_db),
     x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
-):
+) -> LeagueResponse:
     if not x_user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
+        )
     try:
         commissioner_id = _uuid.UUID(x_user_id)
     except ValueError as e:  # noqa: F841
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id"
+        )
 
     svc = LeagueService(db)
     league = svc.create(

@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Path, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from services.league_service import LeagueService
 from api.deps import get_db
-
+from services.league_service import LeagueService
 
 router = APIRouter()
 
@@ -30,14 +29,18 @@ def join_league(
     leagueId: Annotated[str, Path()],
     db: Session = Depends(get_db),
     x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
-):
+) -> JoinResponse:
     if not x_user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
+        )
     try:
         user_id = _uuid.UUID(x_user_id)
         league_uuid = _uuid.UUID(leagueId)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid id format")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid id format"
+        )
 
     svc = LeagueService(db)
     team = svc.join(user_id=user_id, league_id=league_uuid)

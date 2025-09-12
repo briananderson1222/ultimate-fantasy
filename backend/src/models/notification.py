@@ -20,4 +20,3 @@ class Notification(TimestampMixin, Base):
     )
     message: Mapped[str] = mapped_column(String(500), nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-

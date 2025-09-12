@@ -8,9 +8,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from services.lineup_service import LineupService
 from api.deps import get_db
-
+from services.lineup_service import LineupService
 
 router = APIRouter()
 
@@ -38,9 +37,11 @@ def set_lineup(
     payload: LineupRequest,
     db: Session = Depends(get_db),
     x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
-):
+) -> LineupResponse:
     if not x_user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
+        )
 
     svc = LineupService(db)
     lu = svc.set_lineup(

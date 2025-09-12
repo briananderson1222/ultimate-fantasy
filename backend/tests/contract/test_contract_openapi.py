@@ -5,7 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 import yaml
 from fastapi.testclient import TestClient
 
@@ -16,7 +15,9 @@ def repo_root() -> Path:
 
 
 def load_openapi_spec() -> dict:
-    spec_path = repo_root() / "specs/001-ultimate-fantasy-platform/contracts/openapi.yml"
+    spec_path = (
+        repo_root() / "specs/001-ultimate-fantasy-platform/contracts/openapi.yml"
+    )
     assert spec_path.exists(), f"Missing OpenAPI file at {spec_path}"
     return yaml.safe_load(spec_path.read_text(encoding="utf-8"))
 
@@ -40,9 +41,7 @@ def test_contract_spec_contains_required_paths():
     paths = spec["paths"]
     for path, method in expected_paths_methods():
         assert path in paths, f"Missing path in contract: {path}"
-        assert (
-            method in paths[path]
-        ), f"Missing method in contract for {path}: {method}"
+        assert method in paths[path], f"Missing method in contract for {path}: {method}"
 
 
 def test_app_openapi_matches_contract_paths():
@@ -55,7 +54,7 @@ def test_app_openapi_matches_contract_paths():
     app_module = importlib.import_module("main")
     assert hasattr(app_module, "app"), "Expected 'app' FastAPI instance in main.py"
 
-    client = TestClient(getattr(app_module, "app"))
+    client = TestClient(app_module.app)
     resp = client.get("/openapi.json")
     assert resp.status_code == 200, "App must expose /openapi.json"
     app_openapi = resp.json()
@@ -67,4 +66,3 @@ def test_app_openapi_matches_contract_paths():
 
     missing = sorted(expected_paths_methods() - app_paths)
     assert not missing, f"App missing contract endpoints: {json.dumps(missing)}"
-

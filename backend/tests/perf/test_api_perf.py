@@ -29,7 +29,7 @@ def backend_src_path() -> Path:
 def client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
     app_module = importlib.import_module("main")
-    return TestClient(getattr(app_module, "app"))
+    return TestClient(app_module.app)
 
 
 def p95(durations: list[float]) -> float:
@@ -49,7 +49,9 @@ def test_public_league_p95_under_target(client: TestClient, benchmark):
         "league_type": "head_to_head",
         "season": "2025",
     }
-    create_resp = client.post("/leagues", json=create_payload, headers={"x-user-id": str(uuid.uuid4())})
+    create_resp = client.post(
+        "/leagues", json=create_payload, headers={"x-user-id": str(uuid.uuid4())}
+    )
     assert create_resp.status_code == 201
     league_id = create_resp.json().get("league_id")
     assert league_id
@@ -59,9 +61,11 @@ def test_public_league_p95_under_target(client: TestClient, benchmark):
     if warmup_resp.status_code != 200:
         # Database isolation issue in test environment - measure a working endpoint instead
         def _do_get():
-            resp = client.get("/openapi.json")  # Use a working endpoint for performance measurement
+            resp = client.get(
+                "/openapi.json"
+            )  # Use a working endpoint for performance measurement
             assert resp.status_code == 200
-        
+
         benchmark(_do_get)
         return  # Skip the rest of the test
 
@@ -115,4 +119,3 @@ def test_set_lineup_p95_under_target(client: TestClient, benchmark):
     benchmark(_do_put)
 
     assert p95(durations) < 0.5, f"p95 too slow: {p95(durations):.3f}s"
-

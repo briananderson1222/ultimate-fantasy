@@ -50,7 +50,7 @@ pip install -e .[dev]
 export DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/ultimate_fantasy"
 ```
 
-4) Run tests (none yet — will be added in T004–T008)
+4) Run tests (contract, integration, unit, perf)
 ```
 pytest -q
 ```
@@ -63,10 +63,9 @@ isort .
 mypy .
 ```
 
-6) Run the server (app wiring added in T027)
+6) Run the server
 ```
-# After T027 adds `backend/src/main.py` / app factory
-# uvicorn app.main:app --reload
+uvicorn main:app --reload --app-dir src
 ```
 
 ## Project Structure
@@ -81,9 +80,11 @@ backend/
 └── tests/
     ├── contract/
     ├── integration/
+    ├── perf/
     └── unit/
 ```
 
 ## Notes
-- Alembic configuration/migrations will be added in task T035.
-- Models (T009–T021), services (T022–T026), endpoints (T027–T034) follow TDD from T004–T008.
+- For local dev without DATABASE_URL, the app falls back to in-memory SQLite and auto-creates tables at startup.
+- Alembic configuration/migrations are included (T035).
+- Endpoints follow the contract in specs/001-ultimate-fantasy-platform/contracts/openapi.yml.

@@ -33,7 +33,12 @@ def make_session() -> Session:
 def create_user(session: Session, user_id: _uuid.UUID | None = None):
     User = importlib.import_module("models.user").User
     uid = user_id or _uuid.uuid4()
-    user = User(user_id=uid, email=f"{uid}@example.com", display_name="User", cognito_sub=str(uid))
+    user = User(
+        user_id=uid,
+        email=f"{uid}@example.com",
+        display_name="User",
+        cognito_sub=str(uid),
+    )
     session.add(user)
     session.flush()
     return user
@@ -54,7 +59,11 @@ def create_league_and_team(session: Session):
     )
     # Commissioner team created by service; return it for convenience
     Team = importlib.import_module("models.team").Team
-    team = session.query(Team).filter(Team.league_id == league.league_id, Team.user_id == commissioner_id).one()
+    team = (
+        session.query(Team)
+        .filter(Team.league_id == league.league_id, Team.user_id == commissioner_id)
+        .one()
+    )
     return league, team
 
 
@@ -64,14 +73,16 @@ def test_set_lineup_persists_players_and_version():
     Lineup = importlib.import_module("models.lineup").Lineup
 
     with make_session() as session:
-        league, team = create_league_and_team(session)  # noqa: F841 - league unused here
+        league, team = create_league_and_team(session)
 
         svc = LineupService(session)
         payload_players = [
             {"player_id": str(_uuid.uuid4()), "position": "G"},
             {"player_id": str(_uuid.uuid4()), "position": "F"},
         ]
-        lineup = svc.set_lineup(team_id=str(team.team_id), game_day=date.today(), players=payload_players)
+        lineup = svc.set_lineup(
+            team_id=str(team.team_id), game_day=date.today(), players=payload_players
+        )
 
         assert lineup.lineup_id is not None
         assert lineup.team_id == team.team_id
@@ -83,4 +94,3 @@ def test_set_lineup_persists_players_and_version():
         fetched = session.get(Lineup, lineup.lineup_id)
         assert fetched is not None
         assert fetched.version == 1
-

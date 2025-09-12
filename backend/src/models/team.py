@@ -22,4 +22,3 @@ class Team(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
     )
     team_name: Mapped[str] = mapped_column(String(120), nullable=False)
-

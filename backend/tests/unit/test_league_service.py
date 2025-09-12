@@ -32,7 +32,12 @@ def make_session() -> Session:
 def create_user(session: Session, user_id: _uuid.UUID | None = None) -> object:
     User = importlib.import_module("models.user").User
     uid = user_id or _uuid.uuid4()
-    user = User(user_id=uid, email=f"{uid}@example.com", display_name="Test", cognito_sub=str(uid))
+    user = User(
+        user_id=uid,
+        email=f"{uid}@example.com",
+        display_name="Test",
+        cognito_sub=str(uid),
+    )
     session.add(user)
     session.flush()
     return user
@@ -58,7 +63,11 @@ def test_create_league_adds_commissioner_team():
 
         assert league.league_id is not None
         # Commissioner team should be created for the league
-        team = session.query(Team).filter(Team.league_id == league.league_id, Team.user_id == commissioner_id).one()
+        team = (
+            session.query(Team)
+            .filter(Team.league_id == league.league_id, Team.user_id == commissioner_id)
+            .one()
+        )
         assert str(commissioner_id) in team.team_name
 
 

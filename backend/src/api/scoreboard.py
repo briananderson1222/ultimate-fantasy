@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from api.deps import get_db
 
-
 router = APIRouter()
 
 
@@ -25,7 +24,7 @@ class ScoreboardResponse(BaseModel):
 )
 def get_scoreboard(
     leagueId: Annotated[str, Path()],
-    db: Session = Depends(get_db),  # noqa: ARG001 - reserved for future use
-):
+    db: Session = Depends(get_db),
+) -> ScoreboardResponse:
     # Placeholder. When ScoringService aggregates by league, populate items accordingly.
     return ScoreboardResponse(league_id=_uuid.UUID(leagueId), items=[])

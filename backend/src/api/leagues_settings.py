@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Path, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from models.rule import Rule
 from api.deps import get_db
-
+from models.rule import Rule
 
 router = APIRouter()
 
@@ -36,18 +35,24 @@ def update_league_settings(
     payload: RuleUpdate,
     db: Session = Depends(get_db),
     x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
-):
+) -> RuleOut:
     # Auth header expected by quickstart; this endpoint doesn't need to use it yet
     if not x_user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
+        )
 
     try:
         league_uuid = _uuid.UUID(leagueId)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid league id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid league id"
+        )
 
     # Minimal behavior: persist/append a rule entry. Dedup/upsert can be added later.
     rule = Rule(league_id=league_uuid, name=payload.name, value=payload.value)
     db.add(rule)
     db.flush()
-    return RuleOut(rule_id=rule.rule_id, league_id=rule.league_id, name=rule.name, value=rule.value)
+    return RuleOut(
+        rule_id=rule.rule_id, league_id=rule.league_id, name=rule.name, value=rule.value
+    )

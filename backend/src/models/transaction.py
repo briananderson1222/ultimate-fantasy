@@ -27,4 +27,3 @@ class Transaction(Base):
     )
     transaction_type: Mapped[str] = mapped_column(String(16), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(nullable=False)
-

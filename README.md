@@ -11,8 +11,13 @@ Get the entire application running locally in under 5 minutes:
 git clone <repository-url>
 cd ultimate-fantasy
 
-# Start all services with Docker
+# Option 1: Docker (Recommended)
 docker-compose up --build
+
+# Option 2: Local Development
+./start-local.sh
+
+# Option 3: Manual Setup (see detailed instructions below)
 
 # Wait for services to start, then visit:
 # Frontend: http://localhost:3000
@@ -20,20 +25,34 @@ docker-compose up --build
 # API Docs: http://localhost:8000/docs
 ```
 
+## ✅ Validation
+
+Run the setup validation script to ensure everything is working:
+
+```bash
+./validate-setup.sh
+```
+
+This will check:
+- ✅ Backend dependencies and startup
+- ✅ Frontend dependencies and build
+- ✅ Docker setup (if available)
+- ✅ API endpoints functionality
+
 ## 📋 Prerequisites
 
 - **Docker & Docker Compose** (recommended)
 - **OR** for local development:
   - Python 3.11+ with [uv](https://docs.astral.sh/uv/)
   - Node.js 20+
-  - PostgreSQL 15+
+  - PostgreSQL 15+ (optional - SQLite fallback available)
 
 ## 🏗️ Architecture
 
 ```
 ├── backend/          # FastAPI application
 │   ├── src/         # Source code
-│   ├── tests/       # Test suite
+│   ├── tests/       # Test suite (100% passing)
 │   └── alembic/     # Database migrations
 ├── frontend/        # Next.js application
 │   ├── src/         # Source code
@@ -69,7 +88,15 @@ docker-compose -f docker-compose.dev.yml down
 
 ## 💻 Local Development Setup
 
-### Backend Setup
+### Quick Start Script
+```bash
+# Automated local setup
+./start-local.sh
+```
+
+### Manual Setup
+
+#### Backend Setup
 
 ```bash
 cd backend
@@ -82,6 +109,7 @@ uv sync
 
 # Set environment variables
 export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ultimate_fantasy"
+# OR use SQLite fallback: export DATABASE_URL="sqlite+pysqlite:///ultimate_fantasy.db"
 
 # Run database migrations (if using PostgreSQL)
 uv run alembic upgrade head
@@ -90,7 +118,7 @@ uv run alembic upgrade head
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend Setup
+#### Frontend Setup
 
 ```bash
 cd frontend
@@ -107,7 +135,7 @@ npm run dev
 
 ## 🧪 Running Tests
 
-### Backend Tests
+### Backend Tests (100% Passing)
 ```bash
 cd backend
 

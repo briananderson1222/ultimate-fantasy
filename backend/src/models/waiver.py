@@ -26,4 +26,3 @@ class Waiver(Base):
     )
     bid: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
-

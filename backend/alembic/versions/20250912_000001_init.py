@@ -1,15 +1,17 @@
 """initial schema
 
 Revision ID: 20250912_000001
-Revises: 
+Revises:
 Create Date: 2025-09-12
 
 """
+
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as psql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20250912_000001"
@@ -35,7 +37,9 @@ def upgrade() -> None:
     # leagues
     op.create_table(
         "leagues",
-        sa.Column("league_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "league_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("sport", sa.String(length=50), nullable=False),
         sa.Column("league_type", sa.String(length=50), nullable=False),
@@ -62,7 +66,9 @@ def upgrade() -> None:
     # players
     op.create_table(
         "players",
-        sa.Column("player_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "player_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("external_id", sa.String(length=64), nullable=False),
         sa.Column("full_name", sa.String(length=120), nullable=False),
         sa.Column("sport", sa.String(length=50), nullable=False),
@@ -72,7 +78,9 @@ def upgrade() -> None:
     # rosters
     op.create_table(
         "rosters",
-        sa.Column("roster_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "roster_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("team_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("player_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("acquisition_date", sa.DateTime(), nullable=False),
@@ -84,7 +92,9 @@ def upgrade() -> None:
     # lineups
     op.create_table(
         "lineups",
-        sa.Column("lineup_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "lineup_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("team_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("game_day", sa.Date(), nullable=False),
         sa.Column("players", sa.JSON(), nullable=False),
@@ -95,7 +105,9 @@ def upgrade() -> None:
     # schedules
     op.create_table(
         "schedules",
-        sa.Column("schedule_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "schedule_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("league_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("game_day", sa.Date(), nullable=False),
         sa.Column("home_team_id", psql.UUID(as_uuid=True), nullable=False),
@@ -108,7 +120,9 @@ def upgrade() -> None:
     # scores
     op.create_table(
         "scores",
-        sa.Column("score_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "score_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("player_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("game_day", sa.Date(), nullable=False),
         sa.Column("stats", sa.JSON(), nullable=False),
@@ -118,12 +132,16 @@ def upgrade() -> None:
     # waivers
     op.create_table(
         "waivers",
-        sa.Column("waiver_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "waiver_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("league_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("player_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("team_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("bid", sa.Integer(), nullable=False),
-        sa.Column("status", sa.String(length=20), nullable=False, server_default="pending"),
+        sa.Column(
+            "status", sa.String(length=20), nullable=False, server_default="pending"
+        ),
         sa.ForeignKeyConstraint(["league_id"], ["leagues.league_id"]),
         sa.ForeignKeyConstraint(["player_id"], ["players.player_id"]),
         sa.ForeignKeyConstraint(["team_id"], ["teams.team_id"]),
@@ -132,7 +150,9 @@ def upgrade() -> None:
     # transactions
     op.create_table(
         "transactions",
-        sa.Column("transaction_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "transaction_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("league_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("team_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("player_id", psql.UUID(as_uuid=True), nullable=False),
@@ -146,10 +166,14 @@ def upgrade() -> None:
     # notifications
     op.create_table(
         "notifications",
-        sa.Column("notification_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "notification_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("user_id", psql.UUID(as_uuid=True), nullable=False),
         sa.Column("message", sa.String(length=500), nullable=False),
-        sa.Column("is_read", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "is_read", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.user_id"]),
@@ -168,7 +192,9 @@ def upgrade() -> None:
     # presets
     op.create_table(
         "presets",
-        sa.Column("preset_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "preset_id", psql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("sport", sa.String(length=50), nullable=False),
         sa.Column("league_type", sa.String(length=50), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
@@ -190,4 +216,3 @@ def downgrade() -> None:
     op.drop_table("teams")
     op.drop_table("leagues")
     op.drop_table("users")
-

@@ -22,4 +22,3 @@ class User(TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     cognito_sub: Mapped[str] = mapped_column(String(128), nullable=False)
-

@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from services.waiver_service import WaiverService
 from api.deps import get_db
-
+from services.waiver_service import WaiverService
 
 router = APIRouter()
 
@@ -30,14 +29,20 @@ class WaiverBidResponse(BaseModel):
     status: str
 
 
-@router.post("/waivers/bids", status_code=status.HTTP_201_CREATED, response_model=WaiverBidResponse)
+@router.post(
+    "/waivers/bids",
+    status_code=status.HTTP_201_CREATED,
+    response_model=WaiverBidResponse,
+)
 def place_waiver_bid(
     payload: WaiverBidRequest,
     db: Session = Depends(get_db),
     x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
-):
+) -> WaiverBidResponse:
     if not x_user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
+        )
 
     svc = WaiverService(db)
     w = svc.place_bid(

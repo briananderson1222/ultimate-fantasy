@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid as _uuid
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, JSON
+from sqlalchemy import JSON, Date, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

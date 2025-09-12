@@ -28,8 +28,10 @@ def backend_src_path() -> Path:
 def app_client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
     app_module = importlib.import_module("main")
-    assert hasattr(app_module, "app"), "Expected FastAPI instance named 'app' in main.py"
-    return TestClient(getattr(app_module, "app"))
+    assert hasattr(
+        app_module, "app"
+    ), "Expected FastAPI instance named 'app' in main.py"
+    return TestClient(app_module.app)
 
 
 def test_set_lineup_accepts_valid_payload():
@@ -44,12 +46,19 @@ def test_set_lineup_accepts_valid_payload():
         ],
     }
 
-    resp = client.put("/lineups", json=payload, headers={"x-user-id": str(uuid.uuid4())})
+    resp = client.put(
+        "/lineups", json=payload, headers={"x-user-id": str(uuid.uuid4())}
+    )
     assert resp.status_code == 200
 
     # If server returns the saved lineup, validate minimal shape
     if resp.headers.get("content-type", "").startswith("application/json"):
         body = resp.json()
-        assert body.get("team_id") == payload["team_id"] or body.get("teamId") == payload["team_id"]
-        assert body.get("game_day") == payload["game_day"] or body.get("gameDay") == payload["game_day"]
-
+        assert (
+            body.get("team_id") == payload["team_id"]
+            or body.get("teamId") == payload["team_id"]
+        )
+        assert (
+            body.get("game_day") == payload["game_day"]
+            or body.get("gameDay") == payload["game_day"]
+        )

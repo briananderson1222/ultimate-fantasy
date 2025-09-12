@@ -24,4 +24,3 @@ class Roster(Base):
     )
     acquisition_date: Mapped[datetime] = mapped_column(nullable=False)
     acquisition_method: Mapped[str] = mapped_column(String(20), nullable=False)
-

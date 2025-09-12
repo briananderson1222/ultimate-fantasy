@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Generator
+from collections.abc import Generator
 
 from sqlalchemy.orm import Session
 
@@ -14,9 +14,10 @@ def get_db() -> Generator[Session, None, None]:
     if url.startswith("sqlite"):
         from models.base import Base
         from services.db import get_engine
+
         engine = get_engine()
         Base.metadata.create_all(bind=engine)
-    
+
     db = SessionLocal()
     try:
         yield db

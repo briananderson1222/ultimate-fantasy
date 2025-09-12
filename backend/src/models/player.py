@@ -19,4 +19,3 @@ class Player(Base):
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
     sport: Mapped[str] = mapped_column(String(50), nullable=False)
     position: Mapped[str] = mapped_column(String(20), nullable=False)
-

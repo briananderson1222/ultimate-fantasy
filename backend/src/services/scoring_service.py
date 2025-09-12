@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date
-from typing import Iterable
 
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,9 @@ class ScoringService:
         """
         count = 0
         for it in items:
-            score = Score(player_id=it["player_id"], game_day=game_day, stats=it["stats"])
+            score = Score(
+                player_id=it["player_id"], game_day=game_day, stats=it["stats"]
+            )
             self.session.add(score)
             count += 1
         self.session.flush()

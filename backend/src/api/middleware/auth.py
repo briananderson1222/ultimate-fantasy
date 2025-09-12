@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import uuid as _uuid
+from collections.abc import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
@@ -13,7 +15,9 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
     Endpoints may still enforce presence/format explicitly.
     """
 
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         user_header = request.headers.get("x-user-id")
         user_id = None
         if user_header:
@@ -23,4 +27,3 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 user_id = None
         request.state.user_id = user_id
         return await call_next(request)
-

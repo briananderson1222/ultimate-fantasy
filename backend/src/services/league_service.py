@@ -32,13 +32,23 @@ class LeagueService:
         self.session.flush()
 
         # Create commissioner team placeholder
-        team = Team(league_id=league.league_id, user_id=commissioner_id, team_name=f"{name} - {commissioner_id}")
+        team = Team(
+            league_id=league.league_id,
+            user_id=commissioner_id,
+            team_name=f"{name} - {commissioner_id}",
+        )
         self.session.add(team)
         self.session.flush()
 
         return league
 
-    def join(self, *, user_id: _uuid.UUID, league_id: _uuid.UUID, team_name: str | None = None) -> Team:
+    def join(
+        self,
+        *,
+        user_id: _uuid.UUID,
+        league_id: _uuid.UUID,
+        team_name: str | None = None,
+    ) -> Team:
         team = Team(
             league_id=league_id,
             user_id=user_id,

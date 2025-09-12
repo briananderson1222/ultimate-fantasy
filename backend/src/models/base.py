@@ -5,7 +5,6 @@ from datetime import datetime
 from sqlalchemy import MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-
 metadata = MetaData()
 
 
@@ -18,4 +17,3 @@ class TimestampMixin:
     updated_at: Mapped[datetime] = mapped_column(
         default=func.now(), onupdate=func.now(), nullable=False
     )
-

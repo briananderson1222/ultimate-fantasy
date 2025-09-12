@@ -32,7 +32,12 @@ def make_session() -> Session:
 def seed_user(session: Session, user_id: _uuid.UUID | None = None):
     User = importlib.import_module("models.user").User
     uid = user_id or _uuid.uuid4()
-    user = User(user_id=uid, email=f"{uid}@example.com", display_name="User", cognito_sub=str(uid))
+    user = User(
+        user_id=uid,
+        email=f"{uid}@example.com",
+        display_name="User",
+        cognito_sub=str(uid),
+    )
     session.add(user)
     session.flush()
     return uid
@@ -41,7 +46,13 @@ def seed_user(session: Session, user_id: _uuid.UUID | None = None):
 def seed_player(session: Session, player_id: _uuid.UUID | None = None):
     Player = importlib.import_module("models.player").Player
     pid = player_id or _uuid.uuid4()
-    player = Player(player_id=pid, external_id=str(pid)[:12], full_name="Unit Test", sport="basketball", position="G")
+    player = Player(
+        player_id=pid,
+        external_id=str(pid)[:12],
+        full_name="Unit Test",
+        sport="basketball",
+        position="G",
+    )
     session.add(player)
     session.flush()
     return pid
@@ -60,7 +71,11 @@ def create_league_with_team(session: Session):
         league_type="head_to_head",
         season="2025",
     )
-    team = session.query(Team).filter(Team.league_id == league.league_id, Team.user_id == commissioner_id).one()
+    team = (
+        session.query(Team)
+        .filter(Team.league_id == league.league_id, Team.user_id == commissioner_id)
+        .one()
+    )
     return league, team
 
 
@@ -90,4 +105,3 @@ def test_place_bid_persists_waiver_row():
 
         # Ensure persisted
         assert session.get(Waiver, w.waiver_id) is not None
-

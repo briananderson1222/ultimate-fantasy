@@ -3,15 +3,19 @@ from __future__ import annotations
 import logging
 import time
 import uuid as _uuid
+from collections.abc import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 logger = logging.getLogger("uvicorn.access")
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         started = time.perf_counter()
         req_id = request.headers.get("x-request-id") or str(_uuid.uuid4())
         request.state.request_id = req_id
@@ -27,4 +31,3 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             req_id,
         )
         return response
-
