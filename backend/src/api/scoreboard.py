@@ -8,13 +8,20 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from api.deps import get_db
+from services.scoring_service import ScoringService
 
 router = APIRouter()
 
 
+class ScoreboardItem(BaseModel):
+    team_id: _uuid.UUID
+    total_points: int
+    lineup_count: int | None = None
+
+
 class ScoreboardResponse(BaseModel):
     league_id: _uuid.UUID
-    items: list[dict] = Field(default_factory=list)
+    items: list[ScoreboardItem] = Field(default_factory=list)
 
 
 @router.get(
@@ -26,5 +33,11 @@ def get_scoreboard(
     leagueId: Annotated[str, Path()],
     db: Session = Depends(get_db),
 ) -> ScoreboardResponse:
-    # Placeholder. When ScoringService aggregates by league, populate items accordingly.
-    return ScoreboardResponse(league_id=_uuid.UUID(leagueId), items=[])
+    svc = ScoringService(db)
+    items = [
+        ScoreboardItem(**it)
+        for it in svc.compute_league_scoreboard(
+            league_id=_uuid.UUID(leagueId), game_day=None
+        )
+    ]
+    return ScoreboardResponse(league_id=_uuid.UUID(leagueId), items=items)

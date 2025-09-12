@@ -63,43 +63,49 @@ export type JoinResponse = {
   team_name: string;
 };
 
-export type ScoreboardResponse = {
-  league_id: string;
-  items: Array<Record<string, unknown>>;
-};
+export type ScoreboardItem = { team_id: string; total_points: number; lineup_count?: number };
+export type ScoreboardResponse = { league_id: string; items: ScoreboardItem[] };
+
+function authHeaders(): Record<string, string> {
+  try {
+    const token = typeof window !== "undefined" ? window.localStorage.getItem("uf_token") : null;
+    if (token) return { Authorization: `Bearer ${token}` };
+  } catch {}
+  return {};
+}
 
 // Low-level fetchers
-export async function createLeague(data: LeagueCreate, userId: string): Promise<LeagueResponse> {
+export async function createLeague(data: LeagueCreate, userId?: string): Promise<LeagueResponse> {
   return await apiFetch<LeagueResponse>(`/leagues`, {
     method: "POST",
-    headers: { "x-user-id": userId },
+    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
     body: JSON.stringify(data),
   });
 }
 
-export async function joinLeague(leagueId: string, userId: string): Promise<JoinResponse> {
+export async function joinLeague(leagueId: string, userId?: string): Promise<JoinResponse> {
   return await apiFetch<JoinResponse>(`/leagues/${leagueId}/join`, {
     method: "POST",
-    headers: { "x-user-id": userId },
+    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
   });
 }
 
 export async function updateLeagueSettings(
   leagueId: string,
   data: RuleUpdate,
-  userId: string
+  userId?: string
 ): Promise<RuleOut> {
   return await apiFetch<RuleOut>(`/leagues/${leagueId}/settings`, {
     method: "PATCH",
-    headers: { "x-user-id": userId },
+    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
     body: JSON.stringify(data),
   });
 }
 
-export async function setLineup(data: LineupRequest, userId: string): Promise<LineupResponse> {
+export async function setLineup(data: LineupRequest, userId?: string): Promise<LineupResponse> {
   return await apiFetch<LineupResponse>(`/lineups`, {
     method: "PUT",
-    headers: { "x-user-id": userId },
+    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
     body: JSON.stringify(data),
   });
 }
@@ -110,11 +116,11 @@ export async function getScoreboard(leagueId: string): Promise<ScoreboardRespons
 
 export async function placeWaiverBid(
   data: WaiverBidRequest,
-  userId: string
+  userId?: string
 ): Promise<WaiverBidResponse> {
   return await apiFetch<WaiverBidResponse>(`/waivers/bids`, {
     method: "POST",
-    headers: { "x-user-id": userId },
+    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
     body: JSON.stringify(data),
   });
 }

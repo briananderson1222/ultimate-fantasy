@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import date
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from api.deps import get_db
+from api.deps import get_current_user_id, get_db
 from services.lineup_service import LineupService
 
 router = APIRouter()
@@ -36,12 +35,8 @@ class LineupResponse(BaseModel):
 def set_lineup(
     payload: LineupRequest,
     db: Session = Depends(get_db),
-    x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
+    _user_id: _uuid.UUID = Depends(get_current_user_id),
 ) -> LineupResponse:
-    if not x_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
-        )
 
     svc = LineupService(db)
     lu = svc.set_lineup(

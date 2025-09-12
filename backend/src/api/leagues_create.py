@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from api.deps import get_db
+from api.deps import get_current_user_id, get_db
 from services.league_service import LeagueService
 
 router = APIRouter()
@@ -35,18 +34,8 @@ class LeagueResponse(BaseModel):
 def create_league(
     payload: LeagueCreate,
     db: Session = Depends(get_db),
-    x_user_id: Annotated[str | None, Header(alias="x-user-id")] = None,
+    commissioner_id: _uuid.UUID = Depends(get_current_user_id),
 ) -> LeagueResponse:
-    if not x_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing user"
-        )
-    try:
-        commissioner_id = _uuid.UUID(x_user_id)
-    except ValueError as e:  # noqa: F841
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id"
-        )
 
     svc = LeagueService(db)
     league = svc.create(

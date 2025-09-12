@@ -34,7 +34,7 @@ Endpoints
 - GET `/leagues/{leagueId}/scoreboard`
   - Summary: View scores
   - Path: `leagueId` (uuid)
-  - Response 200: `{ league_id, items: [...] }` (shape TBD by ScoringService)
+  - Response 200: `{ league_id, items: [{ team_id: uuid, total_points: number, lineup_count?: number }] }`
 
 - POST `/waivers/bids`
   - Summary: Place a waiver bid
@@ -49,4 +49,3 @@ Endpoints
 Notes
 - The OpenAPI file remains authoritative for field types and response codes.
 - SQLite is used in local tests; PostgreSQL is recommended for development.
-

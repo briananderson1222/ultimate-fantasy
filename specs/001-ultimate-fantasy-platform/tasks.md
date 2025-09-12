@@ -113,3 +113,74 @@ task run "T003" & task run "T039" & task run "T040" && wait
 - Contract-driven: `/mnt/e/dev/ultimate-fantasy/ultimate-fantasy/specs/001-ultimate-fantasy-platform/contracts/openapi.yml` is the single source for endpoints and schemas.
 - Use PostgreSQL in development; allow SQLite fallback in tests where possible to keep tests runnable locally, clearly marking xfail where behavior differs.
 - Ensure each task commits independently and keeps changes scoped to the mentioned files.
+
+---
+
+# Next Tasks: Scoreboard Aggregation, Auth Upgrade, E2E
+
+These tasks extend the platform beyond the initial MVP to provide real scoreboard aggregation, production-ready auth via JWTs, and end‑to‑end UI coverage. Follow the same TDD approach: write failing tests first, then implement.
+
+## New Tests First (TDD) — MUST FAIL FIRST
+
+- [ ] T045 [P] Unit test: Scoring aggregation — create `backend/tests/unit/test_scoring_service_aggregate.py` to seed teams, lineups, and player scores, then assert `ScoringService.compute_league_scoreboard(league_id, game_day=None)` returns per‑team totals (e.g., sum of `stats.points`) sorted descending.
+- [ ] T046 [P] Integration test: Scoreboard endpoint aggregation — create `backend/tests/integration/test_scoreboard_aggregate.py` to create a league, set lineups, ingest scores, then `GET /leagues/{leagueId}/scoreboard` returns structured items with totals and team identifiers.
+- [ ] T047 [P] Integration test: JWT auth — create `backend/tests/integration/test_auth_jwt.py` that issues a valid HS256 dev token (via `AUTH_MODE=dev` and `AUTH_DEV_SECRET`) and asserts protected endpoints reject requests without Authorization and accept with a valid token.
+
+## Scoreboard Aggregation
+
+- [ ] T048 Implement aggregation in `backend/src/services/scoring_service.py`: add `compute_league_scoreboard(league_id: UUID, game_day: date | None)` that
+  - Joins `Lineup` and `Score` by `player_id` and `game_day` (all days if `game_day is None`).
+  - Sums `stats.points` per team, returns a list of items `{ team_id, total_points, lineup_count }` sorted by `total_points` desc.
+  - Handles missing/empty stats as 0; SQLite compatibility maintained.
+- [ ] T049 Update API response in `backend/src/api/scoreboard.py` to call `ScoringService.compute_league_scoreboard` and return `ScoreboardResponse` with `items: [{ team_id, total_points }]` (may include `team_name` later when joining `Team`).
+- [ ] T050 Performance: add DB indexes for aggregation — create Alembic migration `backend/alembic/versions/<timestamp>_scoreboard_indexes.py` adding indexes on `scores (player_id, game_day)` and `lineups (team_id, game_day)`.
+- [ ] T051 [P] Docs: update `specs/001-ultimate-fantasy-platform/docs/api.md` to document the scoreboard item shape and example payloads.
+
+## Auth Upgrade (JWT)
+
+- [ ] T052 [P] Backend deps: add `PyJWT[crypto]==2.9.0` to `backend/pyproject.toml` and run `uv sync`. Document env in `backend/README.md`.
+- [ ] T053 Implement JWT verification in `backend/src/api/middleware/auth.py`:
+  - Support `Authorization: Bearer <token>`.
+  - Modes via env: `AUTH_MODE=dev|jwks`.
+    - `dev`: HS256 using `AUTH_DEV_SECRET`.
+    - `jwks`: RS256 using `AUTH_JWKS_URL` (fetch with `httpx`), validate `aud` and `iss` via `AUTH_AUDIENCE`, `AUTH_ISSUER`.
+  - Populate `request.state.user_id` (from `sub`) and `request.state.user_claims`.
+- [ ] T054 [P] Add `get_current_user_id()` in `backend/src/api/deps.py` that raises 401 when absent/invalid. Update write endpoints to depend on it. Keep compatibility to accept `x-user-id` only when `AUTH_MODE=dev`.
+- [ ] T055 Persist/update users: add `backend/src/services/user_service.py` with `ensure_user_from_claims(claims)` to upsert `User` on first seen `sub`/`email`. Wire it in the auth middleware for requests that have valid tokens.
+- [ ] T056 [P] Tests for auth:
+  - Unit: `backend/tests/unit/test_auth_middleware.py` (token decode branches, bad sig, wrong aud/iss).
+  - Integration: extend existing endpoint tests to use `Authorization` header under `AUTH_MODE=dev`. Remove reliance on `x-user-id` except where explicitly xfail‑marked for backwards compatibility.
+- [ ] T057 Frontend auth header: update `frontend/src/services/api.ts` to inject `Authorization: Bearer <token>` from `localStorage` (e.g., `uf_token`), fallback to none in dev. Update docs with a helper to set a dev token.
+
+## E2E Tests (Playwright)
+
+- [ ] T058 [P] Add Playwright to frontend: dev dependency `@playwright/test@1.48.2`. Create `frontend/playwright.config.ts` with baseURL from `process.env.E2E_BASE_URL` (default `http://localhost:3000`). Add npm scripts: `test:e2e`, `e2e:headed`.
+- [ ] T059 [P] Author tests under `frontend/tests/e2e/`:
+  - `leagues.spec.ts`: create league flow → asserts success banner and API 201.
+  - `join.spec.ts`: join league from invite link → asserts membership.
+  - `lineup.spec.ts`: set lineup → asserts 200 and UI echo.
+  - `scoreboard.spec.ts`: view scoreboard → asserts aggregated items rendered.
+  - `waivers.spec.ts`: place waiver bid → asserts 201.
+  Each test sets a dev HS256 token into `localStorage` before navigation.
+- [ ] T060 CI: extend `/.github/workflows/ci.yml` with job `frontend-e2e` that uses Node 20, installs deps, runs `npx playwright install --with-deps`, starts backend (uvicorn) and frontend (Next.js) concurrently, waits on healthchecks, then runs `npm run test:e2e`. Use env: `AUTH_MODE=dev`, `AUTH_DEV_SECRET`, `NEXT_PUBLIC_API_URL`.
+- [ ] T061 [P] E2E compose: optional `docker-compose.e2e.yml` to run postgres, backend, frontend with seeded env for e2e. Add `scripts/e2e.sh` to orchestrate start/wait/test/teardown locally.
+- [ ] T062 Docs: update `README.md` with JWT auth instructions, how to mint a dev HS256 token, and how to run E2E locally and in CI.
+
+## Dependencies (New)
+
+- Scoreboard aggregation (T048–T051) depends on tests (T045–T046).
+- Auth upgrade (T053–T057) depends on deps (T052) and tests (T047, T056).
+- E2E tests (T058–T062) depend on backend auth in dev mode and scoreboard aggregation being available for assertions.
+
+## Parallel Execution Examples (New)
+
+```
+# New tests first (in parallel)
+task run "T045" & task run "T046" & task run "T047" && wait
+
+# Implement aggregation and auth side-by-side
+task run "T048" & task run "T049" & task run "T050" & task run "T051" & task run "T052" && wait
+
+# Frontend E2E setup and CI wiring
+task run "T058" & task run "T060" & task run "T061" && wait
+```

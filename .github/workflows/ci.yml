@@ -70,3 +70,48 @@ jobs:
       - name: Type check
         run: npm run typecheck --silent || true
 
+  frontend-e2e:
+    name: Frontend E2E (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      AUTH_MODE: dev
+      AUTH_DEV_SECRET: test-e2e-secret
+      E2E_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: frontend
+        run: |
+          npm install
+          npx playwright install --with-deps
+
+      - name: Setup Python + uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Python 3.11
+        run: uv python install 3.11
+
+      - name: Backend deps
+        working-directory: backend
+        run: uv sync --all-extras
+
+      - name: Start backend
+        working-directory: backend/src
+        run: |
+          uv run uvicorn main:app --host 127.0.0.1 --port 8000 &
+          for i in `seq 1 30`; do
+            curl -fsS http://127.0.0.1:8000/openapi.json && break || sleep 1;
+          done
+
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npm run test:e2e -- --reporter=line
