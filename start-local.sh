@@ -29,8 +29,32 @@ export DATABASE_URL="${DATABASE_URL:-sqlite+pysqlite:///ultimate_fantasy.db}"
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then
     echo "📦 Installing backend dependencies..."
-    uv sync
+    uv sync --all-extras
 fi
+
+# Check if we can connect to PostgreSQL, fallback to SQLite if not
+if [[ "$DATABASE_URL" == postgresql* ]]; then
+    echo "🔍 Testing PostgreSQL connection..."
+    if ! uv run python -c "
+import sys
+sys.path.insert(0, 'src')
+try:
+    from services.db import get_engine
+    engine = get_engine()
+    with engine.connect() as conn:
+        pass
+    print('✅ PostgreSQL connection successful')
+except Exception as e:
+    print(f'⚠️  PostgreSQL connection failed: {e}')
+    print('🔄 Switching to SQLite fallback...')
+    raise SystemExit(1)
+" 2>/dev/null; then
+        echo "🔄 Switching to SQLite fallback..."
+        export DATABASE_URL="sqlite+pysqlite:///ultimate_fantasy.db"
+    fi
+fi
+
+echo "📊 Using database: $DATABASE_URL"
 
 # Start backend in background
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
