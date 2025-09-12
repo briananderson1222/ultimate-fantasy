@@ -1,0 +1,153 @@
+openapi: 3.0.0
+info:
+  title: Ultimate Fantasy Platform API
+  version: 1.0.0
+paths:
+  /leagues:
+    post:
+      summary: Create a new league
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/League'
+      responses:
+        '201':
+          description: League created
+  /leagues/{leagueId}/settings:
+    patch:
+      summary: Customize league rules
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rule'
+      responses:
+        '200':
+          description: Rules updated
+  /leagues/{leagueId}/join:
+    post:
+      summary: Join a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Joined league successfully
+  /lineups:
+    put:
+      summary: Set a lineup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lineup'
+      responses:
+        '200':
+          description: Lineup updated
+  /leagues/{leagueId}/scoreboard:
+    get:
+      summary: View scores
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scoreboard data
+  /waivers/bids:
+    post:
+      summary: Place a waiver bid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Waiver'
+      responses:
+        '201':
+          description: Bid placed
+  /leagues/{leagueId}/public:
+    get:
+      summary: Public view of a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Public league data
+
+components:
+  schemas:
+    League:
+      type: object
+      properties:
+        name:
+          type: string
+        sport:
+          type: string
+        league_type:
+          type: string
+        season:
+          type: string
+    Rule:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: object
+    Lineup:
+      type: object
+      properties:
+        team_id:
+          type: string
+          format: uuid
+        game_day:
+          type: string
+          format: date
+        players:
+          type: array
+          items:
+            type: object
+            properties:
+              player_id:
+                type: string
+                format: uuid
+              position:
+                type: string
+    Waiver:
+      type: object
+      properties:
+        league_id:
+          type: string
+          format: uuid
+        player_id:
+          type: string
+          format: uuid
+        team_id:
+          type: string
+          format: uuid
+        bid:
+          type: integer

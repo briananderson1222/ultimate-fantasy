@@ -1,0 +1,31 @@
+# Global ignores
+.DS_Store
+*.log
+*.tmp
+*.swp
+*.swo
+*.pyc
+__pycache__/
+.env
+.env.*
+
+# Node/Next.js
+node_modules/
+**/node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+
+# Python
+.venv/
+**/.venv/
+.pytest_cache/
+.benchmarks/
+.coverage
+
+# Editor
+.idea/
+.vscode/
+

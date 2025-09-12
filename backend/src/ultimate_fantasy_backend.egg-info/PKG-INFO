@@ -1,0 +1,89 @@
+Metadata-Version: 2.4
+Name: ultimate-fantasy-backend
+Version: 0.1.0
+Summary: Ultimate Fantasy Platform backend (FastAPI)
+Author: Ultimate Fantasy Team
+License: Proprietary
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi==0.116.1
+Requires-Dist: sqlalchemy==2.0.43
+Requires-Dist: alembic==1.16.5
+Requires-Dist: uvicorn[standard]==0.35.0
+Requires-Dist: pydantic==2.11.7
+Requires-Dist: psycopg[binary]==3.2.10
+Requires-Dist: httpx==0.28.1
+Provides-Extra: dev
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: pytest-asyncio==1.2.0; extra == "dev"
+Requires-Dist: pytest-benchmark==5.1.0; extra == "dev"
+Requires-Dist: pyyaml==6.0.2; extra == "dev"
+Requires-Dist: ruff==0.13.0; extra == "dev"
+Requires-Dist: black==25.1.0; extra == "dev"
+Requires-Dist: isort==6.0.1; extra == "dev"
+Requires-Dist: mypy==1.18.1; extra == "dev"
+
+# Ultimate Fantasy Platform — Backend
+
+FastAPI + SQLAlchemy backend for the Ultimate Fantasy Platform.
+
+## Requirements
+- Python 3.11
+- PostgreSQL (for development/testing via `DATABASE_URL`)
+
+## Quickstart
+
+1) Create and activate a virtual environment
+```
+python3.11 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+```
+
+2) Install dependencies (dev extras include linters and test tools)
+```
+pip install -U pip
+pip install -e .[dev]
+```
+
+3) Set environment
+```
+export DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/ultimate_fantasy"
+```
+
+4) Run tests (none yet — will be added in T004–T008)
+```
+pytest -q
+```
+
+5) Lint and format
+```
+ruff check .
+black .
+isort .
+mypy .
+```
+
+6) Run the server (app wiring added in T027)
+```
+# After T027 adds `backend/src/main.py` / app factory
+# uvicorn app.main:app --reload
+```
+
+## Project Structure
+```
+backend/
+├── pyproject.toml
+├── README.md
+├── src/
+│   ├── api/
+│   ├── models/
+│   └── services/
+└── tests/
+    ├── contract/
+    ├── integration/
+    └── unit/
+```
+
+## Notes
+- Alembic configuration/migrations will be added in task T035.
+- Models (T009–T021), services (T022–T026), endpoints (T027–T034) follow TDD from T004–T008.

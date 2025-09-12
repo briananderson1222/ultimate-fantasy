@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* Basic CSS reset + app-wide styles */
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  color: var(--color-text, rgb(17, 24, 39));
+  background: var(--color-bg, rgb(249, 250, 251));
+}
+
