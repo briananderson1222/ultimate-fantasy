@@ -7,7 +7,9 @@ Base URL
 - Frontend uses `NEXT_PUBLIC_API_BASE_URL` to target the backend.
 
 Auth
-- Prototyped via header `x-user-id: <uuid>` for endpoints that change data.
+- Authorization: Bearer JWT
+  - Dev mode: HS256 signed with `AUTH_DEV_SECRET` (sub claim identifies the user)
+  - Prod mode (optional): RS256 via JWKS at `AUTH_JWKS_URL` with `AUTH_AUDIENCE` and `AUTH_ISSUER`
 
 Endpoints
 - POST `/leagues`
@@ -49,3 +51,4 @@ Endpoints
 Notes
 - The OpenAPI file remains authoritative for field types and response codes.
 - SQLite is used in local tests; PostgreSQL is recommended for development.
+- Frontend includes a dev-only token helper panel ("Dev Auth Token") to mint HS256 tokens in-browser and save them to `localStorage.uf_token`. Use only with `AUTH_MODE=dev`.

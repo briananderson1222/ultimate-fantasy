@@ -8,14 +8,16 @@ When a manager places a bid by POST /waivers/bids
 Then the bid is recorded (201)
 
 Notes:
-- Auth simulated via header x-user-id (middleware added in T036).
+- Auth uses Authorization: Bearer (dev HS256 token in tests).
 - Resolution of waivers (awarding the player) happens after the period ends and
   is handled by WaiverService (T026). This test focuses on the HTTP contract for placing bids.
 """
 
 import importlib
+import os
 import sys
 import uuid
+import jwt
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -34,7 +36,11 @@ def app_client() -> TestClient:
     return TestClient(app_module.app)
 
 
-def create_league(client: TestClient) -> str:
+def bearer(secret: str, sub: str) -> str:
+    return "Bearer " + jwt.encode({"sub": sub}, secret, algorithm="HS256")
+
+
+def create_league(client: TestClient, secret: str) -> str:
     payload = {
         "name": "Waiver League",
         "sport": "baseball",
@@ -42,7 +48,9 @@ def create_league(client: TestClient) -> str:
         "season": "2025",
     }
     resp = client.post(
-        "/leagues", json=payload, headers={"x-user-id": str(uuid.uuid4())}
+        "/leagues",
+        json=payload,
+        headers={"Authorization": bearer(secret, str(uuid.uuid4()))},
     )
     assert resp.status_code == 201
     body = resp.json()
@@ -51,8 +59,11 @@ def create_league(client: TestClient) -> str:
 
 def test_place_waiver_bid_returns_201():
     client = app_client()
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
 
-    league_id = create_league(client)
+    league_id = create_league(client, secret)
     team_id = str(uuid.uuid4())
     player_id = str(uuid.uuid4())
 
@@ -66,7 +77,7 @@ def test_place_waiver_bid_returns_201():
     resp = client.post(
         "/waivers/bids",
         json=bid_payload,
-        headers={"x-user-id": str(uuid.uuid4())},
+        headers={"Authorization": bearer(secret, str(uuid.uuid4()))},
     )
     assert resp.status_code == 201
 

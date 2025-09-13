@@ -2,8 +2,10 @@
 
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { API_BASE, apiFetch } from "../../../services/client";
+import { useState } from "react";
+import { API_BASE } from "../../../services/client";
+import { createLeague as apiCreateLeague } from "../../../services/api";
+import DevAuthToken from "../../../components/DevAuthToken";
 
 type LeagueCreate = {
   name: string;
@@ -22,7 +24,6 @@ type LeagueResponse = {
 };
 
 export default function CreateLeaguePage() {
-  const [userId, setUserId] = useState("");
   const [form, setForm] = useState<LeagueCreate>({
     name: "My League",
     sport: "nba",
@@ -30,20 +31,9 @@ export default function CreateLeaguePage() {
     season: new Date().getFullYear().toString(),
   });
 
-  const defaultUser = useMemo(
-    () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : ""),
-    []
-  );
-
   const createLeague = useMutation({
-    mutationFn: async ({ data, user }: { data: LeagueCreate; user: string }) => {
-      return await apiFetch<LeagueResponse>(`/leagues`, {
-        method: "POST",
-        headers: {
-          "x-user-id": user,
-        },
-        body: JSON.stringify(data),
-      });
+    mutationFn: async ({ data }: { data: LeagueCreate }) => {
+      return await apiCreateLeague(data);
     },
   });
 
@@ -53,16 +43,7 @@ export default function CreateLeaguePage() {
         <h1 className="text-2xl font-semibold">Create League</h1>
 
         <div className="rounded-md border p-4 space-y-4">
-          <div className="space-y-1">
-            <label className="block text-sm text-gray-700">User ID (UUID)</label>
-            <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder={defaultUser || "00000000-0000-0000-0000-000000000001"}
-              className="w-full rounded border px-3 py-2"
-            />
-            <p className="text-xs text-gray-500">Required header for authenticated actions.</p>
-          </div>
+          <p className="text-xs text-gray-500">Uses Authorization: Bearer from localStorage key <code>uf_token</code>.</p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -102,8 +83,8 @@ export default function CreateLeaguePage() {
           <div className="flex items-center gap-2">
             <button
               className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              disabled={createLeague.isPending || !userId}
-              onClick={() => createLeague.mutate({ data: form, user: userId })}
+              disabled={createLeague.isPending}
+              onClick={() => createLeague.mutate({ data: form })}
             >
               {createLeague.isPending ? "Creating..." : "Create"}
             </button>
@@ -130,6 +111,8 @@ export default function CreateLeaguePage() {
             </div>
           )}
         </div>
+
+        <DevAuthToken />
 
         <Link className="text-blue-700 underline" href="/leagues">Back to Leagues</Link>
       </div>

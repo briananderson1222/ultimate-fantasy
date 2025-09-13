@@ -3,8 +3,8 @@ from __future__ import annotations
 """
 Integration Test — JWT auth (dev mode)
 
-Verifies that protected endpoints reject requests without Authorization when no
-legacy x-user-id is provided, and accept with a valid HS256 dev token.
+Verifies that protected endpoints reject requests without Authorization and
+accept with a valid HS256 dev token.
 """
 
 import importlib
@@ -56,7 +56,7 @@ def test_post_leagues_requires_auth_or_dev_header():
         "season": "2025",
     }
 
-    # No Authorization and no x-user-id -> expect 401
+    # No Authorization -> expect 401
     r = client.post("/leagues", json=payload)
     assert r.status_code in (401, 403)
 

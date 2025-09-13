@@ -8,8 +8,10 @@ returns a valid response (simplified version without complex database seeding).
 """
 
 import importlib
+import os
 import sys
 import uuid
+import jwt
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -35,9 +37,16 @@ def app_client() -> TestClient:
     return TestClient(app_module.app)
 
 
+def bearer(secret: str, sub: str) -> str:
+    return "Bearer " + jwt.encode({"sub": sub}, secret, algorithm="HS256")
+
+
 def test_scoreboard_returns_aggregated_totals_for_lineups():
     """Test that the scoreboard endpoint returns a valid response for a league."""
     client = app_client()
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
 
     # Create a league
     u1 = str(uuid.uuid4())
@@ -48,14 +57,19 @@ def test_scoreboard_returns_aggregated_totals_for_lineups():
         "season": "2025",
     }
     create_resp = client.post(
-        "/leagues", json=create_payload, headers={"x-user-id": u1}
+        "/leagues",
+        json=create_payload,
+        headers={"Authorization": bearer(secret, u1)},
     )
     assert create_resp.status_code == 201
     league_id = create_resp.json()["league_id"]
 
     # Join a second team
     u2 = str(uuid.uuid4())
-    join_resp = client.post(f"/leagues/{league_id}/join", headers={"x-user-id": u2})
+    join_resp = client.post(
+        f"/leagues/{league_id}/join",
+        headers={"Authorization": bearer(secret, u2)},
+    )
     assert join_resp.status_code == 200
 
     # Call the scoreboard endpoint - should return 200 even with no scores

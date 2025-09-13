@@ -26,8 +26,8 @@
     "tailwindcss": "4.1.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@rushstack/eslint-patch": "^1.10.4",
-    "@playwright/test": "1.48.2",
     "@types/node": "24.3.2",
     "@types/react": "19.1.13",
     "autoprefixer": "10.4.21",

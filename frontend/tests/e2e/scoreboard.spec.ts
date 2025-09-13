@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { makeHS256 } from './utils';
+import crypto from 'node:crypto';
 
 test('scoreboard endpoint returns items (may be empty)', async ({ request }) => {
   const secret = process.env.AUTH_DEV_SECRET || 'test-e2e-secret';
@@ -20,4 +21,3 @@ test('scoreboard endpoint returns items (may be empty)', async ({ request }) => 
   expect(body).toHaveProperty('items');
   expect(Array.isArray(body.items)).toBe(true);
 });
-

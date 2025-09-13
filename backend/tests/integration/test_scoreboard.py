@@ -12,8 +12,10 @@ Detailed scoring assertions will be added when ScoringService is implemented (T0
 """
 
 import importlib
+import os
 import sys
 import uuid
+import jwt
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -32,8 +34,15 @@ def app_client() -> TestClient:
     return TestClient(app_module.app)
 
 
+def bearer(secret: str, sub: str) -> str:
+    return "Bearer " + jwt.encode({"sub": sub}, secret, algorithm="HS256")
+
+
 def test_scoreboard_endpoint_returns_200_for_league():
     client = app_client()
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
 
     # Create a league first
     create_payload = {
@@ -43,7 +52,9 @@ def test_scoreboard_endpoint_returns_200_for_league():
         "season": "2025",
     }
     create_resp = client.post(
-        "/leagues", json=create_payload, headers={"x-user-id": str(uuid.uuid4())}
+        "/leagues",
+        json=create_payload,
+        headers={"Authorization": bearer(secret, str(uuid.uuid4()))},
     )
     assert create_resp.status_code == 201
     league_id = create_resp.json().get("league_id") or create_resp.json().get("id")

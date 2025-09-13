@@ -130,6 +130,7 @@ npm install
 export NEXT_PUBLIC_API_URL="http://localhost:8000"
 
 # Start development server
+export NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
 npm run dev
 ```
 
@@ -167,6 +168,45 @@ npm run lint
 
 # Format code
 npm run format
+
+### End-to-End (Playwright)
+```bash
+# Start backend and frontend, then run e2e
+./scripts/e2e.sh
+
+# Or run manually (in separate terminals):
+# Terminal 1: backend
+cd backend/src && uv run uvicorn main:app --host 127.0.0.1 --port 8000
+# Terminal 2: frontend
+cd frontend && NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
+# Terminal 3: tests
+cd frontend && E2E_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
+```
+
+### JWT Dev Mode
+- Backend supports `AUTH_MODE=dev` (default) with HS256 tokens using `AUTH_DEV_SECRET`.
+- You can mint a dev token in Node:
+```bash
+node -e "const c=(s)=>Buffer.from(JSON.stringify(s)).toString('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');const h=c({alg:'HS256',typ:'JWT'});const p=c({sub: require('crypto').randomUUID(), email:'user@example.com', name:'User'});const si=h+'.'+p;const sig=require('crypto').createHmac('sha256',process.env.AUTH_DEV_SECRET||'dev-secret').update(si).digest('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');console.log(si+'.'+sig)"
+```
+Set this token into the browser using `localStorage.setItem('uf_token', '<token>')` for the frontend to send `Authorization` headers.
+
+### Dev Auth Token (UI Helper)
+- Purpose: Generate a dev JWT (HS256) entirely in the browser and save it to `localStorage.uf_token` so the frontend automatically sends `Authorization: Bearer <token>`.
+- Where: A "Dev Auth Token" panel appears on these pages: Leagues list (`/leagues`), Create League, League Public page, and Set Lineup.
+- How it works:
+  - Uses Web Crypto to compute a HS256 signature; no network calls are made.
+  - Subject (`sub`) is the user ID. Defaults to a random UUID; you can paste your own.
+  - Secret must match the backend `AUTH_DEV_SECRET` (default `dev-secret` when not set elsewhere).
+  - Clicking "Generate & Save" writes the token to `localStorage.uf_token`; the frontend client reads it automatically.
+- Steps:
+  1) Ensure backend runs with `AUTH_MODE=dev` and set `AUTH_DEV_SECRET` (optional).
+  2) Open a page with the panel; confirm or edit Subject and Secret.
+  3) Click "Generate & Save". You can "Clear Token" to remove it.
+- Troubleshooting:
+  - 401 Unauthorized: The token is missing or signed with the wrong secret. Regenerate with the same `AUTH_DEV_SECRET` as the backend.
+  - Switching users: regenerate with a different Subject UUID.
+  - Production: Do NOT use this helper in production; it is for local/dev only.
 ```
 
 ## 🌐 API Documentation
@@ -189,7 +229,7 @@ DEBUG=true
 
 #### Frontend (.env.local)
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
 ### Database Setup
@@ -309,7 +349,7 @@ docker-compose up --build
 ```bash
 curl -X POST "http://localhost:8000/leagues" \
   -H "Content-Type: application/json" \
-  -H "x-user-id: $(uuidgen)" \
+  -H "Authorization: Bearer $(node -e "const c=(s)=>Buffer.from(JSON.stringify(s)).toString('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');const h=c({alg:'HS256',typ:'JWT'});const p=c({sub: require('crypto').randomUUID()});const si=h+'.'+p;const sig=require('crypto').createHmac('sha256',process.env.AUTH_DEV_SECRET||'dev-secret').update(si).digest('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');console.log(si+'.'+sig)")" \
   -d '{
     "name": "My Fantasy League",
     "sport": "basketball",
@@ -321,14 +361,14 @@ curl -X POST "http://localhost:8000/leagues" \
 ### Join a League
 ```bash
 curl -X POST "http://localhost:8000/leagues/{league_id}/join" \
-  -H "x-user-id: $(uuidgen)"
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Set Lineup
 ```bash
 curl -X PUT "http://localhost:8000/lineups" \
   -H "Content-Type: application/json" \
-  -H "x-user-id: $(uuidgen)" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "team_id": "team-uuid",
     "game_day": "2025-01-15",

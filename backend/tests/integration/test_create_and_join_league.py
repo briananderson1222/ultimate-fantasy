@@ -11,17 +11,26 @@ When another authenticated user posts to /leagues/{leagueId}/join
 Then the user is added to the league as a manager
 
 Notes:
-- Auth is simulated via an "x-user-id" header (middleware to be implemented in T036).
+- Auth uses Authorization: Bearer (dev HS256 token in tests).
 - Database URL should be provided via DATABASE_URL. Tests may run against SQLite fallback in implementation,
   but here we only assert HTTP contract behavior; persistence details are validated by service/unit tests later.
 """
 
+import os
 import uuid
+import jwt
 
 from fastapi.testclient import TestClient
 
 
+def bearer(secret: str, sub: str) -> str:
+    return "Bearer " + jwt.encode({"sub": sub}, secret, algorithm="HS256")
+
+
 def test_create_and_join_league_flow(client: TestClient):
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
     user1 = str(uuid.uuid4())
     user2 = str(uuid.uuid4())
 
@@ -35,7 +44,7 @@ def test_create_and_join_league_flow(client: TestClient):
     create_resp = client.post(
         "/leagues",
         json=create_payload,
-        headers={"x-user-id": user1},
+        headers={"Authorization": bearer(secret, user1)},
     )
 
     assert create_resp.status_code == 201
@@ -52,7 +61,7 @@ def test_create_and_join_league_flow(client: TestClient):
     # Join the league with another user
     join_resp = client.post(
         f"/leagues/{league_id}/join",
-        headers={"x-user-id": user2},
+        headers={"Authorization": bearer(secret, user2)},
     )
 
     assert join_resp.status_code == 200

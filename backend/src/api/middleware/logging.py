@@ -23,7 +23,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("x-request-id", req_id)
         elapsed_ms = (time.perf_counter() - started) * 1000
         logger.info(
-            "%s %s %s %.1fms req_id=%s",
+            "%s %s %d %.1fms req_id=%s",
             request.method,
             request.url.path,
             response.status_code,

@@ -76,7 +76,7 @@ jobs:
     env:
       AUTH_MODE: dev
       AUTH_DEV_SECRET: test-e2e-secret
-      E2E_BASE_URL: http://127.0.0.1:8000
+      E2E_BASE_URL: http://127.0.0.1:3000
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -110,6 +110,17 @@ jobs:
           uv run uvicorn main:app --host 127.0.0.1 --port 8000 &
           for i in `seq 1 30`; do
             curl -fsS http://127.0.0.1:8000/openapi.json && break || sleep 1;
+          done
+
+      - name: Start frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+        run: |
+          npm run dev -- --port 3000 &
+          for i in `seq 1 60`; do
+            curl -fsS http://127.0.0.1:3000 || sleep 1;
+            if curl -fsS http://127.0.0.1:3000 >/dev/null 2>&1; then break; fi;
           done
 
       - name: Run E2E tests

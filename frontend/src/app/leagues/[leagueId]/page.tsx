@@ -3,8 +3,9 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import { API_BASE, apiFetch } from "../../../services/client";
+import { API_BASE } from "../../../services/client";
+import { getPublicLeague, joinLeague } from "../../../services/api";
+import DevAuthToken from "../../../components/DevAuthToken";
 
 type LeaguePublic = {
   league_id: string;
@@ -24,24 +25,20 @@ type JoinResponse = {
 export default function LeaguePublicPage() {
   const params = useParams<{ leagueId: string }>();
   const leagueId = params?.leagueId;
-  const [userId, setUserId] = useState("");
 
   const info = useQuery({
     queryKey: ["league", leagueId],
     queryFn: async () => {
       if (!leagueId) throw new Error("missing league id");
-      return await apiFetch<LeaguePublic>(`/leagues/${leagueId}/public`);
+      return await getPublicLeague(leagueId);
     },
     enabled: !!leagueId,
   });
 
   const join = useMutation({
-    mutationFn: async ({ user }: { user: string }) => {
+    mutationFn: async () => {
       if (!leagueId) throw new Error("missing league id");
-      return await apiFetch<JoinResponse>(`/leagues/${leagueId}/join`, {
-        method: "POST",
-        headers: { "x-user-id": user },
-      });
+      return await joinLeague(leagueId);
     },
   });
 
@@ -70,17 +67,12 @@ export default function LeaguePublicPage() {
 
         <div className="rounded border p-4 space-y-3">
           <h2 className="font-medium">Join this league</h2>
-          <input
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="User ID (UUID)"
-            className="w-full rounded border px-3 py-2"
-          />
+          <p className="text-xs text-gray-500">Uses Authorization: Bearer from localStorage key <code>uf_token</code>.</p>
           <div className="flex items-center gap-2">
             <button
               className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              disabled={!userId || join.isPending}
-              onClick={() => join.mutate({ user: userId })}
+              disabled={join.isPending}
+              onClick={() => join.mutate()}
             >
               {join.isPending ? "Joining..." : "Join"}
             </button>
@@ -96,6 +88,8 @@ export default function LeaguePublicPage() {
             </div>
           )}
         </div>
+
+        <DevAuthToken />
       </div>
     </main>
   );

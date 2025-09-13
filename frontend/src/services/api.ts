@@ -75,37 +75,36 @@ function authHeaders(): Record<string, string> {
 }
 
 // Low-level fetchers
-export async function createLeague(data: LeagueCreate, userId?: string): Promise<LeagueResponse> {
+export async function createLeague(data: LeagueCreate): Promise<LeagueResponse> {
   return await apiFetch<LeagueResponse>(`/leagues`, {
     method: "POST",
-    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
+    headers: { ...authHeaders() },
     body: JSON.stringify(data),
   });
 }
 
-export async function joinLeague(leagueId: string, userId?: string): Promise<JoinResponse> {
+export async function joinLeague(leagueId: string): Promise<JoinResponse> {
   return await apiFetch<JoinResponse>(`/leagues/${leagueId}/join`, {
     method: "POST",
-    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
+    headers: { ...authHeaders() },
   });
 }
 
 export async function updateLeagueSettings(
   leagueId: string,
-  data: RuleUpdate,
-  userId?: string
+  data: RuleUpdate
 ): Promise<RuleOut> {
   return await apiFetch<RuleOut>(`/leagues/${leagueId}/settings`, {
     method: "PATCH",
-    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
+    headers: { ...authHeaders() },
     body: JSON.stringify(data),
   });
 }
 
-export async function setLineup(data: LineupRequest, userId?: string): Promise<LineupResponse> {
+export async function setLineup(data: LineupRequest): Promise<LineupResponse> {
   return await apiFetch<LineupResponse>(`/lineups`, {
     method: "PUT",
-    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
+    headers: { ...authHeaders() },
     body: JSON.stringify(data),
   });
 }
@@ -115,12 +114,11 @@ export async function getScoreboard(leagueId: string): Promise<ScoreboardRespons
 }
 
 export async function placeWaiverBid(
-  data: WaiverBidRequest,
-  userId?: string
+  data: WaiverBidRequest
 ): Promise<WaiverBidResponse> {
   return await apiFetch<WaiverBidResponse>(`/waivers/bids`, {
     method: "POST",
-    headers: { ...authHeaders(), ...(userId ? { "x-user-id": userId } : {}) },
+    headers: { ...authHeaders() },
     body: JSON.stringify(data),
   });
 }

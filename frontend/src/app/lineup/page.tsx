@@ -2,14 +2,15 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { API_BASE, apiFetch } from "../../services/client";
+import { API_BASE } from "../../services/client";
+import { setLineup as apiSetLineup } from "../../services/api";
+import DevAuthToken from "../../components/DevAuthToken";
 
 type LineupPlayer = { player_id: string; position: string };
 type LineupRequest = { team_id: string; game_day: string; players: LineupPlayer[] };
 type LineupResponse = { team_id: string; game_day: string; players: LineupPlayer[]; version?: number | null };
 
 export default function LineupPage() {
-  const [userId, setUserId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [gameDay, setGameDay] = useState<string>(new Date().toISOString().slice(0, 10));
   const [players, setPlayers] = useState<LineupPlayer[]>([
@@ -18,11 +19,7 @@ export default function LineupPage() {
 
   const setLineup = useMutation({
     mutationFn: async (payload: LineupRequest) => {
-      return await apiFetch<LineupResponse>(`/lineups`, {
-        method: "PUT",
-        headers: { "x-user-id": userId },
-        body: JSON.stringify(payload),
-      });
+      return await apiSetLineup(payload);
     },
   });
 
@@ -44,15 +41,7 @@ export default function LineupPage() {
         <h1 className="text-2xl font-semibold">Set Lineup</h1>
 
         <div className="rounded border p-4 space-y-3">
-          <div>
-            <label className="mb-1 block text-sm text-gray-700">User ID (UUID)</label>
-            <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="00000000-0000-0000-0000-000000000001"
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
+          <p className="text-xs text-gray-500">Uses Authorization: Bearer from localStorage key <code>uf_token</code>.</p>
           <div>
             <label className="mb-1 block text-sm text-gray-700">Team ID (UUID)</label>
             <input
@@ -100,11 +89,11 @@ export default function LineupPage() {
                 </button>
               </div>
             ))}
-          </div>
+        </div>
           <div className="flex items-center gap-2">
             <button
               className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              disabled={!userId || !teamId || setLineup.isPending}
+              disabled={!teamId || setLineup.isPending}
               onClick={submit}
             >
               {setLineup.isPending ? "Saving..." : "Save Lineup"}
@@ -123,6 +112,7 @@ export default function LineupPage() {
             </div>
           )}
         </div>
+        <DevAuthToken />
       </div>
     </main>
   );

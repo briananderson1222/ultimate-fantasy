@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import DevAuthToken from "../../components/DevAuthToken";
 
 export default function LeaguesListPage() {
   const router = useRouter();
@@ -43,8 +44,9 @@ export default function LeaguesListPage() {
             </button>
           </div>
         </div>
+
+        <DevAuthToken />
       </div>
     </main>
   );
 }
-

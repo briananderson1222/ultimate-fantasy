@@ -8,13 +8,15 @@ When the manager sends PUT /lineups with a valid lineup for the current game day
 Then the lineup is saved and validated against the league's rules
 
 Notes:
-- Auth simulated via header: x-user-id (middleware added in T036).
+- Auth uses Authorization: Bearer (dev HS256 token in tests).
 - Minimal assertion is HTTP 200 as per contract; response body shape is validated if JSON is returned.
 """
 
 import importlib
+import os
 import sys
 import uuid
+import jwt
 from datetime import date
 from pathlib import Path
 
@@ -34,8 +36,15 @@ def app_client() -> TestClient:
     return TestClient(app_module.app)
 
 
+def bearer(secret: str, sub: str) -> str:
+    return "Bearer " + jwt.encode({"sub": sub}, secret, algorithm="HS256")
+
+
 def test_set_lineup_accepts_valid_payload():
     client = app_client()
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
 
     payload = {
         "team_id": str(uuid.uuid4()),
@@ -47,7 +56,9 @@ def test_set_lineup_accepts_valid_payload():
     }
 
     resp = client.put(
-        "/lineups", json=payload, headers={"x-user-id": str(uuid.uuid4())}
+        "/lineups",
+        json=payload,
+        headers={"Authorization": bearer(secret, str(uuid.uuid4()))},
     )
     assert resp.status_code == 200
 

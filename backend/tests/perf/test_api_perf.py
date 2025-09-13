@@ -12,6 +12,7 @@ by the app's startup hook. They are intended to catch gross regressions.
 """
 
 import importlib
+import os
 import sys
 import time
 import uuid
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+import jwt
 
 
 def backend_src_path() -> Path:
@@ -41,8 +43,15 @@ def p95(durations: list[float]) -> float:
     return ds[k]
 
 
+def bearer(secret: str, sub: str) -> str:
+    return "Bearer " + jwt.encode({"sub": sub}, secret, algorithm="HS256")
+
+
 def test_public_league_p95_under_target(client: TestClient, benchmark):
     # Create a league to query via API (most realistic test)
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
     create_payload = {
         "name": "Perf League",
         "sport": "basketball",
@@ -50,7 +59,9 @@ def test_public_league_p95_under_target(client: TestClient, benchmark):
         "season": "2025",
     }
     create_resp = client.post(
-        "/leagues", json=create_payload, headers={"x-user-id": str(uuid.uuid4())}
+        "/leagues",
+        json=create_payload,
+        headers={"Authorization": bearer(secret, str(uuid.uuid4()))},
     )
     assert create_resp.status_code == 201
     league_id = create_resp.json().get("league_id")
@@ -90,6 +101,9 @@ def test_public_league_p95_under_target(client: TestClient, benchmark):
 
 
 def test_set_lineup_p95_under_target(client: TestClient, benchmark):
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
     payload = {
         "team_id": str(uuid.uuid4()),
         "game_day": "2025-01-01",
@@ -98,7 +112,7 @@ def test_set_lineup_p95_under_target(client: TestClient, benchmark):
             {"player_id": str(uuid.uuid4()), "position": "F"},
         ],
     }
-    headers = {"x-user-id": str(uuid.uuid4())}
+    headers = {"Authorization": bearer(secret, str(uuid.uuid4()))}
 
     # Warmup
     client.put("/lineups", json=payload, headers=headers)

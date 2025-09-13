@@ -73,7 +73,7 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-export NEXT_PUBLIC_API_URL="http://localhost:8000"
+export NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
 
 # Start frontend in background
 npm run dev &

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { makeHS256 } from './utils';
+import crypto from 'node:crypto';
 
 test('place waiver bid via API returns 201', async ({ request }) => {
   const secret = process.env.AUTH_DEV_SECRET || 'test-e2e-secret';
@@ -15,7 +16,8 @@ test('place waiver bid via API returns 201', async ({ request }) => {
   const { league_id } = await create.json();
 
   const user2 = crypto.randomUUID();
-  const join = await request.post(`/leagues/${league_id}/join`, { headers: { 'x-user-id': user2 } });
+  const token2 = makeHS256(user2, secret);
+  const join = await request.post(`/leagues/${league_id}/join`, { headers: { Authorization: `Bearer ${token2}` } });
   expect(join.status()).toBe(200);
   const { team_id } = await join.json();
 
@@ -28,4 +30,3 @@ test('place waiver bid via API returns 201', async ({ request }) => {
   const body = await bid.json();
   expect(body).toHaveProperty('waiver_id');
 });
-
