@@ -1,7 +1,7 @@
-import React from 'react';
-import { Skeleton } from './skeleton';
+import React from "react";
+import { Skeleton } from "./skeleton";
 
-export default { title: 'UI/Skeleton' };
+export default { title: "UI/Skeleton" };
 
 export const Lines = () => (
   <div className="space-y-2">
@@ -10,4 +10,3 @@ export const Lines = () => (
     <Skeleton className="h-4 w-[200px]" />
   </div>
 );
-

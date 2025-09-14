@@ -199,7 +199,7 @@ cd frontend && npm run test:visual:update
 - Backend supports `AUTH_MODE=dev` (default) with HS256 tokens using `AUTH_DEV_SECRET`.
 - You can mint a dev token in Node:
 ```bash
-node -e "const c=(s)=>Buffer.from(JSON.stringify(s)).toString('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');const h=c({alg:'HS256',typ:'JWT'});const p=c({sub: require('crypto').randomUUID(), email:'user@example.com', name:'User'});const si=h+'.'+p;const sig=require('crypto').createHmac('sha256',process.env.AUTH_DEV_SECRET||'dev-secret').update(si).digest('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');console.log(si+'.'+sig)"
+node -e "const c=(s)=>Buffer.from(JSON.stringify(s)).toString('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');const h=c({alg:'HS256',typ:'JWT'});const p=c({sub: require('crypto').randomUUID(), email:'user@ultimatefantasy.app', name:'User'});const si=h+'.'+p;const sig=require('crypto').createHmac('sha256',process.env.AUTH_DEV_SECRET||'dev-secret').update(si).digest('base64').replace(/=+/g,'').replace(/\+/g,'-').replace(/\//g,'_');console.log(si+'.'+sig)"
 ```
 Set this token into the browser using `localStorage.setItem('uf_token', '<token>')` for the frontend to send `Authorization` headers.
 

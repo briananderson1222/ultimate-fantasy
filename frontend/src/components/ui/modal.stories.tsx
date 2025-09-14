@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Modal } from './modal';
-import { Button } from './button';
+import React, { useState } from "react";
+import { Modal } from "./modal";
+import { Button } from "./button";
 
-export default { title: 'UI/Modal' };
+export default { title: "UI/Modal" };
 
 export const Basic = () => {
   const [open, setOpen] = useState(false);
@@ -15,4 +15,3 @@ export const Basic = () => {
     </div>
   );
 };
-

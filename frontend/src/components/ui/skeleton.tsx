@@ -4,31 +4,28 @@ import React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { twMerge } from "tailwind-merge";
 
-const skeletonVariants = cva(
-  "skeleton animate-shimmer",
-  {
-    variants: {
-      variant: {
-        text: "skeleton-text",
-        avatar: "skeleton-avatar",
-        button: "skeleton-button",
-        card: "skeleton-card",
-        custom: "",
-      },
-      width: {
-        full: "w-full",
-        "3/4": "w-3/4",
-        "1/2": "w-1/2",
-        "1/4": "w-1/4",
-        auto: "w-auto",
-      },
+const skeletonVariants = cva("skeleton animate-shimmer", {
+  variants: {
+    variant: {
+      text: "skeleton-text",
+      avatar: "skeleton-avatar",
+      button: "skeleton-button",
+      card: "skeleton-card",
+      custom: "",
     },
-    defaultVariants: {
-      variant: "text",
-      width: "full",
+    width: {
+      full: "w-full",
+      "3/4": "w-3/4",
+      "1/2": "w-1/2",
+      "1/4": "w-1/4",
+      auto: "w-auto",
     },
-  }
-);
+  },
+  defaultVariants: {
+    variant: "text",
+    width: "full",
+  },
+});
 
 type SkeletonProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof skeletonVariants> & {
@@ -53,7 +50,7 @@ export function Skeleton({
             key={i}
             className={twMerge(
               skeletonVariants({ variant, width: i === lines - 1 ? "3/4" : "full" }),
-              className
+              className,
             )}
             style={{ height, ...style }}
           />
@@ -85,7 +82,12 @@ export function SkeletonCard({ className, ...props }: React.HTMLAttributes<HTMLD
   );
 }
 
-export function SkeletonTable({ rows = 5, cols = 4, className, ...props }: {
+export function SkeletonTable({
+  rows = 5,
+  cols = 4,
+  className,
+  ...props
+}: {
   rows?: number;
   cols?: number;
 } & React.HTMLAttributes<HTMLDivElement>) {
@@ -102,7 +104,11 @@ export function SkeletonTable({ rows = 5, cols = 4, className, ...props }: {
   );
 }
 
-export function SkeletonList({ items = 3, className, ...props }: {
+export function SkeletonList({
+  items = 3,
+  className,
+  ...props
+}: {
   items?: number;
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (

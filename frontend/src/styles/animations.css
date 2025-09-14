@@ -57,7 +57,9 @@
 
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--ring-offset), 0 0 0 4px var(--ring);
+  box-shadow:
+    0 0 0 2px var(--ring-offset),
+    0 0 0 4px var(--ring);
 }
 
 /* Loading states */
@@ -70,24 +72,24 @@
 }
 
 /* Toast animations (Radix Toast) */
-.uf-toast[data-state='open'] {
+.uf-toast[data-state="open"] {
   animation: toast-slide-in var(--anim-duration-md) var(--anim-ease-emphasized);
 }
 
-.uf-toast[data-state='closed'] {
+.uf-toast[data-state="closed"] {
   animation: toast-slide-out var(--anim-duration-sm) var(--anim-ease-standard) forwards;
 }
 
-.uf-toast[data-swipe='move'] {
+.uf-toast[data-swipe="move"] {
   transform: translateX(var(--radix-toast-swipe-move-x));
 }
 
-.uf-toast[data-swipe='cancel'] {
+.uf-toast[data-swipe="cancel"] {
   transform: translateX(0);
   transition: transform var(--anim-duration-sm) var(--anim-ease-emphasized);
 }
 
-.uf-toast[data-swipe='end'] {
+.uf-toast[data-swipe="end"] {
   animation: toast-slide-out var(--anim-duration-xs) var(--anim-ease-standard) forwards;
 }
 
@@ -106,13 +108,21 @@
 
 /* Keyframes */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes slide-up {
@@ -167,7 +177,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -194,7 +205,9 @@
 }
 
 @keyframes loading-dots {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
   40% {
@@ -245,31 +258,31 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  
+
   /* Keep essential animations but make them instant */
   .animate-pulse {
     animation: none;
     opacity: 0.7;
   }
-  
+
   .animate-shimmer {
     animation: none;
     background: var(--color-muted);
   }
-  
+
   .loading-spinner {
     animation: none;
   }
-  
+
   .loading-dots {
     animation: none;
   }
-  
+
   /* Preserve hover states but remove transitions */
   .hover-lift:hover {
     transform: none;
   }
-  
+
   .press-scale:active {
     transform: none;
   }
@@ -296,10 +309,18 @@
   margin: 0.25em 0;
 }
 
-.skeleton-text.w-full { width: 100%; }
-.skeleton-text.w-3/4 { width: 75%; }
-.skeleton-text.w-1/2 { width: 50%; }
-.skeleton-text.w-1/4 { width: 25%; }
+.skeleton-text.w-full {
+  width: 100%;
+}
+.skeleton-text.w-3/4 {
+  width: 75%;
+}
+.skeleton-text.w-1/2 {
+  width: 50%;
+}
+.skeleton-text.w-1/4 {
+  width: 25%;
+}
 
 .skeleton-avatar {
   width: 40px;

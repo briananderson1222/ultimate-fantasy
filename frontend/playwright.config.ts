@@ -1,37 +1,36 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000';
+const baseURL = process.env.E2E_BASE_URL || "http://localhost:3000";
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./tests/e2e",
   timeout: 30_000,
-  expect: { 
+  expect: {
     timeout: 5_000,
     // Visual comparison settings
-    toHaveScreenshot: { threshold: 0.2 }
+    toHaveScreenshot: { threshold: 0.2 },
   },
   use: {
     baseURL,
-    trace: 'on-first-retry',
+    trace: "on-first-retry",
   },
   projects: [
-    { 
-      name: 'chromium', 
-      use: { 
-        ...devices['Desktop Chrome'],
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
         // Consistent viewport for visual tests
-        viewport: { width: 1280, height: 720 }
-      } 
+        viewport: { width: 1280, height: 720 },
+      },
     },
     // Visual tests only on Chromium for consistency
     {
-      name: 'visual-chromium',
-      testMatch: '**/visual.spec.ts',
+      name: "visual-chromium",
+      testMatch: "**/visual.spec.ts",
       use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 720 }
-      }
-    }
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
   ],
 });
-

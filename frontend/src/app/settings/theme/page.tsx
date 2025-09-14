@@ -26,10 +26,7 @@ export default function ThemeSettingsPage() {
 
   const preset = (name: "light" | "dark") => () => setTheme(name);
 
-  const example = useMemo(
-    () => ({ "--color-bg": "#ffefd5", "--color-text": "#111111" }),
-    []
-  );
+  const example = useMemo(() => ({ "--color-bg": "#ffefd5", "--color-text": "#111111" }), []);
 
   async function loadFantasyPack() {
     setError("");
@@ -56,12 +53,25 @@ export default function ThemeSettingsPage() {
         </div>
 
         <div className="rounded border p-4 space-y-3">
-          <p className="text-sm text-gray-600">Current theme: <strong>{theme}</strong></p>
+          <p className="text-sm text-gray-600">
+            Current theme: <strong>{theme}</strong>
+          </p>
           <div className="flex gap-2">
-            <button className="rounded bg-gray-200 px-3 py-2" onClick={preset("light")}>Light</button>
-            <button className="rounded bg-gray-800 px-3 py-2 text-white" onClick={preset("dark")}>Dark</button>
-            <button className="rounded bg-indigo-600 px-3 py-2 text-white" onClick={() => setTheme("custom")}>Custom</button>
-            <Link className="rounded bg-gray-100 px-3 py-2" href="/settings/theme">Reload</Link>
+            <button className="rounded bg-gray-200 px-3 py-2" onClick={preset("light")}>
+              Light
+            </button>
+            <button className="rounded bg-gray-800 px-3 py-2 text-white" onClick={preset("dark")}>
+              Dark
+            </button>
+            <button
+              className="rounded bg-indigo-600 px-3 py-2 text-white"
+              onClick={() => setTheme("custom")}
+            >
+              Custom
+            </button>
+            <Link className="rounded bg-gray-100 px-3 py-2" href="/settings/theme">
+              Reload
+            </Link>
           </div>
         </div>
 
@@ -90,8 +100,13 @@ export default function ThemeSettingsPage() {
             onChange={(e) => setRaw(e.target.value)}
           />
           <div className="flex items-center gap-2">
-            <button className="rounded bg-green-600 px-3 py-2 text-white" onClick={apply}>Apply</button>
-            <span className="text-xs text-gray-600">Provide a JSON object of CSS variables: e.g., {`{ "--color-bg": "#fff", "--color-text": "#111" }`}</span>
+            <button className="rounded bg-green-600 px-3 py-2 text-white" onClick={apply}>
+              Apply
+            </button>
+            <span className="text-xs text-gray-600">
+              Provide a JSON object of CSS variables: e.g.,{" "}
+              {`{ "--color-bg": "#fff", "--color-text": "#111" }`}
+            </span>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>

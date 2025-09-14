@@ -1,12 +1,7 @@
 "use client";
 
 import { apiFetch } from "./client";
-import {
-  UseMutationOptions,
-  UseQueryOptions,
-  useMutation,
-  useQuery,
-} from "@tanstack/react-query";
+import { UseMutationOptions, UseQueryOptions, useMutation, useQuery } from "@tanstack/react-query";
 
 // Types matching backend contracts/openapi.yml
 export type LeagueCreate = {
@@ -35,7 +30,12 @@ export type RuleOut = {
 
 export type LineupPlayer = { player_id: string; position: string };
 export type LineupRequest = { team_id: string; game_day: string; players: LineupPlayer[] };
-export type LineupResponse = { team_id: string; game_day: string; players: LineupPlayer[]; version?: number | null };
+export type LineupResponse = {
+  team_id: string;
+  game_day: string;
+  players: LineupPlayer[];
+  version?: number | null;
+};
 
 export type WaiverBidRequest = {
   league_id: string;
@@ -130,10 +130,7 @@ export async function joinLeague(leagueId: string): Promise<JoinResponse> {
   });
 }
 
-export async function updateLeagueSettings(
-  leagueId: string,
-  data: RuleUpdate
-): Promise<RuleOut> {
+export async function updateLeagueSettings(leagueId: string, data: RuleUpdate): Promise<RuleOut> {
   return await apiFetch<RuleOut>(`/leagues/${leagueId}/settings`, {
     method: "PATCH",
     headers: { ...authHeaders() },
@@ -153,9 +150,7 @@ export async function getScoreboard(leagueId: string): Promise<ScoreboardRespons
   return await apiFetch<ScoreboardResponse>(`/leagues/${leagueId}/scoreboard`);
 }
 
-export async function placeWaiverBid(
-  data: WaiverBidRequest
-): Promise<WaiverBidResponse> {
+export async function placeWaiverBid(data: WaiverBidRequest): Promise<WaiverBidResponse> {
   return await apiFetch<WaiverBidResponse>(`/waivers/bids`, {
     method: "POST",
     headers: { ...authHeaders() },
@@ -173,7 +168,7 @@ export async function getLeagueBranding(leagueId: string): Promise<LeagueBrandin
 
 export async function updateLeagueBranding(
   leagueId: string,
-  payload: LeagueBranding
+  payload: LeagueBranding,
 ): Promise<LeagueBrandingOut> {
   return await apiFetch<LeagueBrandingOut>(`/leagues/${leagueId}/branding`, {
     method: "PUT",
@@ -189,9 +184,7 @@ export async function getPreferences(): Promise<PreferencesResponse> {
   });
 }
 
-export async function updatePreferences(
-  payload: PreferencesPayload
-): Promise<PreferencesResponse> {
+export async function updatePreferences(payload: PreferencesPayload): Promise<PreferencesResponse> {
   return await apiFetch<PreferencesResponse>(`/me/preferences`, {
     method: "PUT",
     headers: { ...authHeaders() },
@@ -223,7 +216,13 @@ export async function listWaivers(params: {
   return await apiFetch<WaiverListResponse>(`/waivers?${p.toString()}`);
 }
 
-export type LineupListItem = { lineup_id: string; team_id: string; game_day: string; players: LineupPlayer[]; version: number };
+export type LineupListItem = {
+  lineup_id: string;
+  team_id: string;
+  game_day: string;
+  players: LineupPlayer[];
+  version: number;
+};
 export type LineupListResponse = { items: LineupListItem[] };
 
 export async function listLineups(params: {
@@ -253,9 +252,7 @@ export const queryKeys = {
 };
 
 // React Query helpers
-export function useCreateLeague(
-  options?: UseMutationOptions<LeagueResponse, Error, LeagueCreate>
-) {
+export function useCreateLeague(options?: UseMutationOptions<LeagueResponse, Error, LeagueCreate>) {
   return useMutation<LeagueResponse, Error, LeagueCreate>({
     mutationFn: (data) => createLeague(data),
     ...options,
@@ -264,7 +261,7 @@ export function useCreateLeague(
 
 export function useJoinLeague(
   leagueId: string,
-  options?: UseMutationOptions<JoinResponse, Error, void>
+  options?: UseMutationOptions<JoinResponse, Error, void>,
 ) {
   return useMutation<JoinResponse, Error, void>({
     mutationFn: () => joinLeague(leagueId),
@@ -274,7 +271,7 @@ export function useJoinLeague(
 
 export function useUpdateLeagueSettings(
   leagueId: string,
-  options?: UseMutationOptions<RuleOut, Error, RuleUpdate>
+  options?: UseMutationOptions<RuleOut, Error, RuleUpdate>,
 ) {
   return useMutation<RuleOut, Error, RuleUpdate>({
     mutationFn: (data) => updateLeagueSettings(leagueId, data),
@@ -282,9 +279,7 @@ export function useUpdateLeagueSettings(
   });
 }
 
-export function useSetLineup(
-  options?: UseMutationOptions<LineupResponse, Error, LineupRequest>
-) {
+export function useSetLineup(options?: UseMutationOptions<LineupResponse, Error, LineupRequest>) {
   return useMutation<LineupResponse, Error, LineupRequest>({
     mutationFn: (data) => setLineup(data),
     ...options,
@@ -293,7 +288,7 @@ export function useSetLineup(
 
 export function usePublicLeague(
   leagueId: string | undefined,
-  options?: UseQueryOptions<LeaguePublic, Error, LeaguePublic, ReturnType<typeof queryKeys.league>>
+  options?: UseQueryOptions<LeaguePublic, Error, LeaguePublic, ReturnType<typeof queryKeys.league>>,
 ) {
   return useQuery<LeaguePublic, Error, LeaguePublic, ReturnType<typeof queryKeys.league>>({
     queryKey: queryKeys.league(leagueId || ""),
@@ -308,9 +303,19 @@ export function usePublicLeague(
 
 export function useScoreboard(
   leagueId: string | undefined,
-  options?: UseQueryOptions<ScoreboardResponse, Error, ScoreboardResponse, ReturnType<typeof queryKeys.scoreboard>>
+  options?: UseQueryOptions<
+    ScoreboardResponse,
+    Error,
+    ScoreboardResponse,
+    ReturnType<typeof queryKeys.scoreboard>
+  >,
 ) {
-  return useQuery<ScoreboardResponse, Error, ScoreboardResponse, ReturnType<typeof queryKeys.scoreboard>>({
+  return useQuery<
+    ScoreboardResponse,
+    Error,
+    ScoreboardResponse,
+    ReturnType<typeof queryKeys.scoreboard>
+  >({
     queryKey: queryKeys.scoreboard(leagueId || ""),
     queryFn: () => {
       if (!leagueId) throw new Error("leagueId is required");
@@ -322,7 +327,7 @@ export function useScoreboard(
 }
 
 export function usePlaceWaiverBid(
-  options?: UseMutationOptions<WaiverBidResponse, Error, WaiverBidRequest>
+  options?: UseMutationOptions<WaiverBidResponse, Error, WaiverBidRequest>,
 ) {
   return useMutation<WaiverBidResponse, Error, WaiverBidRequest>({
     mutationFn: (data) => placeWaiverBid(data),

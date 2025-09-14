@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('dashboard widgets can be rearranged and persist layout', async ({ page }) => {
-  await page.goto('/dashboard');
+test("dashboard widgets can be rearranged and persist layout", async ({ page }) => {
+  await page.goto("/dashboard");
 
   // Ensure at least 3 widgets rendered
   const titles = page.locator('[data-testid="widget-title"]');
@@ -9,7 +9,7 @@ test('dashboard widgets can be rearranged and persist layout', async ({ page }) 
 
   // Find the index of "Scoreboard"
   const texts = await titles.allInnerTexts();
-  const idx = texts.findIndex(t => t.trim() === 'Scoreboard');
+  const idx = texts.findIndex((t) => t.trim() === "Scoreboard");
   expect(idx).toBeGreaterThanOrEqual(0);
 
   // Move up until it's at the top
@@ -18,8 +18,8 @@ test('dashboard widgets can be rearranged and persist layout', async ({ page }) 
   }
 
   // Save and verify first widget is Scoreboard
-  await page.getByTestId('save-layout').click();
+  await page.getByTestId("save-layout").click();
   await page.reload();
   const first = await page.locator('[data-testid="widget-title"]').first().innerText();
-  expect(first).toBe('Scoreboard');
+  expect(first).toBe("Scoreboard");
 });

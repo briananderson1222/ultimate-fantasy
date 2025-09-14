@@ -21,24 +21,25 @@ Dark mode overrides live under `[data-theme="dark"]` in the same file and set su
 ## Applying Themes
 
 Runtime theming is powered by `ThemeProvider` (`src/app/theme.tsx`). It manages:
+
 - `theme`: `light | dark | custom` (persisted at `localStorage.uf_theme`)
 - `custom`: a partial map of CSS variables (persisted at `localStorage.uf_theme_custom`)
 
 Usage example:
 
 ```tsx
-import { useTheme } from '@/app/theme';
+import { useTheme } from "@/app/theme";
 
 export default function Example() {
   const { theme, setTheme, custom, setCustom } = useTheme();
   return (
     <div>
-      <button onClick={() => setTheme('dark')}>Dark</button>
-      <button onClick={() => setTheme('light')}>Light</button>
+      <button onClick={() => setTheme("dark")}>Dark</button>
+      <button onClick={() => setTheme("light")}>Light</button>
       <button
         onClick={() => {
-          setCustom({ '--color-primary': '#7c3aed' });
-          setTheme('custom');
+          setCustom({ "--color-primary": "#7c3aed" });
+          setTheme("custom");
         }}
       >
         Purple Primary
@@ -53,14 +54,17 @@ Under the hood, `ThemeProvider` sets `document.documentElement.dataset.theme` an
 ## Theme Studio
 
 Interactive editor at `/settings/theme` for live token editing.
+
 - Switch between light/dark/custom
 - Paste/Edit a JSON object of CSS var overrides
 - Persisted in localStorage and applied globally
 
 Presets:
+
 - Fantasy Football Pack: available at `/themes/fantasy-football.json` and loadable via the “Load Fantasy Pack” button in Theme Settings. It includes Turf Green primary, Honey Gold accent, and subtle gradient/texture variables (`--gradient-*`, `--texture-noise`). Add an optional noise image at `public/brand/textures/noise.png` to enable textured backgrounds via `.hero-gradient` and `.surface-textured` classes.
 
 Example custom theme JSON:
+
 ```json
 {
   "--color-primary": "#0f766e",
@@ -74,6 +78,7 @@ Example custom theme JSON:
 Tailwind utilities can reference CSS variables for consistency. Prefer using semantic classes and minimal custom CSS; where required, use `var(--token)` in styles.
 
 Example:
+
 ```css
 .btn-primary {
   background: var(--color-primary);
@@ -85,16 +90,15 @@ Example:
 ## Per‑League Branding (optional)
 
 When available, the public league payload may include branding with theme variables:
+
 - Contract type: `LeagueBranding` → `{ theme?: Record<string, string>, name?: string, logo_url?: string }`
 - The League page loads branding and can apply variables on top of the active theme:
 
 ```tsx
-import { LeagueBranding } from '@/components/LeagueBranding';
+import { LeagueBranding } from "@/components/LeagueBranding";
 
 // Wrap page content to scope overrides if desired
-<LeagueBranding themeVars={league.branding?.theme}>
-  {/* page content */}
-</LeagueBranding>
+<LeagueBranding themeVars={league.branding?.theme}>{/* page content */}</LeagueBranding>;
 ```
 
 Alternatively, merge league theme into `ThemeProvider` custom vars if you want global overrides while viewing the league.

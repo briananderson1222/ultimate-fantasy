@@ -36,7 +36,9 @@ function lookup(messages: Messages, key: string): string | undefined {
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const pref = loadPreferences();
   const [locale, setLocaleState] = useState<Locale>(pref.locale || "en-US");
-  const [messages, setMessages] = useState<Messages>(STATIC_CATALOGS[locale] || STATIC_CATALOGS["en-US"]);
+  const [messages, setMessages] = useState<Messages>(
+    STATIC_CATALOGS[locale] || STATIC_CATALOGS["en-US"],
+  );
 
   useEffect(() => {
     let cancelled = false;

@@ -3,7 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { useTheme } from "../app/theme";
-import { Command, Settings, PlusCircle, Moon, Sun } from "lucide-react";
+import { Command, Settings, Moon, Sun } from "lucide-react";
+import AdminPanel from "./AdminPanel";
 
 export default function HeaderActions() {
   const { theme, setTheme } = useTheme();
@@ -21,21 +22,15 @@ export default function HeaderActions() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Create League (desktop) */}
-      <Link
-        href="/leagues/create"
-        className="hidden md:inline-flex items-center gap-1 rounded border px-2 py-1 text-sm hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-offset-2"
-        aria-label="Create League"
-      >
-        <PlusCircle className="h-4 w-4" aria-hidden />
-        <span className="hidden lg:inline">Create</span>
-      </Link>
+      {/* Admin Panel (only in dev mode) */}
+      <AdminPanel />
 
       {/* Command Palette */}
       <button
         type="button"
         onClick={openCommandPalette}
-        className="inline-flex items-center justify-center rounded border px-2 py-1 text-sm hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="inline-flex items-center justify-center rounded border border-[var(--border)] px-2 py-1 text-sm hover:bg-[var(--color-elevated)] focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{ color: "var(--color-text)" }}
         aria-label="Open Command Palette (Ctrl/Cmd+K)"
         title="Command (Ctrl/Cmd+K)"
       >
@@ -46,7 +41,8 @@ export default function HeaderActions() {
       <button
         type="button"
         onClick={toggleTheme}
-        className="inline-flex items-center justify-center rounded border px-2 py-1 text-sm hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="inline-flex items-center justify-center rounded border border-[var(--border)] px-2 py-1 text-sm hover:bg-[var(--color-elevated)] focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{ color: "var(--color-text)" }}
         aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
         title={theme === "dark" ? "Light" : "Dark"}
       >
@@ -60,7 +56,8 @@ export default function HeaderActions() {
       {/* Settings */}
       <Link
         href="/settings/theme"
-        className="inline-flex items-center justify-center rounded border px-2 py-1 text-sm hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="inline-flex items-center justify-center rounded border border-[var(--border)] px-2 py-1 text-sm hover:bg-[var(--color-elevated)] focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{ color: "var(--color-text)" }}
         aria-label="Theme Settings"
         title="Settings"
       >
@@ -69,4 +66,3 @@ export default function HeaderActions() {
     </div>
   );
 }
-

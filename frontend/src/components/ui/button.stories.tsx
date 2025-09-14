@@ -1,8 +1,8 @@
-import React from 'react';
-import { Button } from './button';
-import { Trophy } from 'lucide-react';
+import React from "react";
+import { Button } from "./button";
+import { Trophy } from "lucide-react";
 
-export default { title: 'UI/Button' };
+export default { title: "UI/Button" };
 
 export const Primary = () => <Button>Primary</Button>;
 export const Secondary = () => <Button variant="secondary">Secondary</Button>;
@@ -18,4 +18,3 @@ export const WithIcon = () => (
   <Button leftIcon={<Trophy aria-hidden className="h-4 w-4" />}>With Icon</Button>
 );
 export const Loading = () => <Button loading>Loading…</Button>;
-

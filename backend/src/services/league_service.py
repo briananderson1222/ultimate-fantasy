@@ -31,7 +31,7 @@ class LeagueService:
         if not user:
             user = User(
                 user_id=commissioner_id,
-                email=f"{commissioner_id}@example.com",
+                email=f"{commissioner_id}@ultimatefantasy.app",
                 display_name=f"User {str(commissioner_id)[:8]}",
                 cognito_sub=str(commissioner_id),
             )
@@ -72,7 +72,7 @@ class LeagueService:
         if not user:
             user = User(
                 user_id=user_id,
-                email=f"{user_id}@example.com",
+                email=f"{user_id}@ultimatefantasy.app",
                 display_name=f"User {str(user_id)[:8]}",
                 cognito_sub=str(user_id),
             )

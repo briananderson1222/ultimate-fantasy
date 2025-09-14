@@ -1,7 +1,7 @@
-import React from 'react';
-import { Badge } from './badge';
+import React from "react";
+import { Badge } from "./badge";
 
-export default { title: 'UI/Badge' };
+export default { title: "UI/Badge" };
 
 export const Variants = () => (
   <div className="flex items-center gap-2">
@@ -12,4 +12,3 @@ export const Variants = () => (
     <Badge variant="destructive">destructive</Badge>
   </div>
 );
-

@@ -12,12 +12,11 @@ type BadgeProps = {
 export function Badge({ children, variant = "default", className }: BadgeProps) {
   const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
   const variants = {
-    default: "bg-gray-200 text-gray-900",
-    secondary: "bg-gray-100 text-gray-700",
-    success: "bg-green-100 text-green-800",
-    warning: "bg-yellow-100 text-yellow-800",
-    destructive: "bg-red-100 text-red-800",
+    default: "bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--border)]",
+    secondary: "bg-[var(--color-elevated)] text-[var(--color-muted)]",
+    success: "bg-green-100 text-green-800 border border-green-200",
+    warning: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+    destructive: "bg-red-100 text-red-800 border border-red-200",
   } as const;
   return <span className={clsx(base, variants[variant], className)}>{children}</span>;
 }
-

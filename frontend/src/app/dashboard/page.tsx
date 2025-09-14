@@ -2,7 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DEFAULT_WIDGETS, loadLayout, saveLayout, loadSizes, saveSizes, loadWidgetSettings, saveWidgetSettings, type WidgetKey, type WidgetSizes } from "../../lib/dashboard";
+import {
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Trophy,
+  Calendar,
+  BarChart3,
+  Gavel,
+  Lightbulb,
+} from "lucide-react";
+import {
+  DEFAULT_WIDGETS,
+  loadLayout,
+  saveLayout,
+  loadSizes,
+  saveSizes,
+  loadWidgetSettings,
+  saveWidgetSettings,
+  type WidgetKey,
+  type WidgetSizes,
+} from "../../lib/dashboard";
 
 type WidgetMeta = { key: WidgetKey; title: string };
 const WIDGETS: WidgetMeta[] = [
@@ -13,6 +35,23 @@ const WIDGETS: WidgetMeta[] = [
   { key: "tips", title: "Tips" },
 ];
 
+function getWidgetIcon(key: WidgetKey) {
+  switch (key) {
+    case "myLeagues":
+      return <Trophy className="h-4 w-4" />;
+    case "upcoming":
+      return <Calendar className="h-4 w-4" />;
+    case "scoreboard":
+      return <BarChart3 className="h-4 w-4" />;
+    case "waivers":
+      return <Gavel className="h-4 w-4" />;
+    case "tips":
+      return <Lightbulb className="h-4 w-4" />;
+    default:
+      return null;
+  }
+}
+
 function widgetTitle(key: WidgetKey): string {
   return WIDGETS.find((w) => w.key === key)?.title || key;
 }
@@ -20,7 +59,13 @@ function widgetTitle(key: WidgetKey): string {
 export default function DashboardPage() {
   const [order, setOrder] = useState<WidgetKey[]>(DEFAULT_WIDGETS);
   const [saved, setSaved] = useState(false);
-  const [sizes, setSizes] = useState<WidgetSizes>({ myLeagues: 1, upcoming: 1, scoreboard: 2, waivers: 1, tips: 1 });
+  const [sizes, setSizes] = useState<WidgetSizes>({
+    myLeagues: 1,
+    upcoming: 1,
+    scoreboard: 2,
+    waivers: 1,
+    tips: 1,
+  });
   const [settings, setSettings] = useState(loadWidgetSettings());
   const [openKey, setOpenKey] = useState<WidgetKey | null>(null);
 
@@ -66,13 +111,25 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <div className="flex items-center gap-2">
-            <button className="rounded bg-green-600 px-3 py-2 text-white" onClick={save} data-testid="save-layout">
+            <button
+              className="rounded bg-[var(--color-primary)] px-3 py-2 text-[var(--color-primary-contrast)] hover:opacity-90"
+              onClick={save}
+              data-testid="save-layout"
+            >
               Save Layout
             </button>
-            <button className="rounded bg-gray-200 px-3 py-2" onClick={reset} data-testid="reset-layout">
+            <button
+              className="rounded bg-[var(--color-surface)] border border-[var(--border)] text-[var(--color-text)] px-3 py-2 hover:bg-[var(--color-elevated)]"
+              onClick={reset}
+              data-testid="reset-layout"
+            >
               Reset
             </button>
-            {saved && <span className="text-xs text-green-700" aria-live="polite">Saved</span>}
+            {saved && (
+              <span className="text-xs text-green-700" aria-live="polite">
+                Saved
+              </span>
+            )}
           </div>
         </div>
 
@@ -80,18 +137,18 @@ export default function DashboardPage() {
           {order.map((key, idx) => (
             <section
               key={key}
-              className={`rounded border p-3 bg-white ${spanClass(key)}`}
+              className={`rounded border border-[var(--border)] p-3 bg-[var(--color-surface)] ${spanClass(key)}`}
               data-testid="widget"
               aria-roledescription="widget"
               draggable
               onDragStart={(e) => {
-                e.dataTransfer.setData('text/plain', String(idx));
-                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData("text/plain", String(idx));
+                e.dataTransfer.effectAllowed = "move";
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
-                const from = Number(e.dataTransfer.getData('text/plain'));
+                const from = Number(e.dataTransfer.getData("text/plain"));
                 const to = idx;
                 if (Number.isNaN(from) || from === to) return;
                 const next = order.slice();
@@ -102,52 +159,69 @@ export default function DashboardPage() {
               }}
             >
               <div className="flex items-center justify-between mb-2">
-                <h2 className="font-medium" data-testid="widget-title">{widgetTitle(key)}</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--color-primary)]">{getWidgetIcon(key)}</span>
+                  <h2 className="font-medium text-[var(--color-text)]" data-testid="widget-title">
+                    {widgetTitle(key)}
+                  </h2>
+                </div>
                 <div className="flex items-center gap-1">
                   <button
-                    className="rounded bg-gray-100 px-2 py-1 text-xs"
+                    className="rounded bg-[var(--color-elevated)] border border-[var(--border)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface)]"
                     onClick={() => moveUp(idx)}
                     aria-label={`Move ${widgetTitle(key)} up`}
                   >
-                    ↑
+                    <ChevronUp className="h-3 w-3" />
                   </button>
                   <button
-                    className="rounded bg-gray-100 px-2 py-1 text-xs"
+                    className="rounded bg-[var(--color-elevated)] border border-[var(--border)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface)]"
                     onClick={() => moveDown(idx)}
                     aria-label={`Move ${widgetTitle(key)} down`}
                   >
-                    ↓
+                    <ChevronDown className="h-3 w-3" />
                   </button>
                   <button
-                    className="rounded bg-gray-100 px-2 py-1 text-xs"
-                    onClick={() => setSizes((prev) => ({ ...prev, [key]: Math.max(1, ((prev[key] || 1) - 1)) as 1 | 2 | 3 }))}
+                    className="rounded bg-[var(--color-elevated)] border border-[var(--border)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+                    onClick={() =>
+                      setSizes((prev) => ({
+                        ...prev,
+                        [key]: Math.max(1, (prev[key] || 1) - 1) as 1 | 2 | 3,
+                      }))
+                    }
                     aria-label={`Narrow ${widgetTitle(key)}`}
                   >
-                    ⟨
+                    <ChevronLeft className="h-3 w-3" />
                   </button>
                   <button
-                    className="rounded bg-gray-100 px-2 py-1 text-xs"
-                    onClick={() => setSizes((prev) => ({ ...prev, [key]: Math.min(3, ((prev[key] || 1) + 1)) as 1 | 2 | 3 }))}
+                    className="rounded bg-[var(--color-elevated)} border border-[var(--border)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+                    onClick={() =>
+                      setSizes((prev) => ({
+                        ...prev,
+                        [key]: Math.min(3, (prev[key] || 1) + 1) as 1 | 2 | 3,
+                      }))
+                    }
                     aria-label={`Widen ${widgetTitle(key)}`}
                   >
-                    ⟩
+                    <ChevronRight className="h-3 w-3" />
                   </button>
                   <button
-                    className="rounded bg-gray-100 px-2 py-1 text-xs"
+                    className="rounded bg-[var(--color-elevated)] border border-[var(--border)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface)]"
                     onClick={() => setOpenKey(key)}
                     aria-label={`Settings for ${widgetTitle(key)}`}
                     title="Settings"
                   >
-                    ⚙
+                    <Settings className="h-3 w-3" />
                   </button>
                 </div>
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-[var(--color-muted)]">
                 {/* Placeholder content for each widget */}
                 {key === "myLeagues" && (
                   <div>
                     <p>Quick access to your leagues.</p>
-                    <Link className="underline text-blue-700" href="/leagues">Go to Leagues</Link>
+                    <Link className="underline text-blue-700" href="/leagues">
+                      Go to Leagues
+                    </Link>
                   </div>
                 )}
                 {key === "upcoming" && <p>Upcoming matchups and deadlines.</p>}
@@ -159,28 +233,54 @@ export default function DashboardPage() {
           ))}
         </div>
         {openKey && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            role="dialog"
+            aria-modal
+          >
             <div className="absolute inset-0 bg-black/30" onClick={() => setOpenKey(null)} />
-            <div className="relative z-10 w-full max-w-md rounded bg-white p-4 shadow-lg">
-              <h2 className="mb-2 text-lg font-medium">{widgetTitle(openKey)} Settings</h2>
-              {openKey === 'scoreboard' && (
+            <div className="relative z-10 w-full max-w-md rounded bg-[var(--color-surface)] border border-[var(--border)] p-4 shadow-lg">
+              <h2 className="mb-2 text-lg font-medium text-[var(--color-text)]">
+                {widgetTitle(openKey)} Settings
+              </h2>
+              {openKey === "scoreboard" && (
                 <div className="space-y-2">
                   <label className="block text-sm text-gray-700">Default League ID</label>
                   <input
                     className="w-full rounded border px-3 py-2"
-                    value={settings.scoreboard?.leagueId || ''}
-                    onChange={(e) => setSettings((prev) => ({ ...prev, scoreboard: { ...(prev.scoreboard || {}), leagueId: e.target.value } }))}
+                    value={settings.scoreboard?.leagueId || ""}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        scoreboard: { ...(prev.scoreboard || {}), leagueId: e.target.value },
+                      }))
+                    }
                     placeholder="optional league uuid"
                   />
-                  <p className="text-xs text-gray-600">Used by the Scoreboard widget when configured.</p>
+                  <p className="text-xs text-gray-600">
+                    Used by the Scoreboard widget when configured.
+                  </p>
                 </div>
               )}
-              {openKey !== 'scoreboard' && (
+              {openKey !== "scoreboard" && (
                 <div className="text-sm text-gray-600">No configurable options yet.</div>
               )}
               <div className="mt-3 flex items-center justify-end gap-2">
-                <button className="rounded bg-gray-100 px-3 py-2 text-sm" onClick={() => setOpenKey(null)}>Close</button>
-                <button className="rounded bg-blue-600 px-3 py-2 text-sm text-white" onClick={() => { saveWidgetSettings(settings); setOpenKey(null); }}>Save</button>
+                <button
+                  className="rounded bg-[var(--color-surface)] border border-[var(--border)] px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-elevated)]"
+                  onClick={() => setOpenKey(null)}
+                >
+                  Close
+                </button>
+                <button
+                  className="rounded bg-[var(--color-primary)] px-3 py-2 text-sm text-[var(--color-primary-contrast)] hover:opacity-90"
+                  onClick={() => {
+                    saveWidgetSettings(settings);
+                    setOpenKey(null);
+                  }}
+                >
+                  Save
+                </button>
               </div>
             </div>
           </div>

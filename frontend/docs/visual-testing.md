@@ -47,19 +47,21 @@ Visual tests cover key themed pages in both light and dark modes:
 ## Generating Baselines
 
 1. Start the backend and frontend services:
+
    ```bash
    # Terminal 1: Backend
    cd backend/src && uv run uvicorn main:app --host 127.0.0.1 --port 8000
-   
+
    # Terminal 2: Frontend
    cd frontend && NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
    ```
 
 2. Generate baselines:
+
    ```bash
    # Using the helper script
    ./scripts/generate-visual-baselines.sh
-   
+
    # Or manually
    cd frontend && npm run test:visual:update
    ```
@@ -76,17 +78,20 @@ Visual tests run automatically in CI on every push and pull request:
 ## Best Practices
 
 ### When to Update Baselines
+
 - After intentional design changes
 - When adding new themed components
 - After updating CSS tokens or theme variables
 
 ### Avoiding Flaky Tests
+
 - Tests wait for `networkidle` state
 - Consistent viewport size (1280x720)
 - Theme switching with wait time for CSS application
 - Dev token set for authenticated pages
 
 ### Debugging Failures
+
 1. Run tests locally with `--ui` flag
 2. Check the diff images in `test-results/`
 3. Verify changes are intentional
@@ -111,15 +116,18 @@ frontend/
 ### Common Issues
 
 **Screenshots don't match on different OS**
+
 - Baselines are OS-specific (linux, darwin, win32)
 - Generate baselines on the same OS as CI (Ubuntu)
 
 **Tests are flaky**
+
 - Increase wait times for dynamic content
 - Check for animations that might affect screenshots
 - Ensure consistent data state
 
 **Large diff files**
+
 - Consider if changes are intentional
 - Check for font rendering differences
 - Verify theme tokens are applied correctly

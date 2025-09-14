@@ -59,7 +59,7 @@ def test_valid_hs256_sets_user_and_persists():
     client = make_app()
     sub = str(uuid.uuid4())
     token = jwt.encode(
-        {"sub": sub, "email": "t@example.com", "name": "T"},
+        {"sub": sub, "email": "t@ultimatefantasy.app", "name": "T"},
         "unit-secret",
         algorithm="HS256",
     )

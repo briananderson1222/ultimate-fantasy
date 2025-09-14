@@ -15,7 +15,8 @@
 }
 
 /* Base typography using tokens */
-html, body {
+html,
+body {
   font-family: var(--font-sans);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
@@ -23,11 +24,38 @@ html, body {
   background: var(--color-bg);
 }
 
-h1, .h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: var(--font-weight-semibold); font-family: var(--font-display); }
-h2, .h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); font-weight: var(--font-weight-semibold); font-family: var(--font-display); }
-h3, .h3 { font-size: var(--font-size-h3); line-height: var(--line-height-h3); font-weight: var(--font-weight-medium);  font-family: var(--font-display); }
+h1,
+.h1 {
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-h1);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-display);
+}
+h2,
+.h2 {
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-display);
+}
+h3,
+.h3 {
+  font-size: var(--font-size-h3);
+  line-height: var(--line-height-h3);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-display);
+}
 
-small, .text-sm { font-size: var(--font-size-body-sm); line-height: var(--line-height-body-sm); }
+small,
+.text-sm {
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body-sm);
+}
 
-code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.95em; }
-
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}

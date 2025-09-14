@@ -10,6 +10,7 @@ Ultimate Fantasy frontend supports flexible customization for layout, widgets, s
 - Persistence: layout is stored in localStorage (see `usePreferences` for server sync once available).
 
 Common actions:
+
 - Reorder: drag widgets by their header.
 - Resize: grab resize handles (where available) to change width/height.
 - Configure: open a widget’s settings modal to set defaults (e.g., default league).
@@ -25,8 +26,9 @@ Common actions:
   - Conflict handling on startup merges last server snapshot and local edits.
 
 Use it via context:
+
 ```tsx
-import { usePreferences } from '@/lib/preferences';
+import { usePreferences } from "@/lib/preferences";
 
 const { preferences, setDensity, setLocale, setLayouts } = usePreferences();
 ```
@@ -42,15 +44,16 @@ const { preferences, setDensity, setLocale, setLayouts } = usePreferences();
   - Share current view: encodes view state as URL param via `shareKey`
 
 Example usage:
+
 ```tsx
 <DataTable
   columns={[
-    { key: 'name', header: 'Name', sortable: true },
-    { key: 'pos', header: 'Pos', sortable: true },
-    { key: 'points', header: 'PTS', sortable: true },
+    { key: "name", header: "Name", sortable: true },
+    { key: "pos", header: "Pos", sortable: true },
+    { key: "points", header: "PTS", sortable: true },
   ]}
   data={rows}
-  initialSort={{ key: 'points', dir: 'desc' }}
+  initialSort={{ key: "points", dir: "desc" }}
   pageSize={10}
   storageKey="players"
   shareKey="v"
@@ -58,6 +61,7 @@ Example usage:
 ```
 
 Tips:
+
 - Encourage semantic column keys to maintain stable saved views.
 - Consider scoping `storageKey` by page/league for per-context defaults.
 

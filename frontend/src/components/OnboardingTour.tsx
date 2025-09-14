@@ -131,17 +131,11 @@ export default function OnboardingTour({
                   Next
                 </button>
               ) : (
-                <button
-                  className="rounded bg-green-600 px-3 py-1 text-white"
-                  onClick={finish}
-                >
+                <button className="rounded bg-green-600 px-3 py-1 text-white" onClick={finish}>
                   Done
                 </button>
               )}
-              <button
-                className="rounded bg-gray-200 px-2 py-1"
-                onClick={finish}
-              >
+              <button className="rounded bg-gray-200 px-2 py-1" onClick={finish}>
                 Skip
               </button>
             </div>
@@ -151,4 +145,3 @@ export default function OnboardingTour({
     </div>
   );
 }
-

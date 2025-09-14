@@ -24,8 +24,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           className={clsx(
             "w-full rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-2)] transition-all duration-[var(--anim-duration-xs)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)] hover:border-[var(--color-muted)]",
-            error ? "border-red-500 focus:border-red-500" : "border-[var(--border)] focus:border-[var(--ring)]",
-            className
+            error
+              ? "border-red-500 focus:border-red-500"
+              : "border-[var(--border)] focus:border-[var(--ring)]",
+            className,
           )}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedById}
@@ -38,7 +40,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = "Input";

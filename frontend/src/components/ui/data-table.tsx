@@ -10,7 +10,7 @@ type Column<T> = {
   render?: (row: T) => React.ReactNode;
   hidden?: boolean;
 };
-type FilterOp = 'contains' | 'equals' | 'gt' | 'lt';
+type FilterOp = "contains" | "equals" | "gt" | "lt";
 type Filter = { key: string; op: FilterOp; value: string };
 
 type SavedViewState = {
@@ -76,19 +76,23 @@ function encodeView(v: SavedViewState): string {
   try {
     const json = JSON.stringify(v);
     // URL-safe base64
-    const b64 = typeof btoa === 'function' ? btoa(json) : Buffer.from(json, 'utf-8').toString('base64');
-    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const b64 =
+      typeof btoa === "function" ? btoa(json) : Buffer.from(json, "utf-8").toString("base64");
+    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   } catch {
-    return '';
+    return "";
   }
 }
 
 function decodeView(s: string | null): SavedViewState | null {
   if (!s) return null;
   try {
-    const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-    const json = typeof atob === 'function' ? atob(b64 + pad) : Buffer.from(b64 + pad, 'base64').toString('utf-8');
+    const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    const json =
+      typeof atob === "function"
+        ? atob(b64 + pad)
+        : Buffer.from(b64 + pad, "base64").toString("utf-8");
     return JSON.parse(json) as SavedViewState;
   } catch {
     return null;
@@ -114,7 +118,11 @@ export function DataTable<T extends Record<string, unknown>>({
   const [views, setViews] = useState<Record<string, SavedViewState>>(() => loadViews(storageKey));
   const [selectedView, setSelectedView] = useState<string | "">(() => loadLast(storageKey) || "");
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [newFilter, setNewFilter] = useState<Filter>({ key: columns[0]?.key || '', op: 'contains', value: '' });
+  const [newFilter, setNewFilter] = useState<Filter>({
+    key: columns[0]?.key || "",
+    op: "contains",
+    value: "",
+  });
 
   // Apply last selected view on mount if present
   React.useEffect(() => {
@@ -153,19 +161,20 @@ export function DataTable<T extends Record<string, unknown>>({
     const rows = data.filter((row) => {
       return filters.every((f) => {
         const v = (row as any)[f.key];
-        const raw = v == null ? '' : String(v);
+        const raw = v == null ? "" : String(v);
         const val = f.value;
         const aNum = Number(raw);
         const bNum = Number(val);
-        const bothNumeric = !Number.isNaN(aNum) && !Number.isNaN(bNum) && isFinite(aNum) && isFinite(bNum);
+        const bothNumeric =
+          !Number.isNaN(aNum) && !Number.isNaN(bNum) && isFinite(aNum) && isFinite(bNum);
         switch (f.op) {
-          case 'equals':
+          case "equals":
             return bothNumeric ? aNum === bNum : raw.toLowerCase() === val.toLowerCase();
-          case 'gt':
+          case "gt":
             return bothNumeric ? aNum > bNum : raw > val;
-          case 'lt':
+          case "lt":
             return bothNumeric ? aNum < bNum : raw < val;
-          case 'contains':
+          case "contains":
           default:
             return raw.toLowerCase().includes(val.toLowerCase());
         }
@@ -248,7 +257,7 @@ export function DataTable<T extends Record<string, unknown>>({
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // fallback: update URL only
-      window.history.replaceState({}, '', url.toString());
+      window.history.replaceState({}, "", url.toString());
     }
   }
 
@@ -271,7 +280,9 @@ export function DataTable<T extends Record<string, unknown>>({
         <div className="flex items-center gap-3">
           {/* Filters */}
           <details>
-            <summary className="cursor-pointer rounded px-2 py-1 text-sm hover:bg-gray-100">Filters</summary>
+            <summary className="cursor-pointer rounded px-2 py-1 text-sm hover:bg-gray-100">
+              Filters
+            </summary>
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <label className="text-sm text-gray-700">
                 Column
@@ -281,7 +292,9 @@ export function DataTable<T extends Record<string, unknown>>({
                   onChange={(e) => setNewFilter((f) => ({ ...f, key: e.target.value }))}
                 >
                   {columns.map((c) => (
-                    <option key={c.key} value={c.key}>{c.header}</option>
+                    <option key={c.key} value={c.key}>
+                      {c.header}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -311,10 +324,10 @@ export function DataTable<T extends Record<string, unknown>>({
                 onClick={() => {
                   if (!newFilter.key) return;
                   setFilters((fs) => [...fs, newFilter]);
-                  setNewFilter({ key: newFilter.key, op: newFilter.op, value: '' });
+                  setNewFilter({ key: newFilter.key, op: newFilter.op, value: "" });
                   setPage(0);
                 }}
-                disabled={!newFilter.key || newFilter.value.trim() === ''}
+                disabled={!newFilter.key || newFilter.value.trim() === ""}
                 type="button"
               >
                 Add
@@ -373,7 +386,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     Share Link
                   </button>
                   <span className="text-xs text-green-700" aria-live="polite">
-                    {copied ? 'Copied' : ''}
+                    {copied ? "Copied" : ""}
                   </span>
                 </>
               )}
@@ -391,7 +404,11 @@ export function DataTable<T extends Record<string, unknown>>({
             <span
               key={idx}
               className="inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-xs"
-              style={{ background: 'var(--color-elevated)', color: 'var(--color-text)', border: '1px solid var(--border)' }}
+              style={{
+                background: "var(--color-elevated)",
+                color: "var(--color-text)",
+                border: "1px solid var(--border)",
+              }}
             >
               <span>
                 {columns.find((c) => c.key === f.key)?.header || f.key} {f.op} "{f.value}"
@@ -410,19 +427,27 @@ export function DataTable<T extends Record<string, unknown>>({
       )}
 
       <div className="w-full overflow-x-auto">
-        <table className="w-full border-collapse text-sm" style={{ color: 'var(--color-text)' }}>
+        <table className="w-full border-collapse text-sm" style={{ color: "var(--color-text)" }}>
           <thead>
             <tr className="border-b bg-gray-50">
               {/* header row */}
               {visCols.map((c) => {
                 const sortedCol = sortKey === c.key;
-                const ariaSort = sortedCol ? (sortDir === "asc" ? "ascending" : "descending") : "none";
+                const ariaSort = sortedCol
+                  ? sortDir === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : "none";
                 return (
                   <th
                     key={c.key}
                     scope="col"
                     className="whitespace-nowrap px-[var(--space-3)] py-[var(--space-2)] text-left font-medium"
-                    style={{ background: 'var(--color-elevated)', color: 'var(--color-text)', borderBottom: '1px solid var(--border)' }}
+                    style={{
+                      background: "var(--color-elevated)",
+                      color: "var(--color-text)",
+                      borderBottom: "1px solid var(--border)",
+                    }}
                     aria-sort={ariaSort as any}
                   >
                     {c.sortable ? (
@@ -443,9 +468,16 @@ export function DataTable<T extends Record<string, unknown>>({
           </thead>
           <tbody>
             {pageRows.map((row, i) => (
-              <tr key={i} className="border-b hover:bg-[rgba(0,0,0,0.03)]" style={{ borderColor: 'var(--border)' }}>
+              <tr
+                key={i}
+                className="border-b hover:bg-[rgba(0,0,0,0.03)]"
+                style={{ borderColor: "var(--border)" }}
+              >
                 {visCols.map((c) => (
-                  <td key={c.key} className="whitespace-nowrap px-[var(--space-3)] py-[var(--space-2)]">
+                  <td
+                    key={c.key}
+                    className="whitespace-nowrap px-[var(--space-3)] py-[var(--space-2)]"
+                  >
                     {c.render ? c.render(row) : String((row as any)[c.key] ?? "")}
                   </td>
                 ))}
@@ -453,7 +485,11 @@ export function DataTable<T extends Record<string, unknown>>({
             ))}
             {pageRows.length === 0 && (
               <tr>
-                <td className="px-[var(--space-3)] py-[var(--space-3)]" style={{ color: 'var(--color-muted)' }} colSpan={visCols.length}>
+                <td
+                  className="px-[var(--space-3)] py-[var(--space-3)]"
+                  style={{ color: "var(--color-muted)" }}
+                  colSpan={visCols.length}
+                >
                   No data
                 </td>
               </tr>
@@ -465,7 +501,11 @@ export function DataTable<T extends Record<string, unknown>>({
       <div className="mt-2 flex items-center justify-between">
         <button
           className="rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-1)] text-sm disabled:opacity-50"
-          style={{ background: 'var(--color-elevated)', color: 'var(--color-text)', border: '1px solid var(--border)' }}
+          style={{
+            background: "var(--color-elevated)",
+            color: "var(--color-text)",
+            border: "1px solid var(--border)",
+          }}
           onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={page === 0}
         >
@@ -474,7 +514,11 @@ export function DataTable<T extends Record<string, unknown>>({
         <div className="text-xs text-gray-600">Page {total ? page + 1 : 0}</div>
         <button
           className="rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-1)] text-sm disabled:opacity-50"
-          style={{ background: 'var(--color-elevated)', color: 'var(--color-text)', border: '1px solid var(--border)' }}
+          style={{
+            background: "var(--color-elevated)",
+            color: "var(--color-text)",
+            border: "1px solid var(--border)",
+          }}
           onClick={() => {
             const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
             setPage((p) => Math.min(lastPage, p + 1));

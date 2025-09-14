@@ -17,7 +17,12 @@ describe("DataTable", () => {
 
   it("sorts by header click and updates aria-sort", () => {
     const { getByText, getAllByRole } = render(
-      <DataTable columns={columns} data={data} initialSort={{ key: "name", dir: "asc" }} pageSize={10} />
+      <DataTable
+        columns={columns}
+        data={data}
+        initialSort={{ key: "name", dir: "asc" }}
+        pageSize={10}
+      />,
     );
 
     // Ascending by name initially: Alpha, Bravo, Charlie
@@ -42,10 +47,11 @@ describe("DataTable", () => {
   });
 
   it("hides columns via toggles", () => {
-    const { getByLabelText, queryByText } = render(<DataTable columns={columns} data={data} pageSize={10} />);
+    const { getByLabelText, queryByText } = render(
+      <DataTable columns={columns} data={data} pageSize={10} />,
+    );
     const nameToggle = getByLabelText("Name") as HTMLInputElement;
     fireEvent.click(nameToggle);
     expect(queryByText("Name")).toBeNull();
   });
 });
-

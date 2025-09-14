@@ -30,7 +30,7 @@ export function Tabs({
   }
 
   return (
-    <div className="border-b mb-3" style={{ borderColor: 'var(--border)' }}>
+    <div className="border-b mb-3" style={{ borderColor: "var(--border)" }}>
       <nav
         className="-mb-px flex gap-2"
         aria-label="Tabs"
@@ -51,7 +51,9 @@ export function Tabs({
             role="tab"
             aria-selected={value === t.value}
             tabIndex={value === t.value ? 0 : -1}
-            ref={(el) => { btnRefs.current[tabs.findIndex((x) => x.value === t.value)] = el; }}
+            ref={(el) => {
+              btnRefs.current[tabs.findIndex((x) => x.value === t.value)] = el;
+            }}
           >
             {t.label}
           </button>

@@ -1,8 +1,8 @@
-import React from 'react';
-import { EmptyState } from './empty-state';
-import { Button } from './button';
+import React from "react";
+import { EmptyState } from "./empty-state";
+import { Button } from "./button";
 
-export default { title: 'UI/EmptyState' };
+export default { title: "UI/EmptyState" };
 
 export const Basic = () => (
   <EmptyState
@@ -11,4 +11,3 @@ export const Basic = () => (
     action={<Button size="sm">Create</Button>}
   />
 );
-

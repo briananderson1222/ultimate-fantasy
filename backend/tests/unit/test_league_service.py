@@ -34,7 +34,7 @@ def create_user(session: Session, user_id: _uuid.UUID | None = None) -> object:
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
-        email=f"{uid}@example.com",
+        email=f"{uid}@ultimatefantasy.app",
         display_name="Test",
         cognito_sub=str(uid),
     )

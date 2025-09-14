@@ -10,9 +10,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-[var(--color-primary)] text-[var(--color-primary-contrast)] hover:opacity-90 active:opacity-95",
-        secondary: "bg-[var(--color-secondary)] text-[var(--color-secondary-contrast)] hover:opacity-90 active:opacity-95",
-        ghost: "bg-transparent text-[var(--color-text)] hover:bg-[rgba(0,0,0,0.04)] active:bg-[rgba(0,0,0,0.08)]",
+        primary:
+          "bg-[var(--color-primary)] text-[var(--color-primary-contrast)] hover:opacity-90 active:opacity-95",
+        secondary:
+          "bg-[var(--color-secondary)] text-[var(--color-secondary-contrast)] hover:opacity-90 active:opacity-95",
+        ghost:
+          "bg-transparent text-[var(--color-text)] hover:bg-[rgba(0,0,0,0.04)] active:bg-[rgba(0,0,0,0.08)]",
       },
       size: {
         sm: "px-[var(--space-2)] py-[calc(var(--space-1))] text-sm",
@@ -24,7 +27,7 @@ const buttonVariants = cva(
       variant: "primary",
       size: "md",
     },
-  }
+  },
 );
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
@@ -52,7 +55,7 @@ export function Button({
         "mr-2 inline-block h-4 w-4 loading-spinner rounded-full border-2",
         variant === "primary"
           ? "[border-color:rgba(255,255,255,0.3)] border-t-[var(--color-primary-contrast)]"
-          : "[border-color:rgba(0,0,0,0.2)] border-t-[var(--color-text)]"
+          : "[border-color:rgba(0,0,0,0.2)] border-t-[var(--color-text)]",
       )}
     />
   );

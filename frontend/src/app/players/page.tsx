@@ -21,10 +21,74 @@ type Player = {
 const POSITIONS: Player["pos"][] = ["PG", "SG", "SF", "PF", "C"];
 const TEAMS = ["NYJ", "DAL", "SF", "KC", "MIA", "BAL", "BUF", "GB", "LAR", "SEA"];
 const FIRST = [
-  "Alex","Blake","Casey","Drew","Evan","Flynn","Gray","Hayden","Indy","Jules","Kai","Logan","Morgan","Nico","Oak","Parker","Quinn","Reese","Sage","Tatum","Ari","Brett","Chase","Devin","Ellis","Frankie","Gale","Harley","Jamie","Kris","Lane","Milan","Noel","Ocean","Perry","Riley","Shay","Taylor","Val","Winter"
+  "Alex",
+  "Blake",
+  "Casey",
+  "Drew",
+  "Evan",
+  "Flynn",
+  "Gray",
+  "Hayden",
+  "Indy",
+  "Jules",
+  "Kai",
+  "Logan",
+  "Morgan",
+  "Nico",
+  "Oak",
+  "Parker",
+  "Quinn",
+  "Reese",
+  "Sage",
+  "Tatum",
+  "Ari",
+  "Brett",
+  "Chase",
+  "Devin",
+  "Ellis",
+  "Frankie",
+  "Gale",
+  "Harley",
+  "Jamie",
+  "Kris",
+  "Lane",
+  "Milan",
+  "Noel",
+  "Ocean",
+  "Perry",
+  "Riley",
+  "Shay",
+  "Taylor",
+  "Val",
+  "Winter",
 ];
 const LAST = [
-  "Anderson","Bennett","Carter","Diaz","Edwards","Foster","Garcia","Hayes","Iverson","Jones","Kim","Lopez","Miller","Nguyen","Owens","Patel","Quincy","Reed","Singh","Turner","Upton","Vega","White","Xu","Young","Zimmer"
+  "Anderson",
+  "Bennett",
+  "Carter",
+  "Diaz",
+  "Edwards",
+  "Foster",
+  "Garcia",
+  "Hayes",
+  "Iverson",
+  "Jones",
+  "Kim",
+  "Lopez",
+  "Miller",
+  "Nguyen",
+  "Owens",
+  "Patel",
+  "Quincy",
+  "Reed",
+  "Singh",
+  "Turner",
+  "Upton",
+  "Vega",
+  "White",
+  "Xu",
+  "Young",
+  "Zimmer",
 ];
 
 function hashNum(s: string): number {
@@ -118,11 +182,16 @@ export default function PlayersPage() {
 
         <div
           className="sticky top-0 z-20 border-b bg-[var(--color-surface)]/95 backdrop-blur"
-          style={{ borderColor: 'var(--border)' }}
+          style={{ borderColor: "var(--border)" }}
         >
           <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Input label="Search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or team" />
+              <Input
+                label="Search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or team"
+              />
               <div>
                 <div className="mb-1 text-sm text-[var(--color-muted)]">Positions</div>
                 <div className="flex flex-wrap gap-2">
@@ -130,8 +199,8 @@ export default function PlayersPage() {
                     <button
                       key={p}
                       onClick={() => togglePos(p)}
-                      className={`rounded-full px-3 py-1 text-sm border ${pos.has(p) ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent'}`}
-                      style={!pos.has(p) ? { borderColor: 'var(--border)' } : undefined}
+                      className={`rounded-full px-3 py-1 text-sm border ${pos.has(p) ? "bg-blue-600 text-white border-blue-600" : "bg-transparent"}`}
+                      style={!pos.has(p) ? { borderColor: "var(--border)" } : undefined}
                     >
                       {p}
                     </button>
@@ -142,31 +211,41 @@ export default function PlayersPage() {
                 <label className="mb-1 block text-sm text-[var(--color-muted)]">Team</label>
                 <select
                   className="w-full rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-2)]"
-                  style={{ borderColor: 'var(--border)' }}
+                  style={{ borderColor: "var(--border)" }}
                   value={team}
                   onChange={(e) => setTeam(e.target.value)}
                 >
                   <option value="">All</option>
                   {TEAMS.map((t) => (
-                    <option value={t} key={t}>{t}</option>
+                    <option value={t} key={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
-                className={`inline-flex items-center gap-2 rounded px-3 py-2 text-sm border ${onlyFav ? 'bg-yellow-100 border-yellow-300' : ''}`}
-                style={!onlyFav ? { borderColor: 'var(--border)' } : undefined}
+                className={`inline-flex items-center gap-2 rounded px-3 py-2 text-sm border ${onlyFav ? "bg-yellow-100 border-yellow-300" : ""}`}
+                style={!onlyFav ? { borderColor: "var(--border)" } : undefined}
                 onClick={() => setOnlyFav((v) => !v)}
               >
-                <Star className={`h-4 w-4 ${onlyFav ? 'text-yellow-500' : 'text-gray-500'}`} aria-hidden />
+                <Star
+                  className={`h-4 w-4 ${onlyFav ? "text-yellow-500" : "text-gray-500"}`}
+                  aria-hidden
+                />
                 Favorites
               </button>
               {(pos.size > 0 || team || search || onlyFav) && (
                 <button
                   className="rounded px-3 py-2 text-sm border"
-                  style={{ borderColor: 'var(--border)' }}
-                  onClick={() => { setSearch(''); setPos(new Set()); setTeam(''); setOnlyFav(false); }}
+                  style={{ borderColor: "var(--border)" }}
+                  onClick={() => {
+                    setSearch("");
+                    setPos(new Set());
+                    setTeam("");
+                    setOnlyFav(false);
+                  }}
                 >
                   Clear
                 </button>
@@ -183,16 +262,33 @@ export default function PlayersPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-[var(--color-muted)]">{p.team} • {p.pos}</div>
+                    <div className="text-xs text-[var(--color-muted)]">
+                      {p.team} • {p.pos}
+                    </div>
                   </div>
-                  <button aria-label={favorites.has(p.id) ? 'Unfavorite' : 'Favorite'} onClick={() => toggleFav(p.id)}>
-                    <Star className={`h-5 w-5 ${favorites.has(p.id) ? 'text-yellow-500' : 'text-gray-400'}`} aria-hidden />
+                  <button
+                    aria-label={favorites.has(p.id) ? "Unfavorite" : "Favorite"}
+                    onClick={() => toggleFav(p.id)}
+                  >
+                    <Star
+                      className={`h-5 w-5 ${favorites.has(p.id) ? "text-yellow-500" : "text-gray-400"}`}
+                      aria-hidden
+                    />
                   </button>
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-sm">
-                  <div><span className="text-[var(--color-muted)]">PPG</span> <span className="font-medium">{p.ppg.toFixed(1)}</span></div>
-                  <div><span className="text-[var(--color-muted)]">APG</span> <span className="font-medium">{p.apg.toFixed(1)}</span></div>
-                  <div><span className="text-[var(--color-muted)]">RPG</span> <span className="font-medium">{p.rpg.toFixed(1)}</span></div>
+                  <div>
+                    <span className="text-[var(--color-muted)]">PPG</span>{" "}
+                    <span className="font-medium">{p.ppg.toFixed(1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-muted)]">APG</span>{" "}
+                    <span className="font-medium">{p.apg.toFixed(1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-muted)]">RPG</span>{" "}
+                    <span className="font-medium">{p.rpg.toFixed(1)}</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -212,29 +308,37 @@ export default function PlayersPage() {
               <DataTable<Player>
                 data={filtered}
                 pageSize={15}
-                initialSort={{ key: 'rank', dir: 'asc' }}
+                initialSort={{ key: "rank", dir: "asc" }}
                 storageKey="players"
                 shareKey="view"
                 columns={[
                   {
-                    key: 'fav',
-                    header: 'Fav',
+                    key: "fav",
+                    header: "Fav",
                     render: (row) => (
-                      <button aria-label={favorites.has(row.id) ? 'Unfavorite' : 'Favorite'} onClick={() => toggleFav(row.id)}>
-                        <Star className={`h-4 w-4 ${favorites.has(row.id) ? 'text-yellow-500' : 'text-gray-400'}`} aria-hidden />
+                      <button
+                        aria-label={favorites.has(row.id) ? "Unfavorite" : "Favorite"}
+                        onClick={() => toggleFav(row.id)}
+                      >
+                        <Star
+                          className={`h-4 w-4 ${favorites.has(row.id) ? "text-yellow-500" : "text-gray-400"}`}
+                          aria-hidden
+                        />
                       </button>
                     ),
                   },
-                  { key: 'rank', header: 'Rank', sortable: true },
-                  { key: 'name', header: 'Name', sortable: true },
-                  { key: 'team', header: 'Team', sortable: true },
-                  { key: 'pos', header: 'Pos', sortable: true },
-                  { key: 'ppg', header: 'PPG', sortable: true },
-                  { key: 'apg', header: 'APG', sortable: true },
-                  { key: 'rpg', header: 'RPG', sortable: true },
+                  { key: "rank", header: "Rank", sortable: true },
+                  { key: "name", header: "Name", sortable: true },
+                  { key: "team", header: "Team", sortable: true },
+                  { key: "pos", header: "Pos", sortable: true },
+                  { key: "ppg", header: "PPG", sortable: true },
+                  { key: "apg", header: "APG", sortable: true },
+                  { key: "rpg", header: "RPG", sortable: true },
                 ]}
               />
-              <div className="mt-2 text-xs text-gray-600">Demo stats generated locally. Replace with API when available.</div>
+              <div className="mt-2 text-xs text-gray-600">
+                Demo stats generated locally. Replace with API when available.
+              </div>
             </div>
           </Card>
         </div>

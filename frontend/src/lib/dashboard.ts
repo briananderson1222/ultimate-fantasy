@@ -1,16 +1,16 @@
-export type WidgetKey = 'myLeagues' | 'upcoming' | 'scoreboard' | 'waivers' | 'tips';
+export type WidgetKey = "myLeagues" | "upcoming" | "scoreboard" | "waivers" | "tips";
 
 export const DEFAULT_WIDGETS: WidgetKey[] = [
-  'myLeagues',
-  'upcoming',
-  'scoreboard',
-  'waivers',
-  'tips',
+  "myLeagues",
+  "upcoming",
+  "scoreboard",
+  "waivers",
+  "tips",
 ];
 
-const KEY = 'uf_dashboard_layout';
-const SIZE_KEY = 'uf_dashboard_sizes';
-const SETTINGS_KEY = 'uf_widget_settings';
+const KEY = "uf_dashboard_layout";
+const SIZE_KEY = "uf_dashboard_sizes";
+const SETTINGS_KEY = "uf_widget_settings";
 
 export function loadLayout(): WidgetKey[] {
   try {
@@ -37,7 +37,7 @@ export type WidgetSizes = Record<WidgetKey, 1 | 2 | 3>;
 export function loadSizes(): WidgetSizes {
   try {
     const raw = localStorage.getItem(SIZE_KEY);
-    if (!raw) throw new Error('no sizes');
+    if (!raw) throw new Error("no sizes");
     const parsed = JSON.parse(raw) as Partial<WidgetSizes>;
     return {
       myLeagues: parsed.myLeagues || 1,

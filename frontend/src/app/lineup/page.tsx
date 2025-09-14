@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { API_BASE } from "../../services/client";
 import { setLineup as apiSetLineup, listLineups } from "../../services/api";
-import DevAuthToken from "../../components/DevAuthToken";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Card, CardHeader, CardTitle } from "../../components/ui/card";
 import { EmptyState } from "../../components/ui/empty-state";
@@ -18,15 +17,18 @@ import OnboardingTour from "../../components/OnboardingTour";
 
 type LineupPlayer = { player_id: string; position: string };
 type LineupRequest = { team_id: string; game_day: string; players: LineupPlayer[] };
-type LineupResponse = { team_id: string; game_day: string; players: LineupPlayer[]; version?: number | null };
+type LineupResponse = {
+  team_id: string;
+  game_day: string;
+  players: LineupPlayer[];
+  version?: number | null;
+};
 
 export default function LineupPage() {
   const queryClient = useQueryClient();
   const [teamId, setTeamId] = useState("");
   const [gameDay, setGameDay] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [players, setPlayers] = useState<LineupPlayer[]>([
-    { player_id: "", position: "" },
-  ]);
+  const [players, setPlayers] = useState<LineupPlayer[]>([{ player_id: "", position: "" }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [lastSavedKey, setLastSavedKey] = useState<string | null>(null);
   const toast = useToast();
@@ -38,7 +40,10 @@ export default function LineupPage() {
     },
     // Optimistic update: update the cached list of lineups for this team/day
     onMutate: async (payload: LineupRequest) => {
-      const key = ["lineups", { team_id: payload.team_id, game_day: payload.game_day || undefined, limit: 50, offset: 0 }];
+      const key = [
+        "lineups",
+        { team_id: payload.team_id, game_day: payload.game_day || undefined, limit: 50, offset: 0 },
+      ];
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<any>(key);
       const optimisticItem = {
@@ -70,7 +75,8 @@ export default function LineupPage() {
   const addPlayer = () => setPlayers((prev) => [...prev, { player_id: "", position: "" }]);
   const removePlayer = (idx: number) => setPlayers((prev) => prev.filter((_, i) => i !== idx));
 
-  const keyFor = (t: string, d: string, ps: LineupPlayer[]) => `${t}|${d}|` + ps.map((p) => `${p.player_id}:${p.position}`).join(",");
+  const keyFor = (t: string, d: string, ps: LineupPlayer[]) =>
+    `${t}|${d}|` + ps.map((p) => `${p.player_id}:${p.position}`).join(",");
 
   const schema = z.object({
     team_id: z.string().min(1, "Team ID is required"),
@@ -80,7 +86,7 @@ export default function LineupPage() {
         z.object({
           player_id: z.string().min(1, "Player ID is required"),
           position: z.string().min(1, "Position is required"),
-        })
+        }),
       )
       .min(1, "At least one player is required"),
   });
@@ -110,8 +116,12 @@ export default function LineupPage() {
   };
 
   const lineups = useQuery({
-    queryKey: ["lineups", { team_id: teamId, game_day: gameDay || undefined, limit: 50, offset: 0 }],
-    queryFn: () => listLineups({ team_id: teamId, game_day: gameDay || undefined, limit: 50, offset: 0 }),
+    queryKey: [
+      "lineups",
+      { team_id: teamId, game_day: gameDay || undefined, limit: 50, offset: 0 },
+    ],
+    queryFn: () =>
+      listLineups({ team_id: teamId, game_day: gameDay || undefined, limit: 50, offset: 0 }),
     enabled: !!teamId,
   });
 
@@ -124,7 +134,9 @@ export default function LineupPage() {
           <CardHeader>
             <CardTitle>Lineup Builder</CardTitle>
           </CardHeader>
-          <p className="text-xs text-gray-600">Uses Authorization: Bearer from localStorage key <code>uf_token</code>.</p>
+          <p className="text-xs text-gray-600">
+            Uses Authorization: Bearer from localStorage key <code>uf_token</code>.
+          </p>
           <div>
             <label className="mb-1 block text-sm text-gray-700">Team ID (UUID)</label>
             <input
@@ -136,7 +148,11 @@ export default function LineupPage() {
               aria-invalid={errors.team_id ? true : undefined}
               aria-describedby={errors.team_id ? "team-id-error" : undefined}
             />
-            {errors.team_id && <p id="team-id-error" className="text-xs text-red-600">{errors.team_id}</p>}
+            {errors.team_id && (
+              <p id="team-id-error" className="text-xs text-red-600">
+                {errors.team_id}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-sm text-gray-700">Game Day</label>
@@ -148,12 +164,19 @@ export default function LineupPage() {
               aria-invalid={errors.game_day ? true : undefined}
               aria-describedby={errors.game_day ? "game-day-error" : undefined}
             />
-            {errors.game_day && <p id="game-day-error" className="text-xs text-red-600">{errors.game_day}</p>}
+            {errors.game_day && (
+              <p id="game-day-error" className="text-xs text-red-600">
+                {errors.game_day}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="font-medium">Players</h2>
-              <button className="inline-flex items-center gap-2 rounded bg-gray-200 px-3 py-1" onClick={addPlayer}>
+              <button
+                className="inline-flex items-center gap-2 rounded bg-[var(--color-surface)] border border-[var(--border)] px-3 py-1 text-[var(--color-text)] hover:bg-[var(--color-elevated)]"
+                onClick={addPlayer}
+              >
                 <Plus className="h-4 w-4" aria-hidden />
                 <span>Add Player</span>
               </button>
@@ -161,7 +184,9 @@ export default function LineupPage() {
             {players.map((p, idx) => (
               <div key={idx} className="flex gap-2">
                 <div className="flex-1">
-                  <label htmlFor={`player-${idx}-id`} className="sr-only">Player ID {idx + 1}</label>
+                  <label htmlFor={`player-${idx}-id`} className="sr-only">
+                    Player ID {idx + 1}
+                  </label>
                   <input
                     id={`player-${idx}-id`}
                     value={p.player_id}
@@ -169,11 +194,17 @@ export default function LineupPage() {
                     placeholder="player uuid"
                     className="w-full rounded border px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                     aria-invalid={errors[`players.${idx}.player_id`] ? true : undefined}
-                    aria-describedby={errors[`players.${idx}.player_id`] ? `players-${idx}-player-id-error` : undefined}
+                    aria-describedby={
+                      errors[`players.${idx}.player_id`]
+                        ? `players-${idx}-player-id-error`
+                        : undefined
+                    }
                   />
                 </div>
                 <div>
-                  <label htmlFor={`player-${idx}-pos`} className="sr-only">Position {idx + 1}</label>
+                  <label htmlFor={`player-${idx}-pos`} className="sr-only">
+                    Position {idx + 1}
+                  </label>
                   <input
                     id={`player-${idx}-pos`}
                     value={p.position}
@@ -181,14 +212,22 @@ export default function LineupPage() {
                     placeholder="position (e.g., PG)"
                     className="w-40 rounded border px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                     aria-invalid={errors[`players.${idx}.position`] ? true : undefined}
-                    aria-describedby={errors[`players.${idx}.position`] ? `players-${idx}-position-error` : undefined}
+                    aria-describedby={
+                      errors[`players.${idx}.position`]
+                        ? `players-${idx}-position-error`
+                        : undefined
+                    }
                   />
                 </div>
                 <div className="flex items-center">
-                  {p.position ? <Badge variant="secondary">{p.position.toUpperCase()}</Badge> : <Badge variant="secondary">POS</Badge>}
+                  {p.position ? (
+                    <Badge variant="secondary">{p.position.toUpperCase()}</Badge>
+                  ) : (
+                    <Badge variant="secondary">POS</Badge>
+                  )}
                 </div>
                 <button
-                  className="rounded bg-red-100 px-3 py-2 text-red-700"
+                  className="rounded bg-red-100 border border-red-300 px-3 py-2 text-red-700 hover:bg-red-200"
                   onClick={() => removePlayer(idx)}
                 >
                   Remove
@@ -197,11 +236,15 @@ export default function LineupPage() {
             ))}
             {players.map((p, idx) => (
               <div key={`errs-${idx}`} className="-mt-1 mb-1 grid grid-cols-2 gap-2 text-xs">
-                <div className="text-red-600" id={`players-${idx}-player-id-error`}>{errors[`players.${idx}.player_id`]}</div>
-                <div className="text-red-600" id={`players-${idx}-position-error`}>{errors[`players.${idx}.position`]}</div>
+                <div className="text-red-600" id={`players-${idx}-player-id-error`}>
+                  {errors[`players.${idx}.player_id`]}
+                </div>
+                <div className="text-red-600" id={`players-${idx}-position-error`}>
+                  {errors[`players.${idx}.position`]}
+                </div>
               </div>
             ))}
-        </div>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               disabled={!teamId || setLineup.isPending}
@@ -223,7 +266,12 @@ export default function LineupPage() {
                 d.setDate(d.getDate() - 1);
                 const y = d.toISOString().slice(0, 10);
                 try {
-                  const res = await listLineups({ team_id: teamId, game_day: y, limit: 1, offset: 0 });
+                  const res = await listLineups({
+                    team_id: teamId,
+                    game_day: y,
+                    limit: 1,
+                    offset: 0,
+                  });
                   const latest = res.items[0];
                   if (latest) {
                     setPlayers(latest.players);
@@ -248,11 +296,12 @@ export default function LineupPage() {
           )}
           <div className="flex items-center gap-2">
             {lastSavedKey === keyFor(teamId, gameDay, players) && (
-              <span className="text-xs text-green-700" aria-live="polite">Saved</span>
+              <span className="text-xs text-green-700" aria-live="polite">
+                Saved
+              </span>
             )}
           </div>
         </Card>
-        <DevAuthToken />
         <Card className="space-y-3">
           <CardHeader>
             <CardTitle>Existing Lineups</CardTitle>
@@ -267,14 +316,19 @@ export default function LineupPage() {
               {lineups.data.items.map((it) => (
                 <li key={it.lineup_id} className="py-2 flex items-center justify-between">
                   <div>
-                    <div className="font-medium">{it.game_day} (v{it.version})</div>
+                    <div className="font-medium">
+                      {it.game_day} (v{it.version})
+                    </div>
                     <div className="text-xs text-gray-600">Players: {it.players.length}</div>
                   </div>
                 </li>
               ))}
               {lineups.data.items.length === 0 && (
                 <li className="py-2">
-                  <EmptyState title="No lineups found" description="Save a lineup and it will appear here." />
+                  <EmptyState
+                    title="No lineups found"
+                    description="Save a lineup and it will appear here."
+                  />
                 </li>
               )}
             </ul>
@@ -283,13 +337,26 @@ export default function LineupPage() {
         </Card>
       </div>
       <div className="fixed bottom-4 right-4">
-        <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={() => setTourOpen(true)}>Start tour</button>
+        <button
+          className="rounded bg-[var(--color-surface)] border border-[var(--border)] px-3 py-1 text-sm text-[var(--color-text)] hover:bg-[var(--color-elevated)]"
+          onClick={() => setTourOpen(true)}
+        >
+          Start tour
+        </button>
       </div>
       <OnboardingTour
         id="lineup"
         steps={[
-          { selector: '#team-id-input', title: 'Team ID', content: 'Enter your Team UUID to fetch and save lineups.' },
-          { selector: '[data-tour="save-lineup"]', title: 'Save your lineup', content: 'Click Save to persist changes and see Saved indicator.' },
+          {
+            selector: "#team-id-input",
+            title: "Team ID",
+            content: "Enter your Team UUID to fetch and save lineups.",
+          },
+          {
+            selector: '[data-tour="save-lineup"]',
+            title: "Save your lineup",
+            content: "Click Save to persist changes and see Saved indicator.",
+          },
         ]}
         open={tourOpen}
         onClose={() => setTourOpen(false)}

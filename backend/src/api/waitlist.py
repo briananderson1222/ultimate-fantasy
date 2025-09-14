@@ -30,12 +30,14 @@ class WaitlistResponse(BaseModel):
     summary="Join the waitlist",
     tags=["waitlist"],
 )
-def join_waitlist(payload: WaitlistCreate, db: Session = Depends(get_db)) -> dict:
+def join_waitlist(
+    payload: WaitlistCreate, db: Session = Depends(get_db)
+) -> "WaitlistResponse":
     """Add a user's email to the waitlist for upcoming leagues."""
     waitlist_service = WaitlistService(db)
     try:
         waitlist_entry = waitlist_service.add_to_waitlist(email=payload.email)
-        return waitlist_entry
+        return WaitlistResponse.from_orm(waitlist_entry)
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -1,13 +1,13 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('uf_token') : null;
-  
+  const token = typeof window !== "undefined" ? localStorage.getItem("uf_token") : null;
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(token && { "Authorization": `Bearer ${token}` }),
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...(init?.headers || {}),
     },
   });
@@ -16,7 +16,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     try {
       const data = await res.clone().json();
       const err: any = new Error(
-        `API ${res.status}: ${typeof data?.detail === 'string' ? data.detail : res.statusText}`
+        `API ${res.status}: ${typeof data?.detail === "string" ? data.detail : res.statusText}`,
       );
       err.status = res.status;
       err.data = data;

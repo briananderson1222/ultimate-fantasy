@@ -13,6 +13,7 @@ This app adopts lucide-react for general UI icons and adds a small set of custom
 Location: `src/components/icons/`
 
 Available names:
+
 - `football-ball`
 - `football-field`
 - `goal-posts`
@@ -21,15 +22,15 @@ Available names:
 Usage via factory map:
 
 ```tsx
-import { ICONS } from '@/components/icons';
+import { ICONS } from "@/components/icons";
 
 export function Example() {
   return (
     <div className="flex items-center gap-3">
-      {ICONS['football-ball']({ size: 16, title: 'Football' })}
-      {ICONS['football-field']({ size: 16, title: 'Field' })}
-      {ICONS['goal-posts']({ size: 16, title: 'Goal posts' })}
-      {ICONS['helmet']({ size: 16, title: 'Helmet' })}
+      {ICONS["football-ball"]({ size: 16, title: "Football" })}
+      {ICONS["football-field"]({ size: 16, title: "Field" })}
+      {ICONS["goal-posts"]({ size: 16, title: "Goal posts" })}
+      {ICONS["helmet"]({ size: 16, title: "Helmet" })}
     </div>
   );
 }
@@ -53,4 +54,3 @@ Each custom icon is an inline SVG with `currentColor` so it responds to text col
 
 - Domain-specific symbols not covered by lucide-react (e.g., fantasy sports concepts) should live under `src/components/icons/`.
 - Keep SVGs minimal with consistent stroke widths to match lucide style.
-

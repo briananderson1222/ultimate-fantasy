@@ -140,6 +140,61 @@ Deliver a professional, brandable Fantasy Football experience with rich theming,
 - [x] T214 Visual tests: add basic visual regression (Playwright screenshots) for themed pages; guard against style regressions in CI.
 - [ ] T215 Theming docs & storybook: add `frontend/docs/theming.md` and component stories/playground; document override recipes and Theme Studio workflows.
 
+# Next Tasks: Landing Page Redesign (Dark Modern Theme)
+
+Implement a modern dark landing page design matching the provided mockup with multi-sport fantasy platform branding.
+
+## Design System Updates
+
+- [x] T216 [P] Dark theme refinement: Update CSS variables for dark-first design with navy/charcoal backgrounds, golden accents, and improved contrast ratios for accessibility.
+- [x] T217 [P] Typography scale: Implement large display typography for hero section with proper font weights and spacing. Add support for gradient text effects.
+- [x] T218 Logo and branding: Create/update UF logo component with proper sizing variants. Add brand colors (navy blue, golden yellow) to theme system.
+
+## Landing Page Components
+
+- [x] T219 [P] Hero section: Implement large hero with "Own Every Season" headline, multi-sport tagline, and sport badges (NFL, NBA, MLB, NHL). Include geometric background pattern.
+- [x] T220 [P] Waitlist signup: Create email capture form with validation, "Join Waitlist" CTA, and benefit badges (Beta access, Early access rewards, No spam ever).
+- [x] T221 Sport selection: Add sport icons/badges with hover states for Football, Basketball, Baseball, Hockey with proper visual hierarchy.
+- [x] T222 Feature cards: Implement 4-column feature grid (Multi-Sport Leagues, Custom Scoring, Live Scoring, AI Recaps) with icons and descriptions.
+
+## Layout and Styling
+
+- [ ] T223 [P] Dark background system: Implement gradient/pattern backgrounds, proper layering, and glassmorphism effects for cards and forms.
+- [ ] T224 Navigation header: Update header for landing page with logo, navigation, and prominent "Join Waitlist" button in golden yellow.
+- [ ] T225 Responsive design: Ensure mobile-first responsive design with proper breakpoints for hero, features, and form elements.
+- [ ] T226 Footer: Add minimal footer with copyright and branding consistent with dark theme.
+
+## Interactive Elements
+
+- [ ] T227 Hover animations: Add subtle hover effects for sport badges, feature cards, and CTA buttons using existing animation system.
+- [ ] T228 Form validation: Implement real-time email validation with proper error states and success feedback.
+- [ ] T229 Waitlist integration: Connect form to backend waitlist API endpoint with proper loading and success states.
+
+## Testing and Polish
+
+- [ ] T230 [P] Visual regression: Update visual tests to include new landing page design in light/dark themes.
+- [ ] T231 Accessibility audit: Ensure proper contrast ratios, focus states, and screen reader support for all new components.
+- [ ] T232 Performance: Optimize images, fonts, and animations for fast loading. Implement proper lazy loading for non-critical elements.
+
+## Dependencies (Landing Redesign)
+
+- Design system updates (T216-T218) before component implementation (T219-T222)
+- Layout foundation (T223-T226) before interactive elements (T227-T229)
+- Core implementation before testing (T230-T232)
+
+## Parallel Execution Examples (Landing Redesign)
+
+```
+# Design system foundation
+task run "T216" & task run "T217" & task run "T218" && wait
+
+# Core components
+task run "T219" & task run "T220" & task run "T221" & task run "T222" && wait
+
+# Layout and interactions
+task run "T223" & task run "T224" & task run "T227" & task run "T228" && wait
+```
+
 Notes
 - Builds on T098–T101 for tokens, provider, and Theme Studio.
 - Add `class-variance-authority`, `tailwind-merge`, and `lucide-react` (see T065) before T205.

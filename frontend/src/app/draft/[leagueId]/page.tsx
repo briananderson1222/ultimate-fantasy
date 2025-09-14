@@ -16,17 +16,36 @@ const POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"] as const;
 
 function makeSamplePlayers(): Player[] {
   const names = [
-    "John Adams", "Chris Baker", "Alex Carter", "Derrick Evans", "Felix Gomez",
-    "Hank Irving", "Ivan Johnson", "Kyle Lewis", "Mason Neal", "Owen Park",
-    "Quinn Reed", "Sean Thomas", "Uri Vega", "Will Young", "Zane Moore",
+    "John Adams",
+    "Chris Baker",
+    "Alex Carter",
+    "Derrick Evans",
+    "Felix Gomez",
+    "Hank Irving",
+    "Ivan Johnson",
+    "Kyle Lewis",
+    "Mason Neal",
+    "Owen Park",
+    "Quinn Reed",
+    "Sean Thomas",
+    "Uri Vega",
+    "Will Young",
+    "Zane Moore",
   ];
-  const teams = ["NYJ", "DAL", "SF", "KC", "MIA", "BAL", "BUF", "GB", "LAR", "SEA"]; 
+  const teams = ["NYJ", "DAL", "SF", "KC", "MIA", "BAL", "BUF", "GB", "LAR", "SEA"];
   const poss = ["QB", "RB", "WR", "TE"];
   const res: Player[] = [];
   let rank = 1;
   for (let i = 0; i < 60; i++) {
-    const name = names[i % names.length] + (i >= names.length ? ` ${Math.floor(i / names.length)}` : "");
-    res.push({ id: cryptoRandomId(), name, pos: poss[i % poss.length], team: teams[i % teams.length], rank: rank++ });
+    const name =
+      names[i % names.length] + (i >= names.length ? ` ${Math.floor(i / names.length)}` : "");
+    res.push({
+      id: cryptoRandomId(),
+      name,
+      pos: poss[i % poss.length],
+      team: teams[i % teams.length],
+      rank: rank++,
+    });
   }
   return res;
 }
@@ -46,7 +65,7 @@ export default function DraftRoomPage() {
   const leagueId = params?.leagueId || "unknown";
   const storageKey = React.useMemo(() => `uf_draft_${leagueId}`, [leagueId]);
   const [_players, _setPlayers] = React.useState<Player[]>(() => makeSamplePlayers());
-  const [filterPos, setFilterPos] = React.useState<typeof POSITIONS[number]>("ALL");
+  const [filterPos, setFilterPos] = React.useState<(typeof POSITIONS)[number]>("ALL");
   const [query, setQuery] = React.useState("");
   const [queue, setQueue] = React.useState<Player[]>([]);
   const [picks, setPicks] = React.useState<Pick[]>([]);
@@ -135,7 +154,9 @@ export default function DraftRoomPage() {
     const q = query.trim().toLowerCase();
     return _players
       .filter((p: any) => (filterPos === "ALL" ? true : p.pos === filterPos))
-      .filter((p: any) => (q ? p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q) : true))
+      .filter((p: any) =>
+        q ? p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q) : true,
+      )
       .slice(0, 100);
   }, [_players, filterPos, query]);
 
@@ -175,7 +196,11 @@ export default function DraftRoomPage() {
     const text = chatInput.trim();
     if (!text) return;
     const user = (() => {
-      try { return localStorage.getItem("uf_user_name") || "You"; } catch { return "You"; }
+      try {
+        return localStorage.getItem("uf_user_name") || "You";
+      } catch {
+        return "You";
+      }
     })();
     setChat((c) => [...c, { id: cryptoRandomId(), user, text, ts: Date.now() }]);
     setChatInput("");
@@ -191,18 +216,30 @@ export default function DraftRoomPage() {
               <CardTitle>Live Picks</CardTitle>
             </CardHeader>
             <div className="flex items-center gap-2 px-4 pb-2">
-              <Button variant="ghost" onClick={undoPick} disabled={picks.length === 0}>Undo last</Button>
-              <div className="ml-auto text-xs text-[var(--color-muted)]" aria-live="polite">{picks.length} picks</div>
+              <Button variant="ghost" onClick={undoPick} disabled={picks.length === 0}>
+                Undo last
+              </Button>
+              <div className="ml-auto text-xs text-[var(--color-muted)]" aria-live="polite">
+                {picks.length} picks
+              </div>
             </div>
             <ol className="max-h-[60vh] overflow-auto px-4 pb-4">
               {picks.map((pk) => (
-                <li key={pk.pickNo} className="flex items-center justify-between border-b py-2" style={{ borderColor: 'var(--border)' }}>
+                <li
+                  key={pk.pickNo}
+                  className="flex items-center justify-between border-b py-2"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{pk.pickNo}</Badge>
                     <div className="text-sm font-medium">{pk.player.name}</div>
-                    <div className="text-xs text-[var(--color-muted)]">{pk.player.pos} • {pk.player.team}</div>
+                    <div className="text-xs text-[var(--color-muted)]">
+                      {pk.player.pos} • {pk.player.team}
+                    </div>
                   </div>
-                  <div className="text-xs text-[var(--color-muted)]">{pk.teamId ? String(pk.teamId).slice(0, 6) : "—"}</div>
+                  <div className="text-xs text-[var(--color-muted)]">
+                    {pk.teamId ? String(pk.teamId).slice(0, 6) : "—"}
+                  </div>
                 </li>
               ))}
               {picks.length === 0 && (
@@ -228,27 +265,48 @@ export default function DraftRoomPage() {
                   aria-label="Search players"
                 />
               </div>
-              <label className="text-sm text-[var(--color-muted)]" htmlFor="pos">Pos</label>
+              <label className="text-sm text-[var(--color-muted)]" htmlFor="pos">
+                Pos
+              </label>
               <select
                 id="pos"
                 className="rounded-[var(--radius-sm)] border px-[var(--space-2)] py-[calc(var(--space-1))] text-sm"
-                style={{ background: 'var(--color-surface)', color: 'var(--color-text)', borderColor: 'var(--border)' }}
+                style={{
+                  background: "var(--color-surface)",
+                  color: "var(--color-text)",
+                  borderColor: "var(--border)",
+                }}
                 value={filterPos}
                 onChange={(e) => setFilterPos(e.target.value as any)}
               >
                 {POSITIONS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
                 ))}
               </select>
             </div>
             <ul className="max-h-[60vh] overflow-auto px-4 pb-4 text-sm">
               {filtered.map((p) => (
-                <li key={p.id} className="flex items-center justify-between border-b py-2" style={{ borderColor: 'var(--border)' }}>
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between border-b py-2"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <div className="min-w-0">
                     <div className="truncate font-medium">{p.name}</div>
-                    <div className="text-xs text-[var(--color-muted)]">{p.pos} • {p.team} • #{p.rank}</div>
+                    <div className="text-xs text-[var(--color-muted)]">
+                      {p.pos} • {p.team} • #{p.rank}
+                    </div>
                   </div>
-                  <Button variant="secondary" size="sm" onClick={() => addToQueue(p)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>Queue</Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => addToQueue(p)}
+                    leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+                  >
+                    Queue
+                  </Button>
                 </li>
               ))}
               {filtered.length === 0 && (
@@ -262,16 +320,29 @@ export default function DraftRoomPage() {
         <section className="md:col-span-3 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Clock className="h-4 w-4" aria-hidden /> On the Clock</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-4 w-4" aria-hidden /> On the Clock
+              </CardTitle>
             </CardHeader>
             <div className="flex items-center gap-2 px-4 pb-4">
-              <div className="text-2xl tabular-nums" aria-live="polite" aria-label="Seconds remaining">
-                {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
+              <div
+                className="text-2xl tabular-nums"
+                aria-live="polite"
+                aria-label="Seconds remaining"
+              >
+                {String(Math.floor(seconds / 60)).padStart(2, "0")}:
+                {String(seconds % 60).padStart(2, "0")}
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <Button size="sm" variant="primary" onClick={() => setRunning((r) => !r)}>{running ? "Pause" : "Start"}</Button>
-                <Button size="sm" variant="ghost" onClick={() => resetTimer()}>Reset</Button>
-                <Button size="sm" variant="secondary" onClick={makePick}>Pick</Button>
+                <Button size="sm" variant="primary" onClick={() => setRunning((r) => !r)}>
+                  {running ? "Pause" : "Start"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => resetTimer()}>
+                  Reset
+                </Button>
+                <Button size="sm" variant="secondary" onClick={makePick}>
+                  Pick
+                </Button>
               </div>
             </div>
           </Card>
@@ -282,26 +353,49 @@ export default function DraftRoomPage() {
             </CardHeader>
             <ul className="max-h-[30vh] overflow-auto px-4 pb-4 text-sm">
               {queue.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-2 border-b py-2" style={{ borderColor: 'var(--border)' }}>
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between gap-2 border-b py-2"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <div className="min-w-0">
                     <div className="truncate font-medium">{p.name}</div>
-                    <div className="text-xs text-[var(--color-muted)]">{p.pos} • {p.team}</div>
+                    <div className="text-xs text-[var(--color-muted)]">
+                      {p.pos} • {p.team}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button aria-label="Move up" className="rounded-[var(--radius-sm)] border p-1 hover:opacity-80" style={{ borderColor: 'var(--border)' }} onClick={() => moveInQueue(p.id, -1)}>
+                    <button
+                      aria-label="Move up"
+                      className="rounded-[var(--radius-sm)] border p-1 hover:opacity-80"
+                      style={{ borderColor: "var(--border)" }}
+                      onClick={() => moveInQueue(p.id, -1)}
+                    >
                       <ChevronUp className="h-4 w-4" aria-hidden />
                     </button>
-                    <button aria-label="Move down" className="rounded-[var(--radius-sm)] border p-1 hover:opacity-80" style={{ borderColor: 'var(--border)' }} onClick={() => moveInQueue(p.id, 1)}>
+                    <button
+                      aria-label="Move down"
+                      className="rounded-[var(--radius-sm)] border p-1 hover:opacity-80"
+                      style={{ borderColor: "var(--border)" }}
+                      onClick={() => moveInQueue(p.id, 1)}
+                    >
                       <ChevronDown className="h-4 w-4" aria-hidden />
                     </button>
-                    <button aria-label="Remove" className="rounded-[var(--radius-sm)] border p-1 hover:opacity-80" style={{ borderColor: 'var(--border)' }} onClick={() => removeFromQueue(p.id)}>
+                    <button
+                      aria-label="Remove"
+                      className="rounded-[var(--radius-sm)] border p-1 hover:opacity-80"
+                      style={{ borderColor: "var(--border)" }}
+                      onClick={() => removeFromQueue(p.id)}
+                    >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>
                   </div>
                 </li>
               ))}
               {queue.length === 0 && (
-                <li className="py-6 text-center text-sm text-[var(--color-muted)]">Queue is empty</li>
+                <li className="py-6 text-center text-sm text-[var(--color-muted)]">
+                  Queue is empty
+                </li>
               )}
             </ul>
           </Card>
@@ -311,19 +405,30 @@ export default function DraftRoomPage() {
               <CardTitle>Chat</CardTitle>
             </CardHeader>
             <div className="flex h-[30vh] flex-col px-4 pb-3">
-              <div className="mb-2 flex-1 overflow-auto rounded-[var(--radius-sm)] border p-2 text-sm" style={{ borderColor: 'var(--border)' }}>
+              <div
+                className="mb-2 flex-1 overflow-auto rounded-[var(--radius-sm)] border p-2 text-sm"
+                style={{ borderColor: "var(--border)" }}
+              >
                 {chat.length === 0 && (
                   <div className="text-center text-[var(--color-muted)]">No messages yet</div>
                 )}
                 {chat.map((m) => (
                   <div key={m.id} className="mb-1">
                     <span className="font-medium">{m.user}</span>{" "}
-                    <span className="text-xs text-[var(--color-muted)]">{new Date(m.ts).toLocaleTimeString()}</span>
+                    <span className="text-xs text-[var(--color-muted)]">
+                      {new Date(m.ts).toLocaleTimeString()}
+                    </span>
                     <div>{m.text}</div>
                   </div>
                 ))}
               </div>
-              <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); sendChat(); }}>
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendChat();
+                }}
+              >
                 <Input
                   ref={chatRef as any}
                   placeholder="Message (press Enter to send, C to focus)"
@@ -331,7 +436,14 @@ export default function DraftRoomPage() {
                   onChange={(e) => setChatInput(e.target.value)}
                   aria-label="Chat message"
                 />
-                <Button type="submit" size="sm" variant="secondary" leftIcon={<Send className="h-4 w-4" aria-hidden />}>Send</Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<Send className="h-4 w-4" aria-hidden />}
+                >
+                  Send
+                </Button>
               </form>
             </div>
           </Card>
@@ -340,4 +452,3 @@ export default function DraftRoomPage() {
     </main>
   );
 }
-

@@ -6,4 +6,3 @@ export default {
     controls: { disabled: false },
   },
 };
-

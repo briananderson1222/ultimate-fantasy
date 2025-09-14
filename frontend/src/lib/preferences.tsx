@@ -1,20 +1,20 @@
-import React from 'react';
+import React from "react";
 
 export type Preferences = {
-  theme: 'light' | 'dark' | 'custom';
-  density: 'comfortable' | 'compact';
+  theme: "light" | "dark" | "custom";
+  density: "comfortable" | "compact";
   locale: string;
   layouts?: Record<string, unknown>; // optional per-view or per-scope layouts
 };
 
 const DEFAULTS: Preferences = {
-  theme: 'light',
-  density: 'comfortable',
-  locale: 'en-US',
+  theme: "light",
+  density: "comfortable",
+  locale: "en-US",
 };
 
-const KEY = 'uf_prefs';
-const KEY_SERVER = 'uf_prefs_server';
+const KEY = "uf_prefs";
+const KEY_SERVER = "uf_prefs_server";
 
 export function loadPreferences(): Preferences {
   try {
@@ -43,8 +43,8 @@ export function updatePreferences(partial: Partial<Preferences>) {
 // React context + hook for preferences with optimistic (future) server sync
 type Ctx = {
   preferences: Preferences;
-  setTheme: (t: Preferences['theme']) => void;
-  setDensity: (d: Preferences['density']) => void;
+  setTheme: (t: Preferences["theme"]) => void;
+  setDensity: (d: Preferences["density"]) => void;
   setLocale: (l: string) => void;
   setLayouts: (layouts: Record<string, unknown>) => void;
   update: (partial: Partial<Preferences>) => void;
@@ -73,7 +73,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   // Reflect density on <html> for CSS variable overrides
   React.useEffect(() => {
-    if (typeof document !== 'undefined') {
+    if (typeof document !== "undefined") {
       document.documentElement.dataset.density = preferences.density;
     }
   }, [preferences.density]);
@@ -82,9 +82,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const syncNow = React.useCallback(async () => {
     try {
       // Lazy import to avoid coupling before API exists
-      const mod = await import('../services/api');
+      const mod = await import("../services/api");
       const fn = (mod as any).updatePreferences as undefined | ((p: Preferences) => Promise<any>);
-      if (typeof fn === 'function') {
+      if (typeof fn === "function") {
         await fn(preferences);
         lastSyncedRef.current = JSON.stringify(preferences);
       }
@@ -93,10 +93,11 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     }
   }, [preferences]);
 
-  const setTheme = (t: Preferences['theme']) => setPreferences((p) => ({ ...p, theme: t }));
-  const setDensity = (d: Preferences['density']) => setPreferences((p) => ({ ...p, density: d }));
+  const setTheme = (t: Preferences["theme"]) => setPreferences((p) => ({ ...p, theme: t }));
+  const setDensity = (d: Preferences["density"]) => setPreferences((p) => ({ ...p, density: d }));
   const setLocale = (l: string) => setPreferences((p) => ({ ...p, locale: l }));
-  const setLayouts = (layouts: Record<string, unknown>) => setPreferences((p) => ({ ...p, layouts }));
+  const setLayouts = (layouts: Record<string, unknown>) =>
+    setPreferences((p) => ({ ...p, layouts }));
   const update = (partial: Partial<Preferences>) => setPreferences((p) => ({ ...p, ...partial }));
 
   // Debounced server sync when preferences change
@@ -122,8 +123,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
         const rawLast = localStorage.getItem(KEY_SERVER);
         const lastServer = rawLast ? (JSON.parse(rawLast) as Preferences) : null;
         lastServerRef.current = lastServer;
-        const mod = await import('../services/api');
-        const getFn = (mod as any).getPreferences as undefined | (() => Promise<Preferences & { user_id: string }>);
+        const mod = await import("../services/api");
+        const getFn = (mod as any).getPreferences as
+          | undefined
+          | (() => Promise<Preferences & { user_id: string }>);
         if (!getFn) return;
         const server = await getFn();
         if (cancelled || !server) return;
@@ -165,7 +168,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   const resetToDefaults = React.useCallback(() => {
     setHasConflict(false);
-    setPreferences({ theme: 'light', density: 'comfortable', locale: 'en-US' });
+    setPreferences({ theme: "light", density: "comfortable", locale: "en-US" });
   }, []);
 
   const resetToServer = React.useCallback(async () => {
@@ -178,8 +181,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
         lastSyncedRef.current = JSON.stringify(server);
         return;
       }
-      const mod = await import('../services/api');
-      const getFn = (mod as any).getPreferences as undefined | (() => Promise<Preferences & { user_id: string }>);
+      const mod = await import("../services/api");
+      const getFn = (mod as any).getPreferences as
+        | undefined
+        | (() => Promise<Preferences & { user_id: string }>);
       if (getFn) {
         const server = await getFn();
         localStorage.setItem(KEY_SERVER, JSON.stringify(server));
@@ -223,6 +228,6 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
 export function usePreferences(): Ctx {
   const ctx = React.useContext(PreferencesContext);
-  if (!ctx) throw new Error('usePreferences must be used within PreferencesProvider');
+  if (!ctx) throw new Error("usePreferences must be used within PreferencesProvider");
   return ctx;
 }

@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../../../services/client";
 import { createLeague as apiCreateLeague } from "../../../services/api";
-import DevAuthToken from "../../../components/DevAuthToken";
 import { z } from "zod";
 import { useEffect, useMemo } from "react";
 import { Button } from "../../../components/ui/button";
@@ -89,9 +88,12 @@ export default function CreateLeaguePage() {
         for (const d of details) {
           const loc = Array.isArray(d?.loc) ? d.loc : [];
           const field = loc[1] as keyof FormValues | undefined;
-          const msg = String(d?.msg || 'Invalid value');
-          if (field && (['name', 'sport', 'league_type', 'season'] as Array<keyof FormValues>).includes(field)) {
-            setError(field, { type: 'server', message: msg });
+          const msg = String(d?.msg || "Invalid value");
+          if (
+            field &&
+            (["name", "sport", "league_type", "season"] as Array<keyof FormValues>).includes(field)
+          ) {
+            setError(field, { type: "server", message: msg });
           } else {
             collected.push(msg);
           }
@@ -100,7 +102,10 @@ export default function CreateLeaguePage() {
         // Focus first field-level error if any
         const first = Object.keys(errors)[0] as keyof FormValues | undefined;
         if (first) setFocus(first);
-        toast.show({ title: "Validation failed", description: "Please fix the highlighted fields." });
+        toast.show({
+          title: "Validation failed",
+          description: "Please fix the highlighted fields.",
+        });
       } else {
         toast.show({ title: "Failed to create league", description: String(err?.message || err) });
       }
@@ -124,15 +129,23 @@ export default function CreateLeaguePage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Create League</h1>
-          <Button variant="ghost" onClick={() => setTourOpen(true)}>Start tour</Button>
+          <Button variant="ghost" onClick={() => setTourOpen(true)}>
+            Start tour
+          </Button>
         </div>
 
         <div className="rounded-md border p-4 space-y-4">
-          <p className="text-xs text-gray-600">Uses Authorization: Bearer from localStorage key <code>uf_token</code>.</p>
+          <p className="text-xs text-gray-600">
+            Uses Authorization: Bearer from localStorage key <code>uf_token</code>.
+          </p>
 
           <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={onSubmit} noValidate>
             {(hasErrors || formErrors.length > 0) && (
-              <div className="col-span-full rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert" aria-live="assertive">
+              <div
+                className="col-span-full rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+                role="alert"
+                aria-live="assertive"
+              >
                 <p className="font-medium">Please fix the following errors:</p>
                 <ul className="list-inside list-disc">
                   {Object.entries(errors).map(([k, v]) => (
@@ -146,11 +159,26 @@ export default function CreateLeaguePage() {
             )}
             <Input label="Name" {...register("name")} error={errors.name?.message} />
             <Input label="Sport" {...register("sport")} error={errors.sport?.message} />
-            <Input label="League Type" {...register("league_type")} error={errors.league_type?.message} />
-            <Input label="Season" inputMode="numeric" {...register("season")} error={errors.season?.message} />
+            <Input
+              label="League Type"
+              {...register("league_type")}
+              error={errors.league_type?.message}
+            />
+            <Input
+              label="Season"
+              inputMode="numeric"
+              {...register("season")}
+              error={errors.season?.message}
+            />
 
             <div className="col-span-full flex items-center gap-2 pt-2">
-              <Button data-tour="create-submit" type="submit" disabled={createLeague.isPending || isSubmitting} loading={createLeague.isPending || isSubmitting} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
+              <Button
+                data-tour="create-submit"
+                type="submit"
+                disabled={createLeague.isPending || isSubmitting}
+                loading={createLeague.isPending || isSubmitting}
+                leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+              >
                 Create
               </Button>
               <span className="text-xs text-gray-600">API: {API_BASE || "/"} /leagues</span>
@@ -164,10 +192,11 @@ export default function CreateLeaguePage() {
           {/* Redirect occurs on success; no inline success block needed */}
         </div>
 
-        <DevAuthToken />
         <CreateLeagueTour open={tourOpen} onClose={() => setTourOpen(false)} />
 
-        <Link className="text-blue-700 underline" href="/leagues">Back to Leagues</Link>
+        <Link className="text-blue-700 underline" href="/leagues">
+          Back to Leagues
+        </Link>
       </div>
     </main>
   );
@@ -176,9 +205,13 @@ export default function CreateLeaguePage() {
 // Onboarding tour steps for this page
 function CreateLeagueTour({ open, onClose }: { open: boolean; onClose: () => void }) {
   const steps = [
-    { selector: '#name', title: 'League name', content: 'Give your league a memorable name.' },
-    { selector: '#season', title: 'Season', content: 'Enter the 4-digit season year.' },
-    { selector: '[data-tour="create-submit"]', title: 'Create', content: 'Click Create to finish.' },
+    { selector: "#name", title: "League name", content: "Give your league a memorable name." },
+    { selector: "#season", title: "Season", content: "Enter the 4-digit season year." },
+    {
+      selector: '[data-tour="create-submit"]',
+      title: "Create",
+      content: "Click Create to finish.",
+    },
   ];
   return <OnboardingTour id="create-league" steps={steps} open={open} onClose={onClose} />;
 }

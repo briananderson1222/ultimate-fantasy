@@ -15,14 +15,8 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const DEFAULTS: Record<ThemeName, ThemeVars> = {
-  light: {
-    "--color-bg": "rgb(249, 250, 251)", // slate-50
-    "--color-text": "rgb(17, 24, 39)", // slate-900
-  },
-  dark: {
-    "--color-bg": "rgb(17, 24, 39)", // slate-900
-    "--color-text": "rgb(229, 231, 235)", // slate-200
-  },
+  light: {},
+  dark: {},
   custom: {},
 };
 
@@ -51,11 +45,11 @@ function saveLocal<T>(key: string, value: T): void {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeName>("light");
+  const [theme, setThemeState] = useState<ThemeName>("dark");
   const [custom, setCustomState] = useState<ThemeVars>({});
 
   useEffect(() => {
-    const initialTheme = loadLocal<ThemeName>("uf_theme", "light");
+    const initialTheme = loadLocal<ThemeName>("uf_theme", "dark");
     const initialCustom = loadLocal<ThemeVars>("uf_theme_custom", {});
     setThemeState(initialTheme);
     setCustomState(initialCustom);
@@ -78,7 +72,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     saveLocal("uf_theme_custom", vars);
   }, []);
 
-  const value = useMemo(() => ({ theme, setTheme, custom, setCustom }), [theme, setTheme, custom, setCustom]);
+  const value = useMemo(
+    () => ({ theme, setTheme, custom, setCustom }),
+    [theme, setTheme, custom, setCustom],
+  );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -87,4 +84,3 @@ export function useTheme() {
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
-

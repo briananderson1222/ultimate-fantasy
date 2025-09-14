@@ -30,7 +30,7 @@ export default function MatchupsPage() {
     enabled: !!leagueId,
   });
 
-  const baseWeek = useMemo(() => Math.floor((Date.now() / (1000 * 60 * 60 * 24 * 7))), []);
+  const baseWeek = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7)), []);
   const week = baseWeek + weekOffset;
 
   const pairings = useMemo(() => {
@@ -60,9 +60,21 @@ export default function MatchupsPage() {
           title="Weekly Matchups"
           actions={
             <div className="flex items-center gap-2 text-sm">
-              <button className="rounded bg-gray-200 px-2 py-1" onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week">← Prev</button>
-              <span className="px-2">Week {week + 1}</span>
-              <button className="rounded bg-gray-200 px-2 py-1" onClick={() => setWeekOffset((w) => w + 1)} aria-label="Next week">Next →</button>
+              <button
+                className="rounded bg-[var(--color-surface)] border border-[var(--border)] px-2 py-1 text-[var(--color-text)] hover:bg-[var(--color-elevated)]"
+                onClick={() => setWeekOffset((w) => w - 1)}
+                aria-label="Previous week"
+              >
+                ← Prev
+              </button>
+              <span className="px-2 text-[var(--color-text)]">Week {week + 1}</span>
+              <button
+                className="rounded bg-[var(--color-surface)] border border-[var(--border)] px-2 py-1 text-[var(--color-text)] hover:bg-[var(--color-elevated)]"
+                onClick={() => setWeekOffset((w) => w + 1)}
+                aria-label="Next week"
+              >
+                Next →
+              </button>
             </div>
           }
         />
@@ -72,25 +84,35 @@ export default function MatchupsPage() {
             <CardTitle>Schedule</CardTitle>
           </CardHeader>
           {members.isLoading && <Skeleton className="h-16 w-full" />}
-          {members.isError && (
-            <p className="text-sm text-red-600">{members.error.message}</p>
-          )}
+          {members.isError && <p className="text-sm text-red-600">{members.error.message}</p>}
           {!members.isLoading && members.data && members.data.items.length === 0 && (
-            <EmptyState title="No teams" description="Add managers to this league to see matchups." />
+            <EmptyState
+              title="No teams"
+              description="Add managers to this league to see matchups."
+            />
           )}
           {pairings.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               {pairings.map(([a, b], i) => (
-                <div key={`${a}-${b ?? "bye"}-${i}`} className="surface rounded-[var(--radius-md)] p-3">
+                <div
+                  key={`${a}-${b ?? "bye"}-${i}`}
+                  className="surface rounded-[var(--radius-md)] p-3"
+                >
                   {b ? (
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">
-                          <Link className="underline underline-offset-2" href={`/teams/${a}`}>Team {a.slice(0, 6)}</Link>
+                          <Link className="underline underline-offset-2" href={`/teams/${a}`}>
+                            Team {a.slice(0, 6)}
+                          </Link>
                           <span className="mx-2 text-[var(--color-muted)]">vs</span>
-                          <Link className="underline underline-offset-2" href={`/teams/${b}`}>Team {b.slice(0, 6)}</Link>
+                          <Link className="underline underline-offset-2" href={`/teams/${b}`}>
+                            Team {b.slice(0, 6)}
+                          </Link>
                         </div>
-                        <div className="text-xs text-[var(--color-muted)]">Projected: {projectedPoints(a)} – {projectedPoints(b)}</div>
+                        <div className="text-xs text-[var(--color-muted)]">
+                          Projected: {projectedPoints(a)} – {projectedPoints(b)}
+                        </div>
                       </div>
                       <div className="text-right text-sm">
                         <div className="font-medium">{new Date().toLocaleDateString()}</div>
@@ -104,10 +126,11 @@ export default function MatchupsPage() {
               ))}
             </div>
           )}
-          <div className="text-xs text-gray-600">Data: /leagues/{"{leagueId}"}/members (pairings generated client-side)</div>
+          <div className="text-xs text-gray-600">
+            Data: /leagues/{"{leagueId}"}/members (pairings generated client-side)
+          </div>
         </Card>
       </div>
     </main>
   );
 }
-

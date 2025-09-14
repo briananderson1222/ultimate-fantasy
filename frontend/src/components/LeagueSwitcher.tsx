@@ -63,7 +63,11 @@ export default function LeagueSwitcher() {
         onChange={onChange}
         disabled={isLoading || isError || leagues.length === 0}
         className="min-w-[180px] rounded-[var(--radius-sm)] border px-[var(--space-2)] py-[calc(var(--space-1))] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)]"
-        style={{ background: "var(--color-surface)", color: "var(--color-text)", borderColor: "var(--border)" }}
+        style={{
+          background: "var(--color-surface)",
+          color: "var(--color-text)",
+          borderColor: "var(--border)",
+        }}
         aria-label="Select league"
       >
         {isLoading ? (
@@ -83,4 +87,3 @@ export default function LeagueSwitcher() {
     </div>
   );
 }
-

@@ -16,23 +16,24 @@ type KV = Record<string, number>;
 
 const kvSchema = z.record(z.number());
 
-const SCHEMAS: Record<string, { label: string; schema: z.ZodTypeAny; template: any } | undefined> = {
-  "scoring.basketball": {
-    label: "Basketball Scoring (points per stat)",
-    schema: kvSchema,
-    template: { PTS: 1, REB: 1.2, AST: 1.5, STL: 3, BLK: 3, TOV: -1 },
-  },
-  "lineup.positions": {
-    label: "Lineup Positions (slots per position)",
-    schema: kvSchema,
-    template: { PG: 1, SG: 1, SF: 1, PF: 1, C: 1, UTIL: 2 },
-  },
-  "roster.limits": {
-    label: "Roster Limits (max count per position)",
-    schema: kvSchema,
-    template: { G: 5, F: 5, C: 3 },
-  },
-};
+const SCHEMAS: Record<string, { label: string; schema: z.ZodTypeAny; template: any } | undefined> =
+  {
+    "scoring.basketball": {
+      label: "Basketball Scoring (points per stat)",
+      schema: kvSchema,
+      template: { PTS: 1, REB: 1.2, AST: 1.5, STL: 3, BLK: 3, TOV: -1 },
+    },
+    "lineup.positions": {
+      label: "Lineup Positions (slots per position)",
+      schema: kvSchema,
+      template: { PG: 1, SG: 1, SF: 1, PF: 1, C: 1, UTIL: 2 },
+    },
+    "roster.limits": {
+      label: "Roster Limits (max count per position)",
+      schema: kvSchema,
+      template: { G: 5, F: 5, C: 3 },
+    },
+  };
 
 function tryParse(json: string): { ok: true; value: any } | { ok: false; error: string } {
   try {
@@ -95,7 +96,8 @@ export default function LeagueSettingsPage() {
   }, [rows, advanced]);
 
   const updateSettings = useMutation({
-    mutationFn: async (payload: { name: string; value: any }) => updateLeagueSettings(leagueId, payload),
+    mutationFn: async (payload: { name: string; value: any }) =>
+      updateLeagueSettings(leagueId, payload),
     onSuccess: (data) => {
       toast.show({ title: "Settings saved", description: data.name });
       try {
@@ -121,7 +123,8 @@ export default function LeagueSettingsPage() {
     if (!parsed.ok) return parsed;
     if (preset) {
       const res = preset.schema.safeParse(parsed.value);
-      if (!res.success) return { ok: false, error: res.error.errors.map((e) => e.message).join("; ") };
+      if (!res.success)
+        return { ok: false, error: res.error.errors.map((e) => e.message).join("; ") };
     }
     return { ok: true, value: parsed.value };
   }
@@ -216,7 +219,11 @@ export default function LeagueSettingsPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
           title="League Settings"
-          actions={<Link className="text-blue-700 underline" href={`/leagues/${leagueId}`}>Back</Link>}
+          actions={
+            <Link className="text-blue-700 underline" href={`/leagues/${leagueId}`}>
+              Back
+            </Link>
+          }
         />
 
         <Card className="space-y-3">
@@ -255,22 +262,39 @@ export default function LeagueSettingsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-700">Edit values</div>
-                <Button variant="secondary" onClick={addRow}>Add Row</Button>
+                <Button variant="secondary" onClick={addRow}>
+                  Add Row
+                </Button>
               </div>
               {rows.map((r, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <Input
                     label="Key"
                     value={r.key}
-                    onChange={(e) => setRows((arr) => arr.map((it, i) => i === idx ? { ...it, key: e.target.value } : it))}
+                    onChange={(e) =>
+                      setRows((arr) =>
+                        arr.map((it, i) => (i === idx ? { ...it, key: e.target.value } : it)),
+                      )
+                    }
                   />
                   <Input
                     label="Value"
                     inputMode="decimal"
                     value={String(r.value)}
-                    onChange={(e) => setRows((arr) => arr.map((it, i) => i === idx ? { ...it, value: Number(e.target.value) } : it))}
+                    onChange={(e) =>
+                      setRows((arr) =>
+                        arr.map((it, i) =>
+                          i === idx ? { ...it, value: Number(e.target.value) } : it,
+                        ),
+                      )
+                    }
                   />
-                  <button className="rounded bg-red-100 px-3 py-2 text-red-700 mt-6" onClick={() => removeRow(idx)}>Remove</button>
+                  <button
+                    className="rounded bg-red-100 px-3 py-2 text-red-700 mt-6"
+                    onClick={() => removeRow(idx)}
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>
@@ -286,21 +310,45 @@ export default function LeagueSettingsPage() {
               aria-describedby={jsonError ? "json-error" : undefined}
             />
             {jsonError && (
-              <p id="json-error" className="text-sm text-red-600">{jsonError}</p>
+              <p id="json-error" className="text-sm text-red-600">
+                {jsonError}
+              </p>
             )}
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <Button variant="secondary" onClick={copyJson}>Copy JSON</Button>
-              <Button variant="secondary" onClick={downloadJson}>Download JSON</Button>
-              <input ref={fileInputRef} onChange={importFromFile} type="file" accept="application/json" className="hidden" />
-              <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>Import JSON</Button>
-              <Button variant="ghost" onClick={revertToActive}>Revert to Active</Button>
+              <Button variant="secondary" onClick={copyJson}>
+                Copy JSON
+              </Button>
+              <Button variant="secondary" onClick={downloadJson}>
+                Download JSON
+              </Button>
+              <input
+                ref={fileInputRef}
+                onChange={importFromFile}
+                type="file"
+                accept="application/json"
+                className="hidden"
+              />
+              <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                Import JSON
+              </Button>
+              <Button variant="ghost" onClick={revertToActive}>
+                Revert to Active
+              </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button onClick={submit} loading={updateSettings.isPending} disabled={updateSettings.isPending}>Save</Button>
+            <Button
+              onClick={submit}
+              loading={updateSettings.isPending}
+              disabled={updateSettings.isPending}
+            >
+              Save
+            </Button>
             {updateSettings.isError && (
-              <span className="text-sm text-red-600">{(updateSettings.error as Error)?.message}</span>
+              <span className="text-sm text-red-600">
+                {(updateSettings.error as Error)?.message}
+              </span>
             )}
           </div>
         </Card>
@@ -309,7 +357,9 @@ export default function LeagueSettingsPage() {
           <CardHeader>
             <CardTitle>Preview Changes</CardTitle>
           </CardHeader>
-          <div className="text-sm text-gray-700">Comparing edited JSON against active rules (not yet saved).</div>
+          <div className="text-sm text-gray-700">
+            Comparing edited JSON against active rules (not yet saved).
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <div className="font-medium">Changed</div>
@@ -317,7 +367,8 @@ export default function LeagueSettingsPage() {
                 {diff.changed.length === 0 && <li className="text-gray-500">None</li>}
                 {diff.changed.map((c) => (
                   <li key={c.key}>
-                    {c.key}: <span className="text-red-700">{String(c.from)}</span> → <span className="text-green-700">{String(c.to)}</span>
+                    {c.key}: <span className="text-red-700">{String(c.from)}</span> →{" "}
+                    <span className="text-green-700">{String(c.to)}</span>
                   </li>
                 ))}
               </ul>
@@ -327,7 +378,9 @@ export default function LeagueSettingsPage() {
               <ul className="mt-1 list-inside list-disc text-sm">
                 {diff.added.length === 0 && <li className="text-gray-500">None</li>}
                 {diff.added.map((a) => (
-                  <li key={a.key}>{a.key}: <span className="text-green-700">{String(a.to)}</span></li>
+                  <li key={a.key}>
+                    {a.key}: <span className="text-green-700">{String(a.to)}</span>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -336,7 +389,9 @@ export default function LeagueSettingsPage() {
               <ul className="mt-1 list-inside list-disc text-sm">
                 {diff.removed.length === 0 && <li className="text-gray-500">None</li>}
                 {diff.removed.map((r) => (
-                  <li key={r.key}>{r.key}: <span className="text-red-700">{String(r.from)}</span></li>
+                  <li key={r.key}>
+                    {r.key}: <span className="text-red-700">{String(r.from)}</span>
+                  </li>
                 ))}
               </ul>
             </div>

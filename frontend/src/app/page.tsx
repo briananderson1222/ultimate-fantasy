@@ -36,39 +36,67 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Override layout wrapper for full-width design */}
+      <style jsx global>{`
+        #main > div {
+          max-width: none !important;
+          padding: 0 !important;
+        }
+        body {
+          background: var(--gradient-hero) !important;
+        }
+      `}</style>
+
       {/* Hero */}
-      <section className="hero-gradient">
-        <div className="mx-auto max-w-6xl px-4 py-10 md:py-16">
+      <section className="relative py-12 md:py-20" style={{ background: "var(--gradient-hero)" }}>
+        <div className="mx-auto max-w-6xl px-4">
           <div className="grid items-center gap-8 md:grid-cols-2">
             <div>
-              <h1 className="h1 mb-2 text-white drop-shadow">Build the league you want.</h1>
-              <p className="mb-4 max-w-prose text-[var(--color-accent-contrast)]/90">
-                Ultimate Fantasy is a flexible, brandable platform for leagues, lineups, scoreboards, and waivers — with powerful theming and a polished UX.
+              <h1 className="mb-4 text-3xl font-bold text-[var(--color-text)] md:text-5xl drop-shadow">
+                Build the league you want.
+              </h1>
+              <p className="mb-6 text-lg text-[var(--color-muted)]">
+                Ultimate Fantasy is a flexible platform for leagues, lineups, scoreboards, and
+                waivers.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Link href="/leagues/create">
-                  <Button size="lg" variant="secondary">Create League</Button>
+                  <Button size="lg" variant="primary">
+                    Create League
+                  </Button>
                 </Link>
-                <a className="underline text-white/90" href="/leagues">Browse Leagues</a>
+                <Link
+                  href="/leagues"
+                  className="underline text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                >
+                  Browse Leagues
+                </Link>
               </div>
             </div>
-            <div className="surface-textured rounded-[var(--radius-lg)] p-6 shadow-md">
-              <div className="flex items-center gap-3">
-                <Trophy className="h-8 w-8 text-[var(--color-accent)]" aria-hidden />
-                <h2 className="h2 m-0">Join a league</h2>
+            <div className="bg-[var(--color-surface)] border border-[var(--border)] rounded-xl p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <Trophy className="h-6 w-6 text-[var(--color-primary)]" aria-hidden />
+                <h2 className="text-lg font-semibold text-[var(--color-text)] m-0">
+                  Join a league
+                </h2>
               </div>
-              <p className="mt-1 text-[var(--color-muted)]">Have an invite link or league ID? Paste it here.</p>
-              <form className="mt-3 flex gap-2" onSubmit={handleJoin}>
-                <label htmlFor="invite" className="sr-only">Invite link or league ID</label>
+              <p className="mb-4 text-sm text-[var(--color-muted)]">
+                Have an invite link or league ID? Paste it here.
+              </p>
+              <form className="flex gap-2" onSubmit={handleJoin}>
+                <label htmlFor="invite" className="sr-only">
+                  Invite link or league ID
+                </label>
                 <input
                   id="invite"
                   value={invite}
                   onChange={(e) => setInvite(e.target.value)}
-                  placeholder="https://…/leagues/… or league-id"
-                  className="flex-1 rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)]"
-                  style={{ background: 'var(--color-surface)', color: 'var(--color-text)', borderColor: 'var(--border)' }}
+                  placeholder="League ID or URL"
+                  className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] placeholder-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                 />
-                <Button type="submit" variant="primary">Go</Button>
+                <Button type="submit" variant="primary">
+                  Go
+                </Button>
               </form>
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             </div>
@@ -77,23 +105,23 @@ export default function HomePage() {
       </section>
 
       {/* Highlights */}
-      <section>
-        <div className="mx-auto max-w-6xl px-4 py-10">
-          <div className="grid gap-4 md:grid-cols-3">
+      <section className="bg-[var(--color-bg)] py-12">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="grid gap-6 md:grid-cols-3">
             <Feature
-              icon={<LayoutDashboard className="h-6 w-6" aria-hidden />}
+              icon={<LayoutDashboard className="h-5 w-5" aria-hidden />}
               title="Customizable UI"
-              text="Widgets, saved views, filters, and themes. Make it yours."
+              text="Widgets, saved views, filters, and themes."
             />
             <Feature
-              icon={<LineChart className="h-6 w-6" aria-hidden />}
+              icon={<LineChart className="h-5 w-5" aria-hidden />}
               title="Live Scoreboard"
-              text="Aggregated points and lineup tracking with fast updates."
+              text="Real-time points and lineup tracking."
             />
             <Feature
-              icon={<Users className="h-6 w-6" aria-hidden />}
-              title="Easy League Management"
-              text="Create, join, and manage members with clear, accessible flows."
+              icon={<Users className="h-5 w-5" aria-hidden />}
+              title="Easy Management"
+              text="Create, join, and manage leagues easily."
             />
           </div>
         </div>
@@ -104,12 +132,12 @@ export default function HomePage() {
 
 function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return (
-    <div className="surface rounded-[var(--radius-md)] p-4">
-      <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[rgba(0,0,0,0.04)]">
-        <span className="text-[var(--color-primary)]">{icon}</span>
+    <div className="bg-[var(--color-surface)] border border-[var(--border)] rounded-xl p-4 hover:bg-[var(--color-elevated)] transition-colors">
+      <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-contrast)]">
+        {icon}
       </div>
-      <h3 className="h3 mb-1">{title}</h3>
-      <p className="text-[var(--color-muted)]">{text}</p>
+      <h3 className="mb-2 text-base font-semibold text-[var(--color-text)]">{title}</h3>
+      <p className="text-sm text-[var(--color-muted)]">{text}</p>
     </div>
   );
 }
