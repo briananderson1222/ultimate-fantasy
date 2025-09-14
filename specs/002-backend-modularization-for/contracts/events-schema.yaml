@@ -1,0 +1,240 @@
+openapi: 3.0.0
+info:
+  title: Cross-Domain Events Schema
+  description: Event schemas for domain communication
+  version: 1.0.0
+
+components:
+  schemas:
+    # Base Event Schema
+    DomainEvent:
+      type: object
+      required:
+        - event_id
+        - event_type
+        - source_domain
+        - timestamp
+        - data
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        source_domain:
+          type: string
+          enum: [leagues, users, lineups, trading, scoring, waitlist]
+        timestamp:
+          type: string
+          format: date-time
+        correlation_id:
+          type: string
+        data:
+          type: object
+
+    # League Domain Events
+    LeagueCreated:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [league.created]
+            data:
+              type: object
+              properties:
+                league_id:
+                  type: string
+                commissioner_id:
+                  type: string
+                settings:
+                  type: object
+
+    LeagueSettingsUpdated:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [league.settings.updated]
+            data:
+              type: object
+              properties:
+                league_id:
+                  type: string
+                updated_settings:
+                  type: object
+                previous_settings:
+                  type: object
+
+    # User Domain Events
+    UserRegistered:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [user.registered]
+            data:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                username:
+                  type: string
+                email:
+                  type: string
+
+    UserPreferencesUpdated:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [user.preferences.updated]
+            data:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                preferences:
+                  type: object
+
+    # Lineup Domain Events
+    LineupUpdated:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [lineup.updated]
+            data:
+              type: object
+              properties:
+                lineup_id:
+                  type: string
+                user_id:
+                  type: string
+                league_id:
+                  type: string
+                changes:
+                  type: array
+                  items:
+                    type: object
+
+    # Trading Domain Events
+    WaiverClaimProcessed:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [waiver.claim.processed]
+            data:
+              type: object
+              properties:
+                waiver_id:
+                  type: string
+                user_id:
+                  type: string
+                league_id:
+                  type: string
+                status:
+                  type: string
+                  enum: [approved, rejected]
+
+    TradeCompleted:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [trade.completed]
+            data:
+              type: object
+              properties:
+                trade_id:
+                  type: string
+                parties:
+                  type: array
+                  items:
+                    type: string
+                league_id:
+                  type: string
+
+    # Scoring Domain Events
+    ScoresCalculated:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [scores.calculated]
+            data:
+              type: object
+              properties:
+                league_id:
+                  type: string
+                scoring_period:
+                  type: string
+                lineup_scores:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      lineup_id:
+                        type: string
+                      score:
+                        type: number
+
+    # Waitlist Domain Events
+    WaitlistPositionChanged:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [waitlist.position.changed]
+            data:
+              type: object
+              properties:
+                entry_id:
+                  type: string
+                user_id:
+                  type: string
+                league_id:
+                  type: string
+                new_position:
+                  type: integer
+                previous_position:
+                  type: integer
+
+    WaitlistInviteSent:
+      allOf:
+        - $ref: '#/components/schemas/DomainEvent'
+        - type: object
+          properties:
+            event_type:
+              type: string
+              enum: [waitlist.invite.sent]
+            data:
+              type: object
+              properties:
+                invite_id:
+                  type: string
+                user_id:
+                  type: string
+                league_id:
+                  type: string
+                expires_at:
+                  type: string
+                  format: date-time

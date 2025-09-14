@@ -1,0 +1,216 @@
+openapi: 3.0.0
+info:
+  title: Domain Service Interfaces
+  description: Internal service contracts for domain modularization
+  version: 1.0.0
+
+paths:
+  # League Service Interface
+  /internal/leagues/{league_id}/members:
+    get:
+      summary: Get league members
+      operationId: get_league_members
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of league members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /internal/leagues/{league_id}/access/{user_id}:
+    get:
+      summary: Validate user access to league
+      operationId: validate_league_access
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  has_access:
+                    type: boolean
+
+  # User Service Interface
+  /internal/users/{user_id}:
+    get:
+      summary: Get user details
+      operationId: get_user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /internal/users/{user_id}/permissions:
+    post:
+      summary: Validate user permissions
+      operationId: validate_user_permissions
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resource:
+                  type: string
+                action:
+                  type: string
+      responses:
+        '200':
+          description: Permission validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  has_permission:
+                    type: boolean
+
+  # Lineup Service Interface
+  /internal/lineups/{lineup_id}:
+    get:
+      summary: Get lineup details
+      operationId: get_lineup
+      parameters:
+        - name: lineup_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lineup details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lineup'
+
+  /internal/lineups/{lineup_id}/ownership/{user_id}:
+    get:
+      summary: Validate lineup ownership
+      operationId: validate_lineup_ownership
+      parameters:
+        - name: lineup_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ownership validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_owner:
+                    type: boolean
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        profile:
+          type: object
+
+    Lineup:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        league_id:
+          type: string
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineupSlot'
+
+    LineupSlot:
+      type: object
+      properties:
+        id:
+          type: string
+        position:
+          type: string
+        player_id:
+          type: string
+        is_active:
+          type: boolean
+
+    League:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        commissioner_id:
+          type: string
+        settings:
+          type: object
+
+    DomainEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+        domain:
+          type: string
+        entity_id:
+          type: string
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
