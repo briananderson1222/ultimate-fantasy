@@ -183,6 +183,18 @@ cd frontend && NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 cd frontend && E2E_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
 ```
 
+### Visual Regression Tests
+```bash
+# Run visual tests (requires backend + frontend running)
+cd frontend && npm run test:visual
+
+# Generate baseline screenshots
+./scripts/generate-visual-baselines.sh
+
+# Update baselines after design changes
+cd frontend && npm run test:visual:update
+```
+
 ### JWT Dev Mode
 - Backend supports `AUTH_MODE=dev` (default) with HS256 tokens using `AUTH_DEV_SECRET`.
 - You can mint a dev token in Node:
@@ -216,6 +228,36 @@ Once the backend is running, visit:
 - **Interactive API Docs**: http://localhost:8000/docs
 - **ReDoc Documentation**: http://localhost:8000/redoc
 - **OpenAPI Spec**: http://localhost:8000/openapi.json
+
+### API Quick Examples
+
+List your leagues (requires a dev or real JWT):
+
+```bash
+export TOKEN="<jwt>"
+curl -sS -H "Authorization: Bearer $TOKEN" http://localhost:8000/me/leagues | jq
+```
+
+List league members:
+
+```bash
+LEAGUE_ID=00000000-0000-0000-0000-000000000000
+curl -sS http://localhost:8000/leagues/$LEAGUE_ID/members | jq
+```
+
+List waivers:
+
+```bash
+LEAGUE_ID=00000000-0000-0000-0000-000000000000
+curl -sS "http://localhost:8000/waivers?league_id=$LEAGUE_ID&limit=50&offset=0" | jq
+```
+
+List lineups for a team:
+
+```bash
+TEAM_ID=00000000-0000-0000-0000-000000000000
+curl -sS "http://localhost:8000/lineups?team_id=$TEAM_ID&game_day=2025-01-01" | jq
+```
 
 ## 🔧 Configuration
 

@@ -11,30 +11,52 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "echo \"No frontend unit tests yet\" && exit 0",
+    "test": "npm run test:unit",
+    "test:unit": "vitest run --environment jsdom",
+    "test:unit:watch": "vitest --environment jsdom",
     "test:e2e": "playwright test",
+    "test:visual": "playwright test --project=visual-chromium",
+    "test:visual:update": "playwright test --project=visual-chromium --update-snapshots",
     "e2e:headed": "playwright test --headed --project=chromium",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "play:ui": "ladle",
+    "build:ui": "ladle build"
   },
   "dependencies": {
+    "@hookform/resolvers": "3.9.0",
+    "@radix-ui/react-dialog": "1.1.15",
+    "@radix-ui/react-toast": "1.2.15",
     "@tanstack/react-query": "5.87.4",
+    "class-variance-authority": "0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "0.544.0",
     "next": "15.5.3",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "tailwindcss": "4.1.13"
+    "react-hook-form": "7.62.0",
+    "tailwind-merge": "3.3.1",
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "@ladle/react": "5.0.3",
     "@rushstack/eslint-patch": "^1.10.4",
-    "@types/node": "24.3.2",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@testing-library/jest-dom": "6.8.0",
+    "@testing-library/react": "16.3.0",
+    "@types/node": "24.3.3",
     "@types/react": "19.1.13",
     "autoprefixer": "10.4.21",
     "eslint": "9.35.0",
     "eslint-config-next": "15.5.3",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "jsdom": "25.0.1",
     "postcss": "8.5.6",
     "prettier": "3.6.2",
-    "typescript": "5.9.2"
+    "tailwindcss": "4.1.13",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
   }
 }

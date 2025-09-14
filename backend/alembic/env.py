@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from backend.src.models.base import Base  # type: ignore
+
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from models.base import Base  # type: ignore
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

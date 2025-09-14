@@ -31,7 +31,7 @@ class ScoringService:
         return count
 
     def compute_league_scoreboard(
-        self, *, league_id: _uuid.UUID, game_day: date | None
+        self, *, league_id: _uuid.UUID | str, game_day: date | None
     ) -> list[dict[str, Any]]:
         """Compute per-team totals for a league.
 

@@ -48,7 +48,54 @@ Endpoints
   - Path: `leagueId` (uuid)
   - Response 200: `{ league_id, name, sport, league_type, season }`
 
+- GET `/me/leagues`
+  - Summary: List leagues for the current user
+  - Auth: `Authorization: Bearer <JWT>` (dev HS256 supported)
+  - Response 200: `{ items: [{ league_id, name, season, team_id }] }`
+  - Example:
+    - export TOKEN="<jwt>"
+    - curl -sS -H "Authorization: Bearer $TOKEN" http://localhost:8000/me/leagues | jq
+
+- GET `/leagues/{leagueId}/members`
+  - Summary: List members (teams) in a league
+  - Path: `leagueId` (uuid)
+  - Response 200: `{ items: [{ team_id, user_id, team_name }] }`
+  - Example:
+    - LEAGUE_ID=00000000-0000-0000-0000-000000000000
+    - curl -sS http://localhost:8000/leagues/$LEAGUE_ID/members | jq
+
+- GET `/waivers`
+  - Summary: List waiver bids
+  - Query: `league_id: uuid` (required), `team_id?: uuid`, `limit?: 1..100` (default 50), `offset?: >=0` (default 0)
+  - Response 200: `{ items: [{ waiver_id, league_id, team_id, player_id, bid, status }] }`
+  - Example:
+    - LEAGUE_ID=00000000-0000-0000-0000-000000000000
+    - curl -sS "http://localhost:8000/waivers?league_id=$LEAGUE_ID&limit=50&offset=0" | jq
+
+- GET `/lineups`
+  - Summary: List saved lineups
+  - Query: `team_id: uuid` (required), `game_day?: YYYY-MM-DD`, `limit?: 1..100` (default 50), `offset?: >=0` (default 0)
+  - Response 200: `{ items: [{ lineup_id, team_id, game_day, players: [{ player_id, position }], version }] }`
+  - Example:
+    - TEAM_ID=00000000-0000-0000-0000-000000000000
+    - curl -sS "http://localhost:8000/lineups?team_id=$TEAM_ID&game_day=2025-01-01" | jq
+
 Notes
 - The OpenAPI file remains authoritative for field types and response codes.
 - SQLite is used in local tests; PostgreSQL is recommended for development.
 - Frontend includes a dev-only token helper panel ("Dev Auth Token") to mint HS256 tokens in-browser and save them to `localStorage.uf_token`. Use only with `AUTH_MODE=dev`.
+
+Frontend quick usage (React Query)
+- Get your leagues:
+  - import { useQuery } from '@tanstack/react-query'
+  - import { getMyLeagues } from '@/services/api'
+  - const leagues = useQuery({ queryKey: ['myLeagues'], queryFn: getMyLeagues })
+- League members:
+  - import { getLeagueMembers } from '@/services/api'
+  - useQuery({ queryKey: ['leagueMembers', leagueId], queryFn: () => getLeagueMembers(leagueId), enabled: !!leagueId })
+- Waivers list:
+  - import { listWaivers } from '@/services/api'
+  - useQuery({ queryKey: ['waivers', args], queryFn: () => listWaivers(args), enabled: !!args.league_id })
+- Lineups list:
+  - import { listLineups } from '@/services/api'
+  - useQuery({ queryKey: ['lineups', args], queryFn: () => listLineups(args), enabled: !!args.team_id })

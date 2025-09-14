@@ -33,3 +33,19 @@ class WaiverService:
     def resolve(self, *, league_id: str | uuid.UUID) -> int:
         # TODO: implement resolution logic: highest bid wins, status updates
         return 0
+
+    def list(
+        self,
+        *,
+        league_id: str | uuid.UUID,
+        team_id: str | uuid.UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Waiver]:
+        league_uuid = uuid.UUID(league_id) if isinstance(league_id, str) else league_id
+        q = self.session.query(Waiver).filter(Waiver.league_id == league_uuid)
+        if team_id is not None:
+            team_uuid = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
+            q = q.filter(Waiver.team_id == team_uuid)
+        q = q.offset(max(0, offset)).limit(max(1, min(100, limit)))
+        return q.all()

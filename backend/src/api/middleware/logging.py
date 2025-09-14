@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-logger = logging.getLogger("uvicorn.access")
+logger = logging.getLogger("app.requests")
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -23,7 +23,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("x-request-id", req_id)
         elapsed_ms = (time.perf_counter() - started) * 1000
         logger.info(
-            "%s %s %d %.1fms req_id=%s",
+            "Request: %s %s - Status: %d - Time: %.1fms - ID: %s",
             request.method,
             request.url.path,
             response.status_code,

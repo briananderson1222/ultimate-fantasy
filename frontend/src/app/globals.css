@@ -1,13 +1,11 @@
 @import "tailwindcss";
+@import "../styles/theme.css";
+@import "../styles/typography.css";
+@import "../styles/animations.css";
 
-/* Basic CSS reset + app-wide styles */
-html, body, #__next {
-  height: 100%;
+/* Global a11y improvements */
+/* Improve default focus visibility for non-tailwind elements */
+:focus-visible {
+  outline: 2px solid #2563eb; /* blue-600 */
+  outline-offset: 2px;
 }
-
-body {
-  min-height: 100%;
-  color: var(--color-text, rgb(17, 24, 39));
-  background: var(--color-bg, rgb(249, 250, 251));
-}
-

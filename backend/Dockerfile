@@ -5,16 +5,14 @@ WORKDIR /app
 # Install uv
 RUN pip install uv
 
-# Copy dependency files
+# Copy all files needed for build
 COPY pyproject.toml ./
-
-# Install dependencies
-RUN uv sync --no-dev
-
-# Copy source code
 COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
+
+# Install dependencies
+RUN uv sync --no-dev
 
 # Expose port
 EXPOSE 8000

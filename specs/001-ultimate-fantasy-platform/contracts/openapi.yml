@@ -59,6 +59,34 @@ paths:
       responses:
         '200':
           description: Lineup updated
+    get:
+      summary: List lineups
+      parameters:
+        - name: team_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: game_day
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of lineups
   /leagues/{leagueId}/scoreboard:
     get:
       summary: View scores
@@ -97,6 +125,123 @@ paths:
       responses:
         '200':
           description: Public league data
+
+  /me/leagues:
+    get:
+      summary: List leagues for current user
+      responses:
+        '200':
+          description: List of leagues the user belongs to
+
+  /leagues/{leagueId}/members:
+    get:
+      summary: List league members
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of teams/users in the league
+
+  /waivers:
+    get:
+      summary: List waiver bids
+      parameters:
+        - name: league_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: team_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of waiver bids
+
+  /me/preferences:
+    get:
+      summary: Get current user's preferences
+      responses:
+        '200':
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferencesOut'
+    put:
+      summary: Update current user's preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesIn'
+      responses:
+        '200':
+          description: Updated user preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferencesOut'
+
+  /leagues/{leagueId}/branding:
+    get:
+      summary: Get league branding
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: League branding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandingOut'
+    put:
+      summary: Update league branding
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandingIn'
+      responses:
+        '200':
+          description: Updated branding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandingOut'
 
 components:
   schemas:
@@ -151,3 +296,52 @@ components:
           format: uuid
         bid:
           type: integer
+
+    PreferencesIn:
+      type: object
+      properties:
+        theme:
+          type: string
+          description: light | dark | custom
+        density:
+          type: string
+          description: comfortable | compact
+        locale:
+          type: string
+          description: BCP-47 locale tag, e.g., en-US
+        layouts:
+          type: object
+          nullable: true
+      required: [theme, density, locale]
+
+    PreferencesOut:
+      allOf:
+        - $ref: '#/components/schemas/PreferencesIn'
+        - type: object
+          properties:
+            user_id:
+              type: string
+              format: uuid
+
+    BrandingIn:
+      type: object
+      properties:
+        theme:
+          type: object
+          additionalProperties:
+            type: string
+          description: 'CSS variable overrides (e.g., { "--color-primary": "#123456" })'
+        name:
+          type: string
+        logo_url:
+          type: string
+          nullable: true
+
+    BrandingOut:
+      allOf:
+        - $ref: '#/components/schemas/BrandingIn'
+        - type: object
+          properties:
+            league_id:
+              type: string
+              format: uuid

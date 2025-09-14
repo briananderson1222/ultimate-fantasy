@@ -9,10 +9,18 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
+# Kill any processes using our ports (more thorough cleanup)
+echo "🧹 Cleaning up ports..."
+pkill -f "next dev" 2>/dev/null || true
+pkill -f "uvicorn.*8000" 2>/dev/null || true
+lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+sleep 2
+
 # Start database with Docker (if available)
 if command -v docker &> /dev/null && (command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1); then
     echo "🐳 Starting PostgreSQL with Docker..."
-    docker compose -f docker-compose.dev.yml up -d
+    docker compose -f docker-compose.dev.yml up -d --remove-orphans
     echo "⏳ Waiting for database to be ready..."
     sleep 5
     export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ultimate_fantasy"
@@ -76,7 +84,7 @@ fi
 export NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
 
 # Start frontend in background
-npm run dev &
+NEXT_PUBLIC_API_BASE_URL="http://localhost:8000" npm run dev -- --port 3000 &
 FRONTEND_PID=$!
 echo "✅ Frontend started (PID: $FRONTEND_PID) - http://localhost:3000"
 

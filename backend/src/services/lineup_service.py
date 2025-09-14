@@ -36,3 +36,18 @@ class LineupService:
         self.session.add(lineup)
         self.session.flush()
         return lineup
+
+    def list(
+        self,
+        *,
+        team_id: str | uuid.UUID,
+        game_day: date | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Lineup]:
+        team_uuid = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
+        q = self.session.query(Lineup).filter(Lineup.team_id == team_uuid)
+        if game_day is not None:
+            q = q.filter(Lineup.game_day == game_day)
+        q = q.offset(max(0, offset)).limit(max(1, min(100, limit)))
+        return q.all()

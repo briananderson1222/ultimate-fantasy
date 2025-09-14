@@ -14,7 +14,7 @@ def _database_url() -> str:
     if url:
         return url
     # Fallback for local/dev without Postgres — not recommended for prod
-    return "sqlite+pysqlite:///:memory:"  # ephemeral
+    return "sqlite+pysqlite:///test.db"  # file-based for persistence
 
 
 # For tests, use a shared connection to avoid isolation issues
@@ -25,8 +25,8 @@ def get_engine() -> Engine:
     global _TEST_ENGINE
     url = _database_url()
 
-    # For in-memory SQLite, use a shared connection to avoid isolation
-    if url == "sqlite+pysqlite:///:memory:":
+    # For SQLite, use a shared connection to avoid isolation
+    if url.startswith("sqlite"):
         if _TEST_ENGINE is None:
             _TEST_ENGINE = create_engine(
                 url,

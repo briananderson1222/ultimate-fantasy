@@ -18,8 +18,8 @@ Notes:
 
 import os
 import uuid
-import jwt
 
+import jwt
 from fastapi.testclient import TestClient
 
 

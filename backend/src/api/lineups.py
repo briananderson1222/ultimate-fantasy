@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid as _uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -51,3 +51,49 @@ def set_lineup(
         players=payload.players,
         version=getattr(lu, "version", None),
     )
+
+
+class LineupListItem(BaseModel):
+    lineup_id: _uuid.UUID
+    team_id: _uuid.UUID
+    game_day: date
+    players: list[LineupPlayer]
+    version: int
+
+
+class LineupListResponse(BaseModel):
+    items: list[LineupListItem]
+
+
+@router.get(
+    "/lineups", status_code=status.HTTP_200_OK, response_model=LineupListResponse
+)
+def list_lineups(
+    team_id: _uuid.UUID = Query(...),
+    game_day: date | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> LineupListResponse:
+    svc = LineupService(db)
+    items = svc.list(
+        team_id=str(team_id), game_day=game_day, limit=limit, offset=offset
+    )
+
+    def to_player(obj: dict) -> LineupPlayer:
+        return LineupPlayer(
+            player_id=_uuid.UUID(str(obj.get("player_id"))),
+            position=str(obj.get("position")),
+        )
+
+    casted = [
+        LineupListItem(
+            lineup_id=it.lineup_id,
+            team_id=it.team_id,
+            game_day=it.game_day,
+            players=[to_player(p) for p in (it.players or [])],
+            version=getattr(it, "version", 1),
+        )
+        for it in items
+    ]
+    return LineupListResponse(items=casted)

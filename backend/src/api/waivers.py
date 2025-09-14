@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -53,4 +53,49 @@ def place_waiver_bid(
         player_id=w.player_id,
         bid=w.bid,
         status=w.status,
+    )
+
+
+class WaiverListItem(BaseModel):
+    waiver_id: _uuid.UUID
+    league_id: _uuid.UUID
+    team_id: _uuid.UUID
+    player_id: _uuid.UUID
+    bid: int
+    status: str
+
+
+class WaiverListResponse(BaseModel):
+    items: list[WaiverListItem]
+
+
+@router.get(
+    "/waivers", status_code=status.HTTP_200_OK, response_model=WaiverListResponse
+)
+def list_waivers(
+    league_id: _uuid.UUID = Query(...),
+    team_id: _uuid.UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> WaiverListResponse:
+    svc = WaiverService(db)
+    items = svc.list(
+        league_id=str(league_id),
+        team_id=str(team_id) if team_id else None,
+        limit=limit,
+        offset=offset,
+    )
+    return WaiverListResponse(
+        items=[
+            WaiverListItem(
+                waiver_id=w.waiver_id,
+                league_id=w.league_id,
+                team_id=w.team_id,
+                player_id=w.player_id,
+                bid=w.bid,
+                status=w.status,
+            )
+            for w in items
+        ]
     )

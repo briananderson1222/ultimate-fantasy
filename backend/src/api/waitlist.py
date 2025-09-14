@@ -1,0 +1,48 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from api.deps import get_db
+from services.waitlist_service import WaitlistService
+
+router = APIRouter()
+
+
+class WaitlistCreate(BaseModel):
+    email: EmailStr
+
+
+class WaitlistResponse(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+
+    class Config:
+        from_attributes = True
+
+
+@router.post(
+    "/waitlist",
+    response_model=WaitlistResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Join the waitlist",
+    tags=["waitlist"],
+)
+def join_waitlist(payload: WaitlistCreate, db: Session = Depends(get_db)) -> dict:
+    """Add a user's email to the waitlist for upcoming leagues."""
+    waitlist_service = WaitlistService(db)
+    try:
+        waitlist_entry = waitlist_service.add_to_waitlist(email=payload.email)
+        return waitlist_entry
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already exists on the waitlist.",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
+        )

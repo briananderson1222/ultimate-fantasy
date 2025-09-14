@@ -15,9 +15,9 @@ import importlib
 import os
 import sys
 import uuid
-import jwt
 from pathlib import Path
 
+import jwt
 from fastapi.testclient import TestClient
 
 

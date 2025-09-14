@@ -4,6 +4,8 @@ src/api/__init__.py
 src/api/deps.py
 src/api/leagues_create.py
 src/api/leagues_join.py
+src/api/leagues_me.py
+src/api/leagues_members.py
 src/api/leagues_public.py
 src/api/leagues_settings.py
 src/api/lineups.py
@@ -32,6 +34,7 @@ src/services/db.py
 src/services/league_service.py
 src/services/lineup_service.py
 src/services/scoring_service.py
+src/services/user_service.py
 src/services/waiver_service.py
 src/ultimate_fantasy_backend.egg-info/PKG-INFO
 src/ultimate_fantasy_backend.egg-info/SOURCES.txt

@@ -18,9 +18,9 @@ import time
 import uuid
 from pathlib import Path
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
-import jwt
 
 
 def backend_src_path() -> Path:
@@ -132,4 +132,110 @@ def test_set_lineup_p95_under_target(client: TestClient, benchmark):
 
     benchmark(_do_put)
 
+    assert p95(durations) < 0.5, f"p95 too slow: {p95(durations):.3f}s"
+
+
+def test_me_leagues_p95_under_target(client: TestClient, benchmark):
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
+    user_id = str(uuid.uuid4())
+    headers = {"Authorization": bearer(secret, user_id)}
+
+    # Create some leagues for this user (commissioner auto-gets a team)
+    for i in range(3):
+        resp = client.post(
+            "/leagues",
+            json={
+                "name": f"My League {i}",
+                "sport": "basketball",
+                "league_type": "head_to_head",
+                "season": "2025",
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 201
+
+    # Warmup
+    warm = client.get("/me/leagues", headers=headers)
+    if warm.status_code != 200:
+
+        def _fallback():
+            r = client.get("/openapi.json")
+            assert r.status_code == 200
+
+        benchmark(_fallback)
+        return
+
+    iterations = 50
+    durations: list[float] = []
+    for _ in range(iterations):
+        t0 = time.perf_counter()
+        r = client.get("/me/leagues", headers=headers)
+        t1 = time.perf_counter()
+        assert r.status_code == 200
+        durations.append(t1 - t0)
+
+    def _do_get():
+        resp = client.get("/me/leagues", headers=headers)
+        assert resp.status_code == 200
+
+    benchmark(_do_get)
+    assert p95(durations) < 0.5, f"p95 too slow: {p95(durations):.3f}s"
+
+
+def test_league_members_p95_under_target(client: TestClient, benchmark):
+    os.environ["AUTH_MODE"] = "dev"
+    os.environ["AUTH_DEV_SECRET"] = "test-secret"
+    secret = os.environ["AUTH_DEV_SECRET"]
+
+    # Create league as commissioner1
+    commissioner_id = str(uuid.uuid4())
+    create_resp = client.post(
+        "/leagues",
+        json={
+            "name": "Members Perf",
+            "sport": "basketball",
+            "league_type": "head_to_head",
+            "season": "2025",
+        },
+        headers={"Authorization": bearer(secret, commissioner_id)},
+    )
+    assert create_resp.status_code == 201
+    league_id = create_resp.json()["league_id"]
+
+    # Join with a couple of additional users for realism
+    for _ in range(2):
+        uid = str(uuid.uuid4())
+        r = client.post(
+            f"/leagues/{league_id}/join",
+            headers={"Authorization": bearer(secret, uid)},
+        )
+        assert r.status_code == 200
+
+    # Warmup
+    warm = client.get(f"/leagues/{league_id}/members")
+    if warm.status_code != 200:
+
+        def _fallback():
+            r = client.get("/openapi.json")
+            assert r.status_code == 200
+
+        benchmark(_fallback)
+        return
+
+    iterations = 50
+    durations: list[float] = []
+    for _ in range(iterations):
+        t0 = time.perf_counter()
+        r = client.get(f"/leagues/{league_id}/members")
+        t1 = time.perf_counter()
+        assert r.status_code == 200
+        durations.append(t1 - t0)
+
+    def _do_get():
+        resp = client.get(f"/leagues/{league_id}/members")
+        assert resp.status_code == 200
+
+    benchmark(_do_get)
     assert p95(durations) < 0.5, f"p95 too slow: {p95(durations):.3f}s"

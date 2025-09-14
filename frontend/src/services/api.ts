@@ -47,6 +47,36 @@ export type WaiverBidResponse = WaiverBidRequest & {
   waiver_id: string;
   status: string;
 };
+// Read API types
+export type MeLeagueItem = {
+  league_id: string;
+  name: string;
+  season: string;
+  team_id: string;
+};
+export type MeLeaguesResponse = { items: MeLeagueItem[] };
+
+export type MemberItem = { team_id: string; user_id: string; team_name: string };
+export type MembersResponse = { items: MemberItem[] };
+
+export type WaiverListItem = {
+  waiver_id: string;
+  league_id: string;
+  team_id: string;
+  player_id: string;
+  bid: number;
+  status: string;
+};
+export type WaiverListResponse = { items: WaiverListItem[] };
+
+export type LeagueBranding = {
+  // An optional map of CSS variable overrides like { "--color-primary": "#123456" }
+  theme?: Record<string, string>;
+  // Optional display name/logo overrides that the UI may use in the future
+  name?: string;
+  logo_url?: string | null;
+};
+export type LeagueBrandingOut = LeagueBranding & { league_id: string };
 
 export type LeaguePublic = {
   league_id: string;
@@ -54,6 +84,7 @@ export type LeaguePublic = {
   sport: string;
   league_type: string;
   season: string;
+  branding?: LeagueBranding;
 };
 
 export type JoinResponse = {
@@ -65,6 +96,15 @@ export type JoinResponse = {
 
 export type ScoreboardItem = { team_id: string; total_points: number; lineup_count?: number };
 export type ScoreboardResponse = { league_id: string; items: ScoreboardItem[] };
+
+// Preferences API
+export type PreferencesPayload = {
+  theme: "light" | "dark" | "custom";
+  density: "comfortable" | "compact";
+  locale: string;
+  layouts?: Record<string, unknown> | null;
+};
+export type PreferencesResponse = PreferencesPayload & { user_id: string };
 
 function authHeaders(): Record<string, string> {
   try {
@@ -127,47 +167,126 @@ export async function getPublicLeague(leagueId: string): Promise<LeaguePublic> {
   return await apiFetch<LeaguePublic>(`/leagues/${leagueId}/public`);
 }
 
+export async function getLeagueBranding(leagueId: string): Promise<LeagueBrandingOut> {
+  return await apiFetch<LeagueBrandingOut>(`/leagues/${leagueId}/branding`);
+}
+
+export async function updateLeagueBranding(
+  leagueId: string,
+  payload: LeagueBranding
+): Promise<LeagueBrandingOut> {
+  return await apiFetch<LeagueBrandingOut>(`/leagues/${leagueId}/branding`, {
+    method: "PUT",
+    headers: { ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+}
+
+// Preferences endpoints
+export async function getPreferences(): Promise<PreferencesResponse> {
+  return await apiFetch<PreferencesResponse>(`/me/preferences`, {
+    headers: { ...authHeaders() },
+  });
+}
+
+export async function updatePreferences(
+  payload: PreferencesPayload
+): Promise<PreferencesResponse> {
+  return await apiFetch<PreferencesResponse>(`/me/preferences`, {
+    method: "PUT",
+    headers: { ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+}
+// New read endpoints
+export async function getMyLeagues(): Promise<MeLeaguesResponse> {
+  return await apiFetch<MeLeaguesResponse>(`/me/leagues`, {
+    headers: { ...authHeaders() },
+  });
+}
+
+export async function getLeagueMembers(leagueId: string): Promise<MembersResponse> {
+  return await apiFetch<MembersResponse>(`/leagues/${leagueId}/members`);
+}
+
+export async function listWaivers(params: {
+  league_id: string;
+  team_id?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<WaiverListResponse> {
+  const p = new URLSearchParams();
+  p.set("league_id", params.league_id);
+  if (params.team_id) p.set("team_id", params.team_id);
+  p.set("limit", String(params.limit ?? 50));
+  p.set("offset", String(params.offset ?? 0));
+  return await apiFetch<WaiverListResponse>(`/waivers?${p.toString()}`);
+}
+
+export type LineupListItem = { lineup_id: string; team_id: string; game_day: string; players: LineupPlayer[]; version: number };
+export type LineupListResponse = { items: LineupListItem[] };
+
+export async function listLineups(params: {
+  team_id: string;
+  game_day?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<LineupListResponse> {
+  const p = new URLSearchParams();
+  p.set("team_id", params.team_id);
+  if (params.game_day) p.set("game_day", params.game_day);
+  p.set("limit", String(params.limit ?? 50));
+  p.set("offset", String(params.offset ?? 0));
+  return await apiFetch<LineupListResponse>(`/lineups?${p.toString()}`);
+}
+
 // Query keys
 export const queryKeys = {
   league: (id: string) => ["league", id] as const,
   scoreboard: (id: string) => ["scoreboard", id] as const,
+  myLeagues: () => ["myLeagues"] as const,
+  leagueMembers: (id: string) => ["leagueMembers", id] as const,
+  waivers: (args: { league_id: string; team_id?: string; limit?: number; offset?: number }) =>
+    ["waivers", args] as const,
+  lineups: (args: { team_id: string; game_day?: string; limit?: number; offset?: number }) =>
+    ["lineups", args] as const,
 };
 
 // React Query helpers
 export function useCreateLeague(
-  options?: UseMutationOptions<LeagueResponse, Error, { data: LeagueCreate; userId: string }>
+  options?: UseMutationOptions<LeagueResponse, Error, LeagueCreate>
 ) {
-  return useMutation<LeagueResponse, Error, { data: LeagueCreate; userId: string }>({
-    mutationFn: ({ data, userId }) => createLeague(data, userId),
+  return useMutation<LeagueResponse, Error, LeagueCreate>({
+    mutationFn: (data) => createLeague(data),
     ...options,
   });
 }
 
 export function useJoinLeague(
   leagueId: string,
-  options?: UseMutationOptions<JoinResponse, Error, { userId: string }>
+  options?: UseMutationOptions<JoinResponse, Error, void>
 ) {
-  return useMutation<JoinResponse, Error, { userId: string }>({
-    mutationFn: ({ userId }) => joinLeague(leagueId, userId),
+  return useMutation<JoinResponse, Error, void>({
+    mutationFn: () => joinLeague(leagueId),
     ...options,
   });
 }
 
 export function useUpdateLeagueSettings(
   leagueId: string,
-  options?: UseMutationOptions<RuleOut, Error, { data: RuleUpdate; userId: string }>
+  options?: UseMutationOptions<RuleOut, Error, RuleUpdate>
 ) {
-  return useMutation<RuleOut, Error, { data: RuleUpdate; userId: string }>({
-    mutationFn: ({ data, userId }) => updateLeagueSettings(leagueId, data, userId),
+  return useMutation<RuleOut, Error, RuleUpdate>({
+    mutationFn: (data) => updateLeagueSettings(leagueId, data),
     ...options,
   });
 }
 
 export function useSetLineup(
-  options?: UseMutationOptions<LineupResponse, Error, { data: LineupRequest; userId: string }>
+  options?: UseMutationOptions<LineupResponse, Error, LineupRequest>
 ) {
-  return useMutation<LineupResponse, Error, { data: LineupRequest; userId: string }>({
-    mutationFn: ({ data, userId }) => setLineup(data, userId),
+  return useMutation<LineupResponse, Error, LineupRequest>({
+    mutationFn: (data) => setLineup(data),
     ...options,
   });
 }
@@ -203,10 +322,10 @@ export function useScoreboard(
 }
 
 export function usePlaceWaiverBid(
-  options?: UseMutationOptions<WaiverBidResponse, Error, { data: WaiverBidRequest; userId: string }>
+  options?: UseMutationOptions<WaiverBidResponse, Error, WaiverBidRequest>
 ) {
-  return useMutation<WaiverBidResponse, Error, { data: WaiverBidRequest; userId: string }>({
-    mutationFn: ({ data, userId }) => placeWaiverBid(data, userId),
+  return useMutation<WaiverBidResponse, Error, WaiverBidRequest>({
+    mutationFn: (data) => placeWaiverBid(data),
     ...options,
   });
 }

@@ -14,12 +14,19 @@ class UserService:
     def ensure_user_from_claims(self, claims: dict[str, Any]) -> User:
         """Upsert a User based on JWT claims.
 
-        - Uses `sub` as stable external subject (stored in cognito_sub field).
+        - Uses `sub` as both user_id and cognito_sub for consistency.
         - Uses `email` and `name` claims when available.
         """
+        import uuid as _uuid
+
         sub = str(claims.get("sub", ""))
         if not sub:
             raise ValueError("missing sub in claims")
+
+        try:
+            user_id = _uuid.UUID(sub)
+        except ValueError:
+            raise ValueError(f"sub must be a valid UUID, got: {sub}")
 
         email = str(claims.get("email") or "").strip() or f"{sub}@example.dev"
         display_name = str(
@@ -30,7 +37,7 @@ class UserService:
         )
 
         existing = (
-            self.session.query(User).filter(User.cognito_sub == sub).one_or_none()
+            self.session.query(User).filter(User.user_id == user_id).one_or_none()
         )
         if existing:
             # Update basic fields if changed
@@ -46,7 +53,9 @@ class UserService:
                 self.session.flush()
             return existing
 
-        user = User(email=email, display_name=display_name, cognito_sub=sub)
+        user = User(
+            user_id=user_id, email=email, display_name=display_name, cognito_sub=sub
+        )
         self.session.add(user)
         self.session.flush()
         return user

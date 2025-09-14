@@ -29,8 +29,9 @@ test('join league via UI', async ({ page, request }) => {
 
   await page.goto(`/leagues/${league.league_id}`);
 
-  // Click Join
+  // Click Join and confirm dialog
   await page.getByRole('button', { name: 'Join' }).click();
+  await page.getByRole('button', { name: 'Confirm Join' }).click();
 
   await expect(page.getByText('Joined as')).toBeVisible();
 });
