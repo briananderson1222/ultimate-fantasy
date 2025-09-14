@@ -1,0 +1,130 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "UI Component Contract",
+    "version": "1.0.0",
+    "description": "Contract specification for shared UI components"
+  },
+  "components": {
+    "schemas": {
+      "UIComponent": {
+        "type": "object",
+        "required": ["name", "props", "platforms"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Z][a-zA-Z0-9]*$",
+            "description": "PascalCase component name"
+          },
+          "props": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentProp"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Available component variants"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Required peer dependencies"
+          }
+        }
+      },
+      "ComponentProp": {
+        "type": "object",
+        "required": ["name", "type", "required"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*$",
+            "description": "Property name"
+          },
+          "type": {
+            "type": "string",
+            "description": "TypeScript type"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Is required property"
+          },
+          "defaultValue": {
+            "description": "Default value if optional"
+          },
+          "description": {
+            "type": "string",
+            "description": "Property description"
+          }
+        }
+      },
+      "Platform": {
+        "type": "object",
+        "required": ["name", "styling"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": ["web", "mobile"],
+            "description": "Platform name"
+          },
+          "styling": {
+            "type": "string",
+            "enum": ["tailwind", "stylesheet"],
+            "description": "Styling approach"
+          },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Platform-specific imports"
+          },
+          "adapters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Required style adapters"
+          }
+        }
+      },
+      "DesignToken": {
+        "type": "object",
+        "required": ["name", "category", "value"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Token name in kebab-case"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["color", "spacing", "typography", "shadow"],
+            "description": "Token category"
+          },
+          "value": {
+            "description": "Default token value"
+          },
+          "webValue": {
+            "description": "Web-specific value"
+          },
+          "mobileValue": {
+            "description": "Mobile-specific value"
+          }
+        }
+      }
+    }
+  }
+}

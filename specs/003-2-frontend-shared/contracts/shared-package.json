@@ -1,0 +1,135 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Shared Package API",
+    "version": "1.0.0",
+    "description": "Internal API contracts for shared package management"
+  },
+  "components": {
+    "schemas": {
+      "PackageManifest": {
+        "type": "object",
+        "required": ["name", "version", "platform", "exports"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[@a-z0-9-~][a-z0-9-._~]*\\/[a-z0-9-._~]*$",
+            "description": "Package name following npm conventions"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Semantic version"
+          },
+          "platform": {
+            "type": "string",
+            "enum": ["shared", "web", "mobile", "universal"],
+            "description": "Target platform"
+          },
+          "exports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Export"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Export": {
+        "type": "object",
+        "required": ["name", "type", "signature", "platform"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*$",
+            "description": "Valid JavaScript identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["function", "component", "hook", "constant", "type"],
+            "description": "Export type"
+          },
+          "signature": {
+            "type": "string",
+            "description": "TypeScript signature"
+          },
+          "platform": {
+            "type": "string",
+            "enum": ["shared", "web", "mobile", "universal"],
+            "description": "Platform compatibility"
+          },
+          "deprecated": {
+            "type": "boolean",
+            "default": false,
+            "description": "Deprecation status"
+          }
+        }
+      },
+      "ApiServiceContract": {
+        "type": "object",
+        "required": ["name", "endpoints", "platform"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Service identifier"
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Endpoint"
+            }
+          },
+          "baseUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "API base URL"
+          },
+          "authentication": {
+            "type": "boolean",
+            "default": false,
+            "description": "Requires authentication"
+          },
+          "platform": {
+            "type": "string",
+            "enum": ["universal"],
+            "description": "Platform support"
+          }
+        }
+      },
+      "Endpoint": {
+        "type": "object",
+        "required": ["path", "method"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^\\/[a-zA-Z0-9\\/_\\-\\{\\}]*$",
+            "description": "URL path"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            "description": "HTTP method"
+          },
+          "requestSchema": {
+            "type": "object",
+            "description": "Request validation schema"
+          },
+          "responseSchema": {
+            "type": "object",
+            "description": "Response validation schema"
+          },
+          "authenticated": {
+            "type": "boolean",
+            "default": false,
+            "description": "Requires authentication"
+          }
+        }
+      }
+    }
+  }
+}
