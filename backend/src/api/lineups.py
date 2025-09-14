@@ -37,6 +37,19 @@ def set_lineup(
     db: Session = Depends(get_db),
     _user_id: _uuid.UUID = Depends(get_current_user_id),
 ) -> LineupResponse:
+    """
+    Set the lineup for a specific team and game day.
+
+    This endpoint allows an authenticated user to set their team's lineup for a
+    particular day. The user must be the owner of the team.
+
+    - **team_id**: The unique identifier of the team.
+    - **game_day**: The date for which the lineup is being set.
+    - **players**: A list of players and their assigned positions in the lineup.
+
+    The service layer handles the logic of creating or updating the lineup for the
+    given day.
+    """
 
     svc = LineupService(db)
     lu = svc.set_lineup(
@@ -75,6 +88,17 @@ def list_lineups(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> LineupListResponse:
+    """
+    List historical lineups for a team.
+
+    This endpoint retrieves a paginated list of lineups for a specific team.
+    It can be filtered by `game_day`.
+
+    - **team_id**: The unique identifier of the team.
+    - **game_day** (optional): Filter lineups for a specific date.
+    - **limit**: The maximum number of lineups to return.
+    - **offset**: The starting point for pagination.
+    """
     svc = LineupService(db)
     items = svc.list(
         team_id=str(team_id), game_day=game_day, limit=limit, offset=offset

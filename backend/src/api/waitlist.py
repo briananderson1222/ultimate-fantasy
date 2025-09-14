@@ -33,7 +33,16 @@ class WaitlistResponse(BaseModel):
 def join_waitlist(
     payload: WaitlistCreate, db: Session = Depends(get_db)
 ) -> "WaitlistResponse":
-    """Add a user's email to the waitlist for upcoming leagues."""
+    """
+    Add a user's email to the waitlist.
+
+    This public endpoint allows a user to submit their email address to be added
+    to the platform's waitlist. The service ensures that emails are unique.
+
+    - **email**: The user's email address.
+
+    If the email already exists, it returns a 409 Conflict error.
+    """
     waitlist_service = WaitlistService(db)
     try:
         waitlist_entry = waitlist_service.add_to_waitlist(email=payload.email)

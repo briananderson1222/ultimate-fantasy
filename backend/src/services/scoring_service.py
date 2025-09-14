@@ -43,6 +43,7 @@ class ScoringService:
         - returns list of { team_id: UUID, total_points: int, lineup_count: int }
           sorted by total_points desc
         """
+        print(f"ScoringService.compute_league_scoreboard - league_id: {league_id}") # Added
         import uuid as _uuid
 
         from models.lineup import Lineup
@@ -61,6 +62,7 @@ class ScoringService:
             q = q.filter(Lineup.game_day == game_day)
 
         lineups: list[Lineup] = q.all()
+        print(f"ScoringService.compute_league_scoreboard - lineups found: {len(lineups)}") # Added
 
         totals: dict[_uuid.UUID, int] = {}
         counts: dict[_uuid.UUID, int] = {}

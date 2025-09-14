@@ -30,6 +30,15 @@ def get_my_preferences(
     user_id: _uuid.UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ) -> PreferencesOut:
+    """
+    Get the preferences for the current user.
+
+    This endpoint retrieves the application preferences for the authenticated user,
+    including their selected theme, density, locale, and custom layouts.
+
+    If no preferences have been set for the user, it returns a default set of
+    preferences.
+    """
     row = (
         db.query(UserPreference).filter(UserPreference.user_id == user_id).one_or_none()
     )
@@ -58,6 +67,17 @@ def put_my_preferences(
     user_id: _uuid.UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ) -> PreferencesOut:
+    """
+    Update the preferences for the current user.
+
+    This endpoint allows an authenticated user to set or update their application
+    preferences.
+
+    - **theme**: The name of the UI theme (e.g., 'light', 'dark').
+    - **density**: The UI density (e.g., 'comfortable', 'compact').
+    - **locale**: The user's preferred locale (e.g., 'en-US').
+    - **layouts**: A dictionary to store custom UI layout configurations.
+    """
     row = (
         db.query(UserPreference).filter(UserPreference.user_id == user_id).one_or_none()
     )

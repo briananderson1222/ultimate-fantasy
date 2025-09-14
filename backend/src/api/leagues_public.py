@@ -30,6 +30,15 @@ def public_league(
     leagueId: Annotated[str, Path()],
     db: Session = Depends(get_db),
 ) -> LeaguePublic:
+    """
+    Get public information for a specific league.
+
+    This endpoint retrieves basic, publicly-accessible information about a league,
+    such as its name, sport, type, and season. This is a public endpoint and does
+    not require authentication.
+
+    - **leagueId**: The unique identifier of the league.
+    """
     try:
         league_uuid = _uuid.UUID(leagueId)
     except ValueError:

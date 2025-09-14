@@ -30,6 +30,15 @@ def list_my_leagues(
     user_id: _uuid.UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ) -> MeLeaguesResponse:
+    """
+    List all leagues the current user has joined.
+
+    This endpoint retrieves a list of all leagues that the authenticated user
+    is a member of. The user is identified via their authentication token.
+
+    For each league, it returns the `league_id`, `name`, `season`, and the user's
+    corresponding `team_id` in that league.
+    """
     items = LeagueService(db).list_by_user(user_id=user_id)
     casted = [
         MeLeagueItem(

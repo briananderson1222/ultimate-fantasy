@@ -31,6 +31,16 @@ class MembersResponse(BaseModel):
 def list_members(
     leagueId: Annotated[str, Path()], db: Session = Depends(get_db)
 ) -> MembersResponse:
+    """
+    List all members of a specific league.
+
+    This endpoint retrieves a list of all members (and their teams) for a given
+    league. This is a public endpoint and does not require authentication.
+
+    - **leagueId**: The unique identifier of the league.
+
+    For each member, it returns their `team_id`, `user_id`, and `team_name`.
+    """
     try:
         league_uuid = _uuid.UUID(leagueId)
     except ValueError:

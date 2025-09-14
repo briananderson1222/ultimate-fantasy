@@ -36,6 +36,19 @@ def update_league_settings(
     db: Session = Depends(get_db),
     _user_id: _uuid.UUID = Depends(get_current_user_id),
 ) -> RuleOut:
+    """
+    Update the settings for a specific league.
+
+    This endpoint allows an authenticated user (typically the commissioner) to update
+    the rules and settings for a league. The current implementation adds a new rule
+    entry for each request.
+
+    - **leagueId**: The unique identifier of the league.
+    - **payload**: A `RuleUpdate` object containing the name and value of the rule to add.
+
+    The user must have administrative privileges for the league (validation handled
+    by dependencies).
+    """
 
     try:
         league_uuid = _uuid.UUID(leagueId)

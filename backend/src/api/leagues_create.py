@@ -36,6 +36,20 @@ def create_league(
     db: Session = Depends(get_db),
     commissioner_id: _uuid.UUID = Depends(get_current_user_id),
 ) -> LeagueResponse:
+    """
+    Create a new fantasy league.
+
+    This endpoint allows an authenticated user to create a new league. The user who
+    creates the league is automatically assigned as the commissioner.
+
+    - **name**: The name of the league.
+    - **sport**: The sport the league is for (e.g., 'basketball', 'football').
+    - **league_type**: The type of league (e.g., 'head_to_head', 'roto').
+    - **season**: The season the league is for (e.g., '2025').
+
+    Upon successful creation, it returns the new league's details, including a
+    unique `league_id` and an `invite_link` that other users can use to join.
+    """
 
     svc = LeagueService(db)
     league = svc.create(

@@ -67,6 +67,13 @@ class LeagueService:
         league_id: _uuid.UUID,
         team_name: str | None = None,
     ) -> Team:
+        print(f"LeagueService.join - league_id: {league_id}") # Add this
+        # Ensure league exists
+        league = self.session.query(League).filter(League.league_id == league_id).one_or_none()
+        print(f"LeagueService.join - league found: {league is not None}") # Add this
+        if not league:
+            raise ValueError(f"League with ID {league_id} not found.") # Or a more specific exception
+
         # Ensure user exists
         user = self.session.query(User).filter(User.user_id == user_id).one_or_none()
         if not user:
@@ -87,6 +94,7 @@ class LeagueService:
         self.session.add(team)
         self.session.flush()
         self.session.commit()
+        print(f"LeagueService.join - returning team: {team}") # Add this
         return team
 
     # Read helpers for UI lists

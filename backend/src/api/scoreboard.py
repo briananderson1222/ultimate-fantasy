@@ -33,11 +33,29 @@ def get_scoreboard(
     leagueId: Annotated[str, Path()],
     db: Session = Depends(get_db),
 ) -> ScoreboardResponse:
+    """
+    Get the scoreboard for a specific league.
+
+    This endpoint computes and returns the current scoreboard for a given league.
+    The scoreboard includes the total points for each team in the league.
+
+    - **leagueId**: The unique identifier of the league.
+
+    The scoring logic is handled by the `ScoringService`.
+    """
     svc = ScoringService(db)
-    items = [
-        ScoreboardItem(**it)
-        for it in svc.compute_league_scoreboard(
-            league_id=_uuid.UUID(leagueId), game_day=None
-        )
-    ]
+    try:
+        items = [
+            ScoreboardItem(**it)
+            for it in svc.compute_league_scoreboard(
+                league_id=_uuid.UUID(leagueId), game_day=None
+            )
+        ]
+    except Exception as e:
+        # Log the exception for debugging
+        print(f"Error computing scoreboard: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found or other error"
+        ) from e
+
     return ScoreboardResponse(league_id=_uuid.UUID(leagueId), items=items)

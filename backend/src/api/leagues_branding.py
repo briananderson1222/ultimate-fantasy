@@ -32,6 +32,12 @@ def get_branding(
     leagueId: Annotated[str, Path()],
     db: Session = Depends(get_db),
 ) -> BrandingOut:
+    """
+    Get the branding settings for a specific league.
+
+    This endpoint retrieves the custom theme, name, and logo URL for a given league.
+    If no custom branding has been set for the league, it returns default empty values.
+    """
     try:
         league_uuid = _uuid.UUID(leagueId)
     except ValueError:
@@ -62,6 +68,13 @@ def put_branding(
     db: Session = Depends(get_db),
     _user_id: _uuid.UUID = Depends(get_current_user_id),
 ) -> BrandingOut:
+    """
+    Update the branding settings for a specific league.
+
+    This endpoint allows an authenticated user to set or update the custom theme,
+    name, and logo URL for a league. The user must be a member of the league
+    (validation handled by `get_current_user_id` dependency and related logic not shown here).
+    """
     try:
         league_uuid = _uuid.UUID(leagueId)
     except ValueError:
