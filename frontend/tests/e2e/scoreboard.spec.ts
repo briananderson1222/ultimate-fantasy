@@ -8,7 +8,7 @@ test("scoreboard endpoint returns items (may be empty)", async ({ request }) => 
   const token = makeHS256(user, secret);
 
   // Create a league
-  const create = await request.post("/leagues", {
+  const create = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token}` },
     data: { name: "SB League", sport: "basketball", league_type: "head_to_head", season: "2025" },
   });

@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ThemeProvider } from "./theme";
+import { ThemeProvider as DesignSystemThemeProvider } from "../components/design-system/providers/ThemeProvider";
 import { I18nProvider } from "./i18n";
 import { ToastProvider } from "../components/ui/toast";
 import CommandPalette from "../components/CommandPalette";
@@ -14,12 +15,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
         <ThemeProvider>
-          <I18nProvider>
-            <ToastProvider>
-              {children}
-              <CommandPalette />
-            </ToastProvider>
-          </I18nProvider>
+          <DesignSystemThemeProvider>
+            <I18nProvider>
+              <ToastProvider>
+                {children}
+                <CommandPalette />
+              </ToastProvider>
+            </I18nProvider>
+          </DesignSystemThemeProvider>
         </ThemeProvider>
       </PreferencesProvider>
     </QueryClientProvider>

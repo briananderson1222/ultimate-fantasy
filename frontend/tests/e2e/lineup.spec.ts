@@ -8,7 +8,7 @@ test("set lineup via UI", async ({ page, request }) => {
   const token1 = makeHS256(user1, secret);
 
   // Create league via API
-  const create = await request.post("/leagues", {
+  const create = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token1}` },
     data: {
       name: "Lineup League",
@@ -19,6 +19,9 @@ test("set lineup via UI", async ({ page, request }) => {
   });
   expect(create.status()).toBe(201);
   const league = await create.json();
+
+  // Add a small delay to ensure league is committed
+  await page.waitForTimeout(1000);
 
   // Join to get a team_id
   const user2 = crypto.randomUUID();

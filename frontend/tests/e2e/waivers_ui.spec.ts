@@ -8,7 +8,7 @@ test("waivers page shows recent bid after placing one", async ({ page, request }
   const token = makeHS256(user, secret);
 
   // Create league and join to get a team_id for this user
-  const create = await request.post("/leagues", {
+  const create = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       name: "Waivers UI League",
@@ -19,6 +19,9 @@ test("waivers page shows recent bid after placing one", async ({ page, request }
   });
   expect(create.status()).toBe(201);
   const { league_id } = await create.json();
+
+  // Add a small delay to ensure league is committed
+  await page.waitForTimeout(1000);
 
   const join = await request.post(`/leagues/${league_id}/join`, {
     headers: { Authorization: `Bearer ${token}` },

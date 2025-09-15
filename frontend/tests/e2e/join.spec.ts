@@ -8,7 +8,7 @@ test("join league via UI", async ({ page, request }) => {
   const token1 = makeHS256(user1, secret);
 
   // Create league via API using bearer token
-  const create = await request.post("/leagues", {
+  const create = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token1}` },
     data: {
       name: "Join League",

@@ -7,7 +7,7 @@ test("widget settings persist for scoreboard", async ({ page }) => {
   await page.getByLabel("Settings for Scoreboard").click();
   const input = page.getByPlaceholder("optional league uuid");
   await input.fill("00000000-0000-0000-0000-00000000abcd");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
 
   // Reload and verify it persisted (open again and check value)
   await page.reload();

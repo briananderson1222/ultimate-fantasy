@@ -8,7 +8,7 @@ test("My Leagues list renders after create", async ({ page, request }) => {
   const token = makeHS256(user, secret);
 
   // Create league via API using bearer token (commissioner becomes a member)
-  const create = await request.post("/leagues", {
+  const create = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       name: "My Leagues UI",

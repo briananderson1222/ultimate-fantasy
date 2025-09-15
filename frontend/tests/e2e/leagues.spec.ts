@@ -24,7 +24,7 @@ test("create league via API responds 201", async ({ request }) => {
   const sub = crypto.randomUUID();
   const token = makeHS256(sub, secret);
 
-  const resp = await request.post("/leagues", {
+  const resp = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       name: "E2E League",
@@ -33,7 +33,9 @@ test("create league via API responds 201", async ({ request }) => {
       season: "2025",
     },
   });
-  expect(resp.status()).toBe(201);
+  console.log("API Response Status:", resp.status());
   const body = await resp.json();
+  console.log("API Response Body:", body);
+  expect(resp.status()).toBe(201);
   expect(body).toHaveProperty("league_id");
 });

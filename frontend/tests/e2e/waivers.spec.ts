@@ -8,7 +8,7 @@ test("place waiver bid via API returns 201", async ({ request }) => {
   const token = makeHS256(user, secret);
 
   // Create a league and join to get team id
-  const create = await request.post("/leagues", {
+  const create = await request.post("http://localhost:8000/leagues", {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       name: "Waivers League",
@@ -22,14 +22,14 @@ test("place waiver bid via API returns 201", async ({ request }) => {
 
   const user2 = crypto.randomUUID();
   const token2 = makeHS256(user2, secret);
-  const join = await request.post(`/leagues/${league_id}/join`, {
+  const join = await request.post(`http://localhost:8000/leagues/${league_id}/join`, {
     headers: { Authorization: `Bearer ${token2}` },
   });
   expect(join.status()).toBe(200);
   const { team_id } = await join.json();
 
   // Place bid (player_id arbitrary in sqlite dev)
-  const bid = await request.post("/waivers/bids", {
+  const bid = await request.post("http://localhost:8000/waivers/bids", {
     headers: { Authorization: `Bearer ${token}` },
     data: { league_id, team_id, player_id: crypto.randomUUID(), bid: 11 },
   });
