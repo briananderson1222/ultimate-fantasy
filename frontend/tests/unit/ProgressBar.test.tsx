@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ProgressBar } from '../../src/components/design-system/primitives/ProgressBar';
 import { ThemeProvider } from '../../src/components/design-system/providers/ThemeProvider';

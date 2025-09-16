@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MatchCard } from '../../src/components/design-system/patterns/MatchCard';
 import { ThemeProvider } from '../../src/components/design-system/providers/ThemeProvider';

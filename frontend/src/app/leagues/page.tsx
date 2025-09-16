@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { getMyLeagues } from "../../services/api";
+import { LeaguesService, httpClient } from "@ultimate-fantasy/api-client";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Card, CardHeader, CardTitle } from "../../components/ui/card";
 import { EmptyState } from "../../components/ui/empty-state";
@@ -17,9 +17,11 @@ export default function LeaguesListPage() {
   const [inviteLink, setInviteLink] = useState("");
   const [error, setError] = useState("");
 
+  const leaguesService = LeaguesService.create(httpClient);
+
   const leagues = useQuery({
     queryKey: ["myLeagues"],
-    queryFn: getMyLeagues,
+    queryFn: () => leaguesService.getMyLeagues(),
   });
 
   function handleJoinLeague(e: React.FormEvent) {

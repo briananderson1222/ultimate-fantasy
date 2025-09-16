@@ -16,15 +16,10 @@ import {
 } from "lucide-react";
 import {
   DEFAULT_WIDGETS,
-  loadLayout,
-  saveLayout,
-  loadSizes,
-  saveSizes,
-  loadWidgetSettings,
-  saveWidgetSettings,
+  dashboardUtils,
   type WidgetKey,
   type WidgetSizes,
-} from "../../lib/dashboard";
+} from "@ultimate-fantasy/shared-logic";
 
 type WidgetMeta = { key: WidgetKey; title: string };
 const WIDGETS: WidgetMeta[] = [
@@ -66,13 +61,13 @@ export default function DashboardPage() {
     waivers: 1,
     tips: 1,
   });
-  const [settings, setSettings] = useState(loadWidgetSettings());
+  const [settings, setSettings] = useState(dashboardUtils.loadWidgetSettings());
   const [openKey, setOpenKey] = useState<WidgetKey | null>(null);
 
   useEffect(() => {
-    setOrder(loadLayout());
-    setSizes(loadSizes());
-    setSettings(loadWidgetSettings());
+    setOrder(dashboardUtils.loadLayout());
+    setSizes(dashboardUtils.loadSizes());
+    setSettings(dashboardUtils.loadWidgetSettings());
   }, []);
 
   function moveUp(idx: number) {
@@ -94,9 +89,9 @@ export default function DashboardPage() {
     setSaved(false);
   }
   function save() {
-    saveLayout(order);
-    saveSizes(sizes);
-    saveWidgetSettings(settings);
+    dashboardUtils.saveLayout(order);
+    dashboardUtils.saveSizes(sizes);
+    dashboardUtils.saveWidgetSettings(settings);
     setSaved(true);
   }
 
@@ -275,7 +270,7 @@ export default function DashboardPage() {
                 <button
                   className="rounded bg-[var(--color-primary)] px-3 py-2 text-sm text-[var(--color-primary-contrast)] hover:opacity-90"
                   onClick={() => {
-                    saveWidgetSettings(settings);
+                    dashboardUtils.saveWidgetSettings(settings);
                     setOpenKey(null);
                   }}
                 >
