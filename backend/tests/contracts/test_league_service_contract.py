@@ -6,8 +6,8 @@ and MUST FAIL initially to follow TDD principles.
 """
 import pytest
 from typing import List
-from backend.src.domains.shared.interfaces.league_service import LeagueServiceInterface
-from backend.src.domains.users.models.user import User
+from src.domains.shared.interfaces.league_service import LeagueServiceInterface
+from src.domains.users.models.user import User
 
 
 class TestLeagueServiceContract:
@@ -17,7 +17,7 @@ class TestLeagueServiceContract:
     def league_service(self) -> LeagueServiceInterface:
         """Get LeagueService implementation."""
         # This will fail until the interface and implementation are created
-        from backend.src.domains.leagues.services.league_service import LeagueService
+        from src.domains.leagues.services.league_service import LeagueService
         return LeagueService()
 
     @pytest.mark.asyncio
@@ -63,7 +63,7 @@ class TestLeagueServiceContract:
 
         # Act & Assert
         # This will fail until LeagueSettings model is defined
-        from backend.src.domains.leagues.models.league import LeagueSettings
+        from src.domains.leagues.models.league import LeagueSettings
 
         settings = await league_service.get_league_settings(league_id)
         assert isinstance(settings, LeagueSettings)
