@@ -41,41 +41,41 @@
 - Paths assume backend restructuring with existing frontend
 
 ## Phase 3.1: Setup & Infrastructure
-- [ ] T001 Create baseline performance benchmark tests in backend/tests/performance/test_baseline.py
-- [ ] T002 [P] Create domain directory structure: backend/src/domains/{leagues,users,lineups,trading,scoring,waitlist,shared}/
-- [ ] T003 [P] Create infrastructure directory structure: backend/src/infrastructure/{database,middleware,security,logging}/
-- [ ] T004 [P] Create domain-specific test directories: backend/tests/domains/{leagues,users,lineups,trading,scoring,waitlist}/
-- [ ] T005 [P] Create contract test directories: backend/tests/contracts/
-- [ ] T006 [P] Create integration test directories: backend/tests/integration/
+- [x] T001 Create baseline performance benchmark tests in backend/tests/performance/test_baseline.py
+- [x] T002 [P] Create domain directory structure: backend/src/domains/{leagues,users,lineups,trading,scoring,waitlist,shared}/
+- [x] T003 [P] Create infrastructure directory structure: backend/src/infrastructure/{database,middleware,security,logging}/
+- [x] T004 [P] Create domain-specific test directories: backend/tests/domains/{leagues,users,lineups,trading,scoring,waitlist}/
+- [x] T005 [P] Create contract test directories: backend/tests/contracts/
+- [x] T006 [P] Create integration test directories: backend/tests/integration/
 
 ## Phase 3.2: Domain Interface Contracts (TDD) ⚠️ MUST COMPLETE BEFORE 3.3
 **CRITICAL: These tests MUST be written and MUST FAIL before ANY implementation**
 
 ### Contract Tests for Domain Interfaces
-- [ ] T007 [P] Contract test for LeagueService.get_league_members in backend/tests/contracts/test_league_service_contract.py
-- [ ] T008 [P] Contract test for LeagueService.validate_league_access in backend/tests/contracts/test_league_service_contract.py
-- [ ] T009 [P] Contract test for UserService.get_user in backend/tests/contracts/test_user_service_contract.py
-- [ ] T010 [P] Contract test for UserService.validate_user_permissions in backend/tests/contracts/test_user_service_contract.py
-- [ ] T011 [P] Contract test for LineupService.get_lineup in backend/tests/contracts/test_lineup_service_contract.py
-- [ ] T012 [P] Contract test for LineupService.validate_lineup_ownership in backend/tests/contracts/test_lineup_service_contract.py
-- [ ] T013 [P] Contract test for TradingService.validate_trade_eligibility in backend/tests/contracts/test_trading_service_contract.py
-- [ ] T014 [P] Contract test for ScoringService.calculate_lineup_score in backend/tests/contracts/test_scoring_service_contract.py
-- [ ] T015 [P] Contract test for WaitlistService.add_to_waitlist in backend/tests/contracts/test_waitlist_service_contract.py
+- [x] T007 [P] Contract test for LeagueService.get_league_members in backend/tests/contracts/test_league_service_contract.py
+- [x] T008 [P] Contract test for LeagueService.validate_league_access in backend/tests/contracts/test_league_service_contract.py
+- [x] T009 [P] Contract test for UserService.get_user in backend/tests/contracts/test_user_service_contract.py
+- [x] T010 [P] Contract test for UserService.validate_user_permissions in backend/tests/contracts/test_user_service_contract.py
+- [x] T011 [P] Contract test for LineupService.get_lineup in backend/tests/contracts/test_lineup_service_contract.py
+- [x] T012 [P] Contract test for LineupService.validate_lineup_ownership in backend/tests/contracts/test_lineup_service_contract.py
+- [x] T013 [P] Contract test for TradingService.validate_trade_eligibility in backend/tests/contracts/test_trading_service_contract.py
+- [x] T014 [P] Contract test for ScoringService.calculate_lineup_score in backend/tests/contracts/test_scoring_service_contract.py
+- [x] T015 [P] Contract test for WaitlistService.add_to_waitlist in backend/tests/contracts/test_waitlist_service_contract.py
 
 ### Integration Tests for Cross-Domain Communication
-- [ ] T016 [P] Integration test for league-user interaction in backend/tests/integration/test_league_user_boundaries.py
-- [ ] T017 [P] Integration test for lineup-league interaction in backend/tests/integration/test_lineup_league_boundaries.py
-- [ ] T018 [P] Integration test for trading-user interaction in backend/tests/integration/test_trading_user_boundaries.py
-- [ ] T019 [P] Integration test for scoring-lineup interaction in backend/tests/integration/test_scoring_lineup_boundaries.py
-- [ ] T020 [P] Integration test for waitlist-league interaction in backend/tests/integration/test_waitlist_league_boundaries.py
+- [x] T016 [P] Integration test for league-user interaction in backend/tests/integration/test_league_user_boundaries.py
+- [x] T017 [P] Integration test for lineup-league interaction in backend/tests/integration/test_lineup_league_boundaries.py
+- [x] T018 [P] Integration test for trading-user interaction in backend/tests/integration/test_trading_user_boundaries.py
+- [x] T019 [P] Integration test for scoring-lineup interaction in backend/tests/integration/test_scoring_lineup_boundaries.py
+- [x] T020 [P] Integration test for waitlist-league interaction in backend/tests/integration/test_waitlist_league_boundaries.py
 
 ### Domain Isolation Tests
-- [ ] T021 [P] Domain independence test for leagues domain in backend/tests/domains/leagues/test_domain_isolation.py
-- [ ] T022 [P] Domain independence test for users domain in backend/tests/domains/users/test_domain_isolation.py
-- [ ] T023 [P] Domain independence test for lineups domain in backend/tests/domains/lineups/test_domain_isolation.py
-- [ ] T024 [P] Domain independence test for trading domain in backend/tests/domains/trading/test_domain_isolation.py
-- [ ] T025 [P] Domain independence test for scoring domain in backend/tests/domains/scoring/test_domain_isolation.py
-- [ ] T026 [P] Domain independence test for waitlist domain in backend/tests/domains/waitlist/test_domain_isolation.py
+- [x] T021 [P] Domain independence test for leagues domain in backend/tests/domains/leagues/test_domain_isolation.py
+- [x] T022 [P] Domain independence test for users domain in backend/tests/domains/users/test_domain_isolation.py
+- [x] T023 [P] Domain independence test for lineups domain in backend/tests/domains/lineups/test_domain_isolation.py
+- [x] T024 [P] Domain independence test for trading domain in backend/tests/domains/trading/test_domain_isolation.py
+- [x] T025 [P] Domain independence test for scoring domain in backend/tests/domains/scoring/test_domain_isolation.py
+- [x] T026 [P] Domain independence test for waitlist domain in backend/tests/domains/waitlist/test_domain_isolation.py
 
 ## Phase 3.3: Domain Structure Implementation (ONLY after tests are failing)
 
