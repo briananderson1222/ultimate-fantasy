@@ -3,13 +3,15 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable
 from datetime import date
+from typing import List
 
 from sqlalchemy.orm import Session
 
 from src.domains.lineups.models.lineup import Lineup
+from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
 
 
-class LineupService:
+class LineupService(LineupServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
 
@@ -51,3 +53,95 @@ class LineupService:
             q = q.filter(Lineup.game_day == game_day)
         q = q.offset(max(0, offset)).limit(max(1, min(100, limit)))
         return q.all()
+
+    # Interface implementation methods
+    async def get_lineup(self, lineup_id: str) -> Lineup:
+        """Get lineup by ID."""
+        lineup_uuid = uuid.UUID(lineup_id)
+        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        if not lineup:
+            raise ValueError(f"Lineup with ID {lineup_id} not found")
+        return lineup
+
+    async def validate_lineup_ownership(self, lineup_id: str, user_id: str) -> bool:
+        """Validate if a user owns a specific lineup."""
+        from src.domains.leagues.models.team import Team
+
+        lineup_uuid = uuid.UUID(lineup_id)
+        user_uuid = uuid.UUID(user_id)
+
+        # Get the lineup
+        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        if not lineup:
+            return False
+
+        # Check if the user owns the team that owns this lineup
+        team = self.session.query(Team).filter(Team.team_id == lineup.team_id).first()
+        if not team:
+            return False
+
+        return team.user_id == user_uuid
+
+    async def get_lineup_by_user_league(self, user_id: str, league_id: str) -> Lineup:
+        """Get user's lineup for a specific league."""
+        from src.domains.leagues.models.team import Team
+
+        user_uuid = uuid.UUID(user_id)
+        league_uuid = uuid.UUID(league_id)
+
+        # Find the user's team in the league
+        team = (
+            self.session.query(Team)
+            .filter(Team.user_id == user_uuid, Team.league_id == league_uuid)
+            .first()
+        )
+        if not team:
+            raise ValueError(f"User {user_id} has no team in league {league_id}")
+
+        # Find the most recent lineup for this team
+        lineup = (
+            self.session.query(Lineup)
+            .filter(Lineup.team_id == team.team_id)
+            .order_by(Lineup.game_day.desc())
+            .first()
+        )
+        if not lineup:
+            raise ValueError(f"No lineup found for user {user_id} in league {league_id}")
+
+        return lineup
+
+    async def get_lineups_by_league(self, league_id: str) -> List[Lineup]:
+        """Get all lineups for a specific league."""
+        from src.domains.leagues.models.team import Team
+
+        league_uuid = uuid.UUID(league_id)
+
+        # Get all teams in the league
+        teams = self.session.query(Team).filter(Team.league_id == league_uuid).all()
+        team_ids = [team.team_id for team in teams]
+
+        # Get all lineups for these teams
+        lineups = self.session.query(Lineup).filter(Lineup.team_id.in_(team_ids)).all()
+        return lineups
+
+    async def is_lineup_active(self, lineup_id: str) -> bool:
+        """Check if a lineup is active for the current period."""
+        lineup_uuid = uuid.UUID(lineup_id)
+        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        if not lineup:
+            return False
+
+        # For now, all lineups are considered active
+        # In the future, this could check against current game week/day
+        return True
+
+    async def get_lineup_slots(self, lineup_id: str) -> List[dict]:
+        """Get all slots for a specific lineup."""
+        lineup_uuid = uuid.UUID(lineup_id)
+        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        if not lineup:
+            raise ValueError(f"Lineup with ID {lineup_id} not found")
+
+        # Return the players list as slots
+        # This could be enhanced to return actual LineupSlot objects in the future
+        return lineup.players or []

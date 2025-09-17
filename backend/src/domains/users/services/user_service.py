@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+import uuid as _uuid
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
 from src.domains.users.models.user import User
+from src.domains.shared.interfaces.user_service import UserServiceInterface
 
 
-class UserService:
+class UserService(UserServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
 
@@ -59,3 +61,52 @@ class UserService:
         self.session.add(user)
         self.session.flush()
         return user
+
+    # Interface implementation methods
+    async def get_user(self, user_id: str) -> User:
+        """Get user by ID."""
+        user_uuid = _uuid.UUID(user_id)
+        user = self.session.query(User).filter(User.user_id == user_uuid).first()
+        if not user:
+            raise ValueError(f"User with ID {user_id} not found")
+        return user
+
+    async def validate_user_permissions(
+        self, user_id: str, resource: str, action: str = "read"
+    ) -> bool:
+        """Validate user permissions for a specific resource and action."""
+        # Basic implementation - check if user exists and is active
+        user_uuid = _uuid.UUID(user_id)
+        user = self.session.query(User).filter(User.user_id == user_uuid).first()
+        if not user:
+            return False
+
+        # For now, all active users have read permissions
+        # More complex permission logic can be added later
+        if action == "read":
+            return True
+
+        # For write/admin actions, implement more complex logic
+        # This is a placeholder implementation
+        return False
+
+    async def get_user_preferences(self, user_id: str) -> User:
+        """Get user preferences and settings."""
+        # For now, return the user object which includes preferences
+        # In the future, this could return a separate UserPreferences object
+        return await self.get_user(user_id)
+
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email address."""
+        user = self.session.query(User).filter(User.email == email).first()
+        return user
+
+    async def is_user_active(self, user_id: str) -> bool:
+        """Check if user account is active."""
+        try:
+            user = await self.get_user(user_id)
+            # Assume all users are active for now
+            # In the future, add an 'active' field to the User model
+            return True
+        except ValueError:
+            return False

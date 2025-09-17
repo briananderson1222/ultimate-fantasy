@@ -80,40 +80,40 @@
 ## Phase 3.3: Domain Structure Implementation (ONLY after tests are failing)
 
 ### Abstract Base Classes (Domain Interfaces)
-- [ ] T027 [P] Create LeagueServiceInterface ABC in backend/src/domains/shared/interfaces/league_service.py
-- [ ] T028 [P] Create UserServiceInterface ABC in backend/src/domains/shared/interfaces/user_service.py
-- [ ] T029 [P] Create LineupServiceInterface ABC in backend/src/domains/shared/interfaces/lineup_service.py
-- [ ] T030 [P] Create TradingServiceInterface ABC in backend/src/domains/shared/interfaces/trading_service.py
-- [ ] T031 [P] Create ScoringServiceInterface ABC in backend/src/domains/shared/interfaces/scoring_service.py
-- [ ] T032 [P] Create WaitlistServiceInterface ABC in backend/src/domains/shared/interfaces/waitlist_service.py
+- [x] T027 [P] Create LeagueServiceInterface ABC in backend/src/domains/shared/interfaces/league_service.py
+- [x] T028 [P] Create UserServiceInterface ABC in backend/src/domains/shared/interfaces/user_service.py
+- [x] T029 [P] Create LineupServiceInterface ABC in backend/src/domains/shared/interfaces/lineup_service.py
+- [x] T030 [P] Create TradingServiceInterface ABC in backend/src/domains/shared/interfaces/trading_service.py
+- [x] T031 [P] Create ScoringServiceInterface ABC in backend/src/domains/shared/interfaces/scoring_service.py
+- [x] T032 [P] Create WaitlistServiceInterface ABC in backend/src/domains/shared/interfaces/waitlist_service.py
 
 ### Move Existing Files to Domain Structure
-- [ ] T033 [P] Move leagues_* API files to backend/src/domains/leagues/api/
-- [ ] T034 [P] Move league_service.py to backend/src/domains/leagues/services/
-- [ ] T035 [P] Move user/preference models to backend/src/domains/users/models/
-- [ ] T036 [P] Move lineups API to backend/src/domains/lineups/api/
-- [ ] T037 [P] Move lineup_service.py to backend/src/domains/lineups/services/
-- [ ] T038 [P] Move waivers API to backend/src/domains/trading/api/
-- [ ] T039 [P] Move waiver_service.py to backend/src/domains/trading/services/
-- [ ] T040 [P] Move scoreboard API to backend/src/domains/scoring/api/
-- [ ] T041 [P] Move scoring_service.py to backend/src/domains/scoring/services/
-- [ ] T042 [P] Move waitlist API to backend/src/domains/waitlist/api/
+- [x] T033 [P] Move leagues_* API files to backend/src/domains/leagues/api/
+- [x] T034 [P] Move league_service.py to backend/src/domains/leagues/services/
+- [x] T035 [P] Move user/preference models to backend/src/domains/users/models/
+- [x] T036 [P] Move lineups API to backend/src/domains/lineups/api/
+- [x] T037 [P] Move lineup_service.py to backend/src/domains/lineups/services/
+- [x] T038 [P] Move waivers API to backend/src/domains/trading/api/
+- [x] T039 [P] Move waiver_service.py to backend/src/domains/trading/services/
+- [x] T040 [P] Move scoreboard API to backend/src/domains/scoring/api/
+- [x] T041 [P] Move scoring_service.py to backend/src/domains/scoring/services/
+- [x] T042 [P] Move waitlist API to backend/src/domains/waitlist/api/
 
 ### Update Import Statements
-- [ ] T043 Update all import statements in moved league files to use new domain structure
-- [ ] T044 Update all import statements in moved user files to use new domain structure
-- [ ] T045 Update all import statements in moved lineup files to use new domain structure
-- [ ] T046 Update all import statements in moved trading files to use new domain structure
-- [ ] T047 Update all import statements in moved scoring files to use new domain structure
-- [ ] T048 Update all import statements in moved waitlist files to use new domain structure
+- [x] T043 Update all import statements in moved league files to use new domain structure
+- [x] T044 Update all import statements in moved user files to use new domain structure
+- [x] T045 Update all import statements in moved lineup files to use new domain structure
+- [x] T046 Update all import statements in moved trading files to use new domain structure
+- [x] T047 Update all import statements in moved scoring files to use new domain structure
+- [x] T048 Update all import statements in moved waitlist files to use new domain structure
 
 ### Domain Service Implementations
-- [ ] T049 [P] Implement LeagueService with interface in backend/src/domains/leagues/services/league_service.py
-- [ ] T050 [P] Implement UserService with interface in backend/src/domains/users/services/user_service.py
-- [ ] T051 [P] Implement LineupService with interface in backend/src/domains/lineups/services/lineup_service.py
-- [ ] T052 [P] Implement TradingService with interface in backend/src/domains/trading/services/trading_service.py
-- [ ] T053 [P] Implement ScoringService with interface in backend/src/domains/scoring/services/scoring_service.py
-- [ ] T054 [P] Implement WaitlistService with interface in backend/src/domains/waitlist/services/waitlist_service.py
+- [x] T049 [P] Implement LeagueService with interface in backend/src/domains/leagues/services/league_service.py
+- [x] T050 [P] Implement UserService with interface in backend/src/domains/users/services/user_service.py
+- [x] T051 [P] Implement LineupService with interface in backend/src/domains/lineups/services/lineup_service.py
+- [x] T052 [P] Implement TradingService with interface in backend/src/domains/trading/services/trading_service.py
+- [x] T053 [P] Implement ScoringService with interface in backend/src/domains/scoring/services/scoring_service.py
+- [x] T054 [P] Implement WaitlistService with interface in backend/src/domains/waitlist/services/waitlist_service.py
 
 ## Phase 3.4: Infrastructure & Dependency Injection
 - [ ] T055 Create domain service registry in backend/src/infrastructure/service_registry.py

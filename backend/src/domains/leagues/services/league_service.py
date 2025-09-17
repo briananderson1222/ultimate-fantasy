@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import uuid as _uuid
+from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from src.domains.leagues.models.league import League
 from src.domains.leagues.models.team import Team
 from src.domains.users.models.user import User
+from src.domains.shared.interfaces.league_service import LeagueServiceInterface
 
 
-class LeagueService:
+class LeagueService(LeagueServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
 
@@ -130,3 +132,51 @@ class LeagueService:
             }
             for t in q.all()
         ]
+
+    # Interface implementation methods
+    async def get_league_members(self, league_id: str) -> List[User]:
+        """Get all members of a league."""
+        league_uuid = _uuid.UUID(league_id)
+        teams = self.session.query(Team).filter(Team.league_id == league_uuid).all()
+        user_ids = [team.user_id for team in teams]
+        users = self.session.query(User).filter(User.user_id.in_(user_ids)).all()
+        return users
+
+    async def validate_league_access(self, league_id: str, user_id: str) -> bool:
+        """Validate if a user has access to a league."""
+        league_uuid = _uuid.UUID(league_id)
+        user_uuid = _uuid.UUID(user_id)
+
+        # Check if user is a member of the league
+        team = (
+            self.session.query(Team)
+            .filter(Team.league_id == league_uuid, Team.user_id == user_uuid)
+            .first()
+        )
+        return team is not None
+
+    async def get_league_settings(self, league_id: str) -> League:
+        """Get league configuration and settings."""
+        league_uuid = _uuid.UUID(league_id)
+        league = self.session.query(League).filter(League.league_id == league_uuid).first()
+        if not league:
+            raise ValueError(f"League with ID {league_id} not found")
+        return league
+
+    async def get_league_by_id(self, league_id: str) -> League:
+        """Get league entity by ID."""
+        league_uuid = _uuid.UUID(league_id)
+        league = self.session.query(League).filter(League.league_id == league_uuid).first()
+        if not league:
+            raise ValueError(f"League with ID {league_id} not found")
+        return league
+
+    async def is_league_commissioner(self, league_id: str, user_id: str) -> bool:
+        """Check if user is the commissioner of a league."""
+        league_uuid = _uuid.UUID(league_id)
+        user_uuid = _uuid.UUID(user_id)
+
+        league = self.session.query(League).filter(League.league_id == league_uuid).first()
+        if not league:
+            return False
+        return league.commissioner_id == user_uuid
