@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.deps import get_db
-from services.waitlist_service import WaitlistService
+from domains.waitlist.services.waitlist_service import WaitlistService
 
 router = APIRouter()
 

@@ -5,7 +5,7 @@ These tests define the expected behavior of the LineupService interface
 and MUST FAIL initially to follow TDD principles.
 """
 import pytest
-from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
+from domains.shared.interfaces.lineup_service import LineupServiceInterface
 
 
 class TestLineupServiceContract:
@@ -15,7 +15,7 @@ class TestLineupServiceContract:
     def lineup_service(self) -> LineupServiceInterface:
         """Get LineupService implementation."""
         # This will fail until the interface and implementation are created
-        from src.domains.lineups.services.lineup_service import LineupService
+        from domains.lineups.services.lineup_service import LineupService
         return LineupService()
 
     @pytest.mark.asyncio
@@ -26,7 +26,7 @@ class TestLineupServiceContract:
 
         # Act & Assert
         # This will fail until Lineup model is moved to new structure
-        from src.domains.lineups.models.lineup import Lineup
+        from domains.lineups.models.lineup import Lineup
 
         lineup = await lineup_service.get_lineup(lineup_id)
         assert isinstance(lineup, Lineup)
@@ -63,7 +63,7 @@ class TestLineupServiceContract:
         league_id = "test-league-456"
 
         # Act & Assert
-        from src.domains.lineups.models.lineup import Lineup
+        from domains.lineups.models.lineup import Lineup
 
         lineup = await lineup_service.get_lineup_by_user_league(user_id, league_id)
         assert isinstance(lineup, Lineup)

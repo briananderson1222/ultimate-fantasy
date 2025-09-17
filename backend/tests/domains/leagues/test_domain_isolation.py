@@ -16,9 +16,9 @@ class TestLeaguesDomainIsolation:
         """Test that leagues domain only imports from shared interfaces."""
         # This will fail until domain structure is implemented
         try:
-            from src.domains.leagues.services import league_service
-            from src.domains.leagues.models import league
-            from src.domains.leagues.api import leagues_branding
+            from domains.leagues.services import league_service
+            from domains.leagues.models import league
+            from domains.leagues.api import leagues_branding
         except ImportError as e:
             pytest.fail(f"Leagues domain imports failed: {e}")
 
@@ -54,7 +54,7 @@ class TestLeaguesDomainIsolation:
     async def test_leagues_service_independence(self):
         """Test that leagues service can operate independently."""
         # This will fail until LeagueService is implemented
-        from src.domains.leagues.services.league_service import LeagueService
+        from domains.leagues.services.league_service import LeagueService
 
         service = LeagueService()
 

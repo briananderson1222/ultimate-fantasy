@@ -18,8 +18,8 @@ def client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
 
     # Import and setup database
-    from src.models.base import Base
-    from src.services.db import get_engine
+    from models.base import Base
+    from services.db import get_engine
 
     # Create tables
     engine = get_engine()

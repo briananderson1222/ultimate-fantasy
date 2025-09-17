@@ -19,8 +19,8 @@ from domains.scoring.api.scoreboard import router as scoreboard_router
 from domains.trading.api.waivers import router as waivers_router
 from domains.waitlist.api.waitlist import router as waitlist_router
 
-# User and preferences (legacy location for now)
-from api.me_preferences import router as me_preferences_router
+# User and preferences
+from domains.users.api.me_preferences import router as me_preferences_router
 
 # Middleware and security
 from api.middleware.auth import AuthContextMiddleware

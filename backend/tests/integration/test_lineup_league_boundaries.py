@@ -5,8 +5,8 @@ These tests verify that the Lineup and League domains can communicate
 properly through their defined interfaces.
 """
 import pytest
-from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
-from src.domains.shared.interfaces.league_service import LeagueServiceInterface
+from domains.shared.interfaces.lineup_service import LineupServiceInterface
+from domains.shared.interfaces.league_service import LeagueServiceInterface
 
 
 class TestLineupLeagueBoundaries:
@@ -15,13 +15,13 @@ class TestLineupLeagueBoundaries:
     @pytest.fixture
     def lineup_service(self) -> LineupServiceInterface:
         """Get LineupService implementation."""
-        from src.domains.lineups.services.lineup_service import LineupService
+        from domains.lineups.services.lineup_service import LineupService
         return LineupService()
 
     @pytest.fixture
     def league_service(self) -> LeagueServiceInterface:
         """Get LeagueService implementation."""
-        from src.domains.leagues.services.league_service import LeagueService
+        from domains.leagues.services.league_service import LeagueService
         return LeagueService()
 
     @pytest.mark.asyncio

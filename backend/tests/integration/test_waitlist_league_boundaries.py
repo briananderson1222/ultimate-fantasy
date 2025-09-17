@@ -1,17 +1,17 @@
 """Integration tests for waitlist-league domain boundaries."""
 import pytest
-from src.domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
-from src.domains.shared.interfaces.league_service import LeagueServiceInterface
+from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+from domains.shared.interfaces.league_service import LeagueServiceInterface
 
 class TestWaitlistLeagueBoundaries:
     @pytest.fixture
     def waitlist_service(self) -> WaitlistServiceInterface:
-        from src.domains.waitlist.services.waitlist_service import WaitlistService
+        from domains.waitlist.services.waitlist_service import WaitlistService
         return WaitlistService()
 
     @pytest.fixture
     def league_service(self) -> LeagueServiceInterface:
-        from src.domains.leagues.services.league_service import LeagueService
+        from domains.leagues.services.league_service import LeagueService
         return LeagueService()
 
     @pytest.mark.asyncio

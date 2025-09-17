@@ -1,17 +1,17 @@
 """Integration tests for trading-user domain boundaries."""
 import pytest
-from src.domains.shared.interfaces.trading_service import TradingServiceInterface
-from src.domains.shared.interfaces.user_service import UserServiceInterface
+from domains.shared.interfaces.trading_service import TradingServiceInterface
+from domains.shared.interfaces.user_service import UserServiceInterface
 
 class TestTradingUserBoundaries:
     @pytest.fixture
     def trading_service(self) -> TradingServiceInterface:
-        from src.domains.trading.services.trading_service import TradingService
+        from domains.trading.services.trading_service import TradingService
         return TradingService()
 
     @pytest.fixture
     def user_service(self) -> UserServiceInterface:
-        from src.domains.users.services.user_service import UserService
+        from domains.users.services.user_service import UserService
         return UserService()
 
     @pytest.mark.asyncio

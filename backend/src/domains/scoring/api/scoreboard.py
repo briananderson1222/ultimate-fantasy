@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from api.deps import get_db
-from services.scoring_service import ScoringService
+from domains.scoring.services.scoring_service import ScoringService
 
 router = APIRouter()
 

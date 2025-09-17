@@ -5,7 +5,7 @@ These tests define the expected behavior of the WaitlistService interface
 and MUST FAIL initially to follow TDD principles.
 """
 import pytest
-from src.domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
 
 
 class TestWaitlistServiceContract:
@@ -15,7 +15,7 @@ class TestWaitlistServiceContract:
     def waitlist_service(self) -> WaitlistServiceInterface:
         """Get WaitlistService implementation."""
         # This will fail until the interface and implementation are created
-        from src.domains.waitlist.services.waitlist_service import WaitlistService
+        from domains.waitlist.services.waitlist_service import WaitlistService
         return WaitlistService()
 
     @pytest.mark.asyncio
@@ -27,7 +27,7 @@ class TestWaitlistServiceContract:
 
         # Act & Assert
         # This will fail until WaitlistEntry model is moved to new structure
-        from src.domains.waitlist.models.waitlist_entry import WaitlistEntry
+        from domains.waitlist.models.waitlist_entry import WaitlistEntry
 
         entry = await waitlist_service.add_to_waitlist(user_id, league_id)
         assert isinstance(entry, WaitlistEntry)

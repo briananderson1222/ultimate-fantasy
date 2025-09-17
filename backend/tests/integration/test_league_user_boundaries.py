@@ -5,8 +5,8 @@ These tests verify that the League and User domains can communicate
 properly through their defined interfaces.
 """
 import pytest
-from src.domains.shared.interfaces.league_service import LeagueServiceInterface
-from src.domains.shared.interfaces.user_service import UserServiceInterface
+from domains.shared.interfaces.league_service import LeagueServiceInterface
+from domains.shared.interfaces.user_service import UserServiceInterface
 
 
 class TestLeagueUserBoundaries:
@@ -16,14 +16,14 @@ class TestLeagueUserBoundaries:
     def league_service(self) -> LeagueServiceInterface:
         """Get LeagueService implementation."""
         # This will fail until services are implemented
-        from src.domains.leagues.services.league_service import LeagueService
+        from domains.leagues.services.league_service import LeagueService
         return LeagueService()
 
     @pytest.fixture
     def user_service(self) -> UserServiceInterface:
         """Get UserService implementation."""
         # This will fail until services are implemented
-        from src.domains.users.services.user_service import UserService
+        from domains.users.services.user_service import UserService
         return UserService()
 
     @pytest.mark.asyncio
