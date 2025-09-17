@@ -116,11 +116,11 @@
 - [x] T054 [P] Implement WaitlistService with interface in backend/src/domains/waitlist/services/waitlist_service.py
 
 ## Phase 3.4: Infrastructure & Dependency Injection
-- [ ] T055 Create domain service registry in backend/src/infrastructure/service_registry.py
-- [ ] T056 Configure dependency injection container in backend/src/infrastructure/container.py
-- [ ] T057 Create domain-specific database session factory in backend/src/infrastructure/database/session_factory.py
-- [ ] T058 Update main FastAPI app to use domain service registry in backend/src/main.py
-- [ ] T059 Add middleware for domain request routing in backend/src/infrastructure/middleware/domain_router.py
+- [x] T055 Create domain service registry in backend/src/infrastructure/service_registry.py
+- [x] T056 Configure dependency injection container in backend/src/infrastructure/container.py
+- [x] T057 Create domain-specific database session factory in backend/src/infrastructure/database/session_factory.py
+- [x] T058 Update main FastAPI app to use domain service registry in backend/src/main.py
+- [x] T059 Add middleware for domain request routing in backend/src/infrastructure/middleware/domain_router.py
 
 ## Phase 3.5: Event System Implementation
 - [ ] T060 [P] Create domain event base classes in backend/src/domains/shared/events/base.py

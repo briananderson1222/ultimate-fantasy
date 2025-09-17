@@ -1,55 +1,154 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from api.leagues_branding import router as leagues_branding_router
-from api.leagues_create import router as leagues_create_router
-from api.leagues_join import router as leagues_join_router
-from api.leagues_me import router as leagues_me_router
-from api.leagues_members import router as leagues_members_router
-from api.leagues_public import router as leagues_public_router
-from api.leagues_settings import router as leagues_settings_router
-from api.lineups import router as lineups_router
+# Domain API routers
+from domains.leagues.api.leagues_branding import router as leagues_branding_router
+from domains.leagues.api.leagues_create import router as leagues_create_router
+from domains.leagues.api.leagues_join import router as leagues_join_router
+from domains.leagues.api.leagues_me import router as leagues_me_router
+from domains.leagues.api.leagues_members import router as leagues_members_router
+from domains.leagues.api.leagues_public import router as leagues_public_router
+from domains.leagues.api.leagues_settings import router as leagues_settings_router
+from domains.lineups.api.lineups import router as lineups_router
+from domains.scoring.api.scoreboard import router as scoreboard_router
+from domains.trading.api.waivers import router as waivers_router
+from domains.waitlist.api.waitlist import router as waitlist_router
+
+# User and preferences (legacy location for now)
 from api.me_preferences import router as me_preferences_router
+
+# Middleware and security
 from api.middleware.auth import AuthContextMiddleware
 from api.middleware.logging import RequestLoggingMiddleware
-from api.scoreboard import router as scoreboard_router
 from api.security import configure_security
-from api.waivers import router as waivers_router
 
-# from api.waitlist import router as waitlist_router
-from models.base import Base
-from services.db import get_engine
+# Infrastructure
+from infrastructure.container import initialize_container, cleanup_container, get_container
+from infrastructure.database.session_factory import get_session_factory
+from infrastructure.middleware.domain_router import (
+    DomainRouterMiddleware,
+    DomainMetricsMiddleware,
+    DomainSecurityMiddleware,
+    get_domain_metrics,
+    set_metrics_middleware
+)
+from domains.shared.models.base import Base
 
-app = FastAPI(title="Ultimate Fantasy Platform API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan context manager."""
+    # Startup
+    database_url = os.getenv("DATABASE_URL", "sqlite:///./ultimate_fantasy.db")
+
+    # Initialize dependency injection container
+    await initialize_container(database_url)
+
+    # Create tables if needed (for SQLite development)
+    if database_url.startswith("sqlite"):
+        session_factory = get_session_factory()
+        await session_factory.create_tables()
+
+    yield
+
+    # Shutdown
+    await cleanup_container()
 
 
-# Routers (incrementally added across tasks T028-T034)
-app.include_router(leagues_create_router)
-app.include_router(leagues_join_router)
-app.include_router(lineups_router)
-app.include_router(waivers_router)
-app.include_router(scoreboard_router)
-app.include_router(leagues_public_router)
-app.include_router(leagues_settings_router)
-app.include_router(leagues_me_router)
-app.include_router(leagues_members_router)
-app.include_router(leagues_branding_router)
-app.include_router(me_preferences_router)
-# app.include_router(waitlist_router)
+app = FastAPI(
+    title="Ultimate Fantasy Platform API",
+    version="0.1.0",
+    lifespan=lifespan
+)
 
-# Middleware
+
+# Domain-based routers
+app.include_router(leagues_create_router, prefix="/api", tags=["leagues"])
+app.include_router(leagues_join_router, prefix="/api", tags=["leagues"])
+app.include_router(leagues_public_router, prefix="/api", tags=["leagues"])
+app.include_router(leagues_settings_router, prefix="/api", tags=["leagues"])
+app.include_router(leagues_me_router, prefix="/api", tags=["leagues"])
+app.include_router(leagues_members_router, prefix="/api", tags=["leagues"])
+app.include_router(leagues_branding_router, prefix="/api", tags=["leagues"])
+
+app.include_router(lineups_router, prefix="/api", tags=["lineups"])
+app.include_router(scoreboard_router, prefix="/api", tags=["scoring"])
+app.include_router(waivers_router, prefix="/api", tags=["trading"])
+app.include_router(waitlist_router, prefix="/api", tags=["waitlist"])
+
+# Legacy routers (to be moved to domains)
+app.include_router(me_preferences_router, prefix="/api", tags=["users"])
+
+# Domain-specific middleware (order matters!)
+metrics_middleware = DomainMetricsMiddleware(app)
+set_metrics_middleware(metrics_middleware)
+
+app.add_middleware(DomainSecurityMiddleware)
+app.add_middleware(DomainMetricsMiddleware)
+app.add_middleware(DomainRouterMiddleware)
+
+# Core middleware
 app.add_middleware(AuthContextMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 configure_security(app)
 
 
-@app.on_event("startup")
-def _startup_create_tables_if_needed() -> None:
-    # For local/dev tests, create tables when using the in-memory SQLite fallback
-    url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
-    if url.startswith("sqlite"):
-        engine = get_engine()
-        Base.metadata.create_all(bind=engine)
+@app.get("/health", tags=["system"])
+async def health_check():
+    """Application health check endpoint."""
+    try:
+        container = await get_container()
+        health = await container.health_check()
+        return {"status": "healthy", "details": health}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
+
+
+@app.get("/health/services", tags=["system"])
+async def services_health_check():
+    """Services health check endpoint."""
+    try:
+        container = await get_container()
+        registry = container.get_service_registry()
+        return registry.health_check()
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/system/info", tags=["system"])
+async def system_info():
+    """System configuration information."""
+    try:
+        container = await get_container()
+        config = container.get_configuration()
+        session_factory = get_session_factory()
+
+        return {
+            "container": config,
+            "database": session_factory.get_engine_info(),
+            "environment": {
+                "database_url_provided": bool(os.getenv("DATABASE_URL")),
+                "async_mode": os.getenv("DATABASE_ASYNC", "false").lower() == "true",
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/metrics/domains", tags=["metrics"])
+async def domain_metrics():
+    """Get domain-specific metrics."""
+    return get_domain_metrics()
+
+
+@app.post("/metrics/reset", tags=["metrics"])
+async def reset_metrics():
+    """Reset domain metrics."""
+    from infrastructure.middleware.domain_router import reset_domain_metrics
+    reset_domain_metrics()
+    return {"status": "metrics_reset"}
