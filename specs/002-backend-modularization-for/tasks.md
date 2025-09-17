@@ -136,14 +136,14 @@
 
 ## Phase 3.6: Validation & Polish
 - [x] T070 Run existing API test suite to verify no regression in backend/tests/api/
-- [ ] T071 Run domain isolation tests to verify boundaries work correctly
-- [ ] T072 Run cross-domain integration tests to verify interfaces function
-- [ ] T073 Run performance tests to compare with baseline metrics
+- [x] T071 Run domain isolation tests to verify boundaries work correctly
+- [x] T072 Run cross-domain integration tests to verify interfaces function
+- [x] T073 Run performance tests to compare with baseline metrics
 - [x] T074 [P] Create domain configuration files in backend/src/domains/{domain}/config.py
 - [x] T075 [P] Add health check endpoints per domain in backend/src/domains/{domain}/health.py
 - [x] T076 Update FastAPI application startup to initialize all domains
 - [x] T077 Create rollback script in scripts/rollback_modularization.py
-- [ ] T078 Run quickstart validation scenarios from quickstart.md
+- [x] T078 Run quickstart validation scenarios from quickstart.md
 - [x] T079 Update logging configuration for domain-specific logs in backend/src/infrastructure/logging/
 
 ## Dependencies

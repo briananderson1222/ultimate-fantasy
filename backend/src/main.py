@@ -75,7 +75,7 @@ app = FastAPI(
 )
 
 
-# Domain-based routers
+# Domain-based routers with /api prefix
 app.include_router(leagues_create_router, prefix="/api", tags=["leagues"])
 app.include_router(leagues_join_router, prefix="/api", tags=["leagues"])
 app.include_router(leagues_public_router, prefix="/api", tags=["leagues"])
@@ -84,13 +84,27 @@ app.include_router(leagues_me_router, prefix="/api", tags=["leagues"])
 app.include_router(leagues_members_router, prefix="/api", tags=["leagues"])
 app.include_router(leagues_branding_router, prefix="/api", tags=["leagues"])
 
+# Legacy routes without prefix for backward compatibility
+app.include_router(leagues_create_router, tags=["leagues-legacy"])
+app.include_router(leagues_join_router, tags=["leagues-legacy"])
+app.include_router(leagues_public_router, tags=["leagues-legacy"])
+app.include_router(leagues_settings_router, tags=["leagues-legacy"])
+app.include_router(leagues_me_router, tags=["leagues-legacy"])
+app.include_router(leagues_members_router, tags=["leagues-legacy"])
+app.include_router(leagues_branding_router, tags=["leagues-legacy"])
+
 app.include_router(lineups_router, prefix="/api", tags=["lineups"])
 app.include_router(scoreboard_router, prefix="/api", tags=["scoring"])
 app.include_router(waivers_router, prefix="/api", tags=["trading"])
 app.include_router(waitlist_router, prefix="/api", tags=["waitlist"])
-
-# Legacy routers (to be moved to domains)
 app.include_router(me_preferences_router, prefix="/api", tags=["users"])
+
+# Legacy routes without prefix for backward compatibility
+app.include_router(lineups_router, tags=["lineups-legacy"])
+app.include_router(scoreboard_router, tags=["scoring-legacy"])
+app.include_router(waivers_router, tags=["trading-legacy"])
+app.include_router(waitlist_router, tags=["waitlist-legacy"])
+app.include_router(me_preferences_router, tags=["users-legacy"])
 
 # Domain health check endpoints
 app.include_router(leagues_health_router, prefix="/api/domains/leagues", tags=["health", "leagues"])

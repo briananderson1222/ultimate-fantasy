@@ -22,12 +22,20 @@ class DomainRouterMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
         self.domain_mappings = {
+            # New API routes with prefix
             "/api/leagues": "leagues",
             "/api/lineups": "lineups",
             "/api/scoreboard": "scoring",
             "/api/waivers": "trading",
             "/api/waitlist": "waitlist",
             "/api/me": "users",
+            # Legacy routes without prefix
+            "/leagues": "leagues",
+            "/lineups": "lineups",
+            "/scoreboard": "scoring",
+            "/waivers": "trading",
+            "/waitlist": "waitlist",
+            "/me": "users",
         }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -51,16 +59,21 @@ class DomainRouterMiddleware(BaseHTTPMiddleware):
         request.state.start_time = start_time
 
         try:
-            # Get container for domain services
-            container = await get_container()
-            request.state.container = container
-            request.state.service_registry = container.get_service_registry()
+            # Get container for domain services (optional during startup)
+            try:
+                container = await get_container()
+                request.state.container = container
+                request.state.service_registry = container.get_service_registry()
+            except Exception:
+                # Container not ready yet - continue without it
+                request.state.container = None
+                request.state.service_registry = None
 
             # Add domain-specific headers
             response = await call_next(request)
 
             # Add domain and performance headers to response
-            response.headers["X-Domain"] = domain or "unknown"
+            response.headers["X-Domain"] = str(domain) if domain is not None else "unknown"
             response.headers["X-Response-Time"] = f"{(time.time() - start_time) * 1000:.2f}ms"
 
             return response
@@ -71,7 +84,7 @@ class DomainRouterMiddleware(BaseHTTPMiddleware):
                 content=f"Domain routing error: {str(e)}",
                 status_code=500,
                 headers={
-                    "X-Domain": domain or "unknown",
+                    "X-Domain": str(domain) if domain is not None else "unknown",
                     "X-Error": "domain_routing_error",
                 }
             )
@@ -142,7 +155,7 @@ class DomainMetricsMiddleware(BaseHTTPMiddleware):
             self._update_metrics(domain, method, status_code, duration)
 
             # Add metrics headers
-            response.headers["X-Metrics-Domain"] = domain
+            response.headers["X-Metrics-Domain"] = str(domain) if domain is not None else "unknown"
             response.headers["X-Metrics-Duration"] = f"{duration * 1000:.2f}ms"
 
             return response
