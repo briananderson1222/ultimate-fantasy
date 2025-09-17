@@ -1,0 +1,340 @@
+/* Animation classes with reduced-motion support */
+
+/* Base animation utilities */
+.animate-fade-in {
+  animation: fade-in var(--anim-duration-sm) var(--anim-ease-standard);
+}
+
+.animate-fade-out {
+  animation: fade-out var(--anim-duration-sm) var(--anim-ease-standard);
+}
+
+.animate-slide-up {
+  animation: slide-up var(--anim-duration-md) var(--anim-ease-emphasized);
+}
+
+.animate-slide-down {
+  animation: slide-down var(--anim-duration-md) var(--anim-ease-emphasized);
+}
+
+.animate-scale-in {
+  animation: scale-in var(--anim-duration-sm) var(--anim-ease-emphasized);
+}
+
+.animate-bounce-in {
+  animation: bounce-in var(--anim-duration-md) var(--anim-ease-bounce);
+}
+
+/* Skeleton loading animation */
+.animate-pulse {
+  animation: pulse var(--anim-duration-lg) var(--anim-ease-standard) infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s var(--anim-ease-standard) infinite;
+}
+
+/* Microinteraction classes */
+.hover-lift {
+  transition: transform var(--anim-duration-xs) var(--anim-ease-standard);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.press-scale {
+  transition: transform var(--anim-duration-xs) var(--anim-ease-standard);
+}
+
+.press-scale:active {
+  transform: scale(var(--anim-scale-press));
+}
+
+.focus-ring {
+  transition: box-shadow var(--anim-duration-xs) var(--anim-ease-standard);
+}
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ring-offset),
+    0 0 0 4px var(--ring);
+}
+
+/* Loading states */
+.loading-spinner {
+  animation: spin var(--anim-duration-lg) linear infinite;
+}
+
+.loading-dots {
+  animation: loading-dots var(--anim-duration-lg) var(--anim-ease-standard) infinite;
+}
+
+/* Toast animations (Radix Toast) */
+.uf-toast[data-state="open"] {
+  animation: toast-slide-in var(--anim-duration-md) var(--anim-ease-emphasized);
+}
+
+.uf-toast[data-state="closed"] {
+  animation: toast-slide-out var(--anim-duration-sm) var(--anim-ease-standard) forwards;
+}
+
+.uf-toast[data-swipe="move"] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+
+.uf-toast[data-swipe="cancel"] {
+  transform: translateX(0);
+  transition: transform var(--anim-duration-sm) var(--anim-ease-emphasized);
+}
+
+.uf-toast[data-swipe="end"] {
+  animation: toast-slide-out var(--anim-duration-xs) var(--anim-ease-standard) forwards;
+}
+
+.toast-enter {
+  animation: toast-slide-in var(--anim-duration-md) var(--anim-ease-emphasized);
+}
+
+.toast-exit {
+  animation: toast-slide-out var(--anim-duration-sm) var(--anim-ease-standard);
+}
+
+/* Empty state animations */
+.empty-state-fade {
+  animation: empty-fade-in var(--anim-duration-lg) var(--anim-ease-standard);
+}
+
+/* Keyframes */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--anim-translate-slide));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--anim-translate-slide)));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-dots {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes empty-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--anim-translate-slide)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep essential animations but make them instant */
+  .animate-pulse {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .animate-shimmer {
+    animation: none;
+    background: var(--color-muted);
+  }
+
+  .loading-spinner {
+    animation: none;
+  }
+
+  .loading-dots {
+    animation: none;
+  }
+
+  /* Preserve hover states but remove transitions */
+  .hover-lift:hover {
+    transform: none;
+  }
+
+  .press-scale:active {
+    transform: none;
+  }
+}
+
+/* Skeleton components */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-elevated) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200px 100%;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton.animate-shimmer {
+  animation: shimmer 1.5s var(--anim-ease-standard) infinite;
+}
+
+.skeleton-text {
+  height: 1em;
+  margin: 0.25em 0;
+}
+
+.skeleton-text.w-full {
+  width: 100%;
+}
+.skeleton-text.w-3/4 {
+  width: 75%;
+}
+.skeleton-text.w-1/2 {
+  width: 50%;
+}
+.skeleton-text.w-1/4 {
+  width: 25%;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-button {
+  height: 40px;
+  width: 120px;
+  border-radius: var(--radius-md);
+}
+
+.skeleton-card {
+  height: 200px;
+  border-radius: var(--radius-lg);
+}

@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "home": "Home",
+    "leagues": "Leagues",
+    "dashboard": "Dashboard"
+  },
+  "actions": {
+    "back": "Back",
+    "settings": "Settings",
+    "language": "Language",
+    "save": "Save"
+  },
+  "pages": {
+    "leagues": { "title": "Leagues" },
+    "waivers": { "title": "Waivers" },
+    "lineup": { "title": "Set Lineup" }
+  }
+}
