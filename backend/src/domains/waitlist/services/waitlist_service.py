@@ -7,11 +7,21 @@ from sqlalchemy.orm import Session
 
 from ..models import Waitlist
 from src.domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+from src.domains.shared.events.publisher import DomainEventPublisher
+from src.infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class WaitlistService(WaitlistServiceInterface):
     def __init__(self, db_session: Session):
         self.db = db_session
+
+        # Initialize event publishing
+        try:
+            dispatcher = get_event_dispatcher()
+            self.event_publisher = DomainEventPublisher(dispatcher, "waitlist")
+        except RuntimeError:
+            # Event dispatcher not initialized, disable events
+            self.event_publisher = None
 
     def add_to_waitlist_by_email(self, email: str) -> Waitlist:
         """Adds a new email to the waitlist.
@@ -30,6 +40,33 @@ class WaitlistService(WaitlistServiceInterface):
             self.db.add(waitlist_entry)
             self.db.commit()
             self.db.refresh(waitlist_entry)
+
+            # Publish waitlist signup event
+            if self.event_publisher:
+                try:
+                    import asyncio
+                    asyncio.create_task(self.event_publisher.publish_event(
+                        "user_added_to_waitlist",
+                        str(waitlist_entry.id),
+                        {
+                            "waitlist_id": str(waitlist_entry.id),
+                            "email": email,
+                            "created_at": waitlist_entry.created_at.isoformat(),
+                        }
+                    ))
+
+                    # Publish integration event for marketing/notification
+                    asyncio.create_task(self.event_publisher.publish_integration_event(
+                        "waitlist_signup",
+                        str(waitlist_entry.id),
+                        {
+                            "email": email,
+                            "signup_date": waitlist_entry.created_at.isoformat(),
+                        }
+                    ))
+                except Exception as e:
+                    print(f"Warning: Failed to publish waitlist signup event: {e}")
+
             return waitlist_entry
         except IntegrityError:
             self.db.rollback()

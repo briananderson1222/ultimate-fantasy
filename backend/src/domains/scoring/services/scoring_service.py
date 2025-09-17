@@ -9,11 +9,21 @@ from sqlalchemy.orm import Session
 
 from src.domains.scoring.models.score import Score
 from src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
+from src.domains.shared.events.publisher import DomainEventPublisher
+from src.infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class ScoringService(ScoringServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
+
+        # Initialize event publishing
+        try:
+            dispatcher = get_event_dispatcher()
+            self.event_publisher = DomainEventPublisher(dispatcher, "scoring")
+        except RuntimeError:
+            # Event dispatcher not initialized, disable events
+            self.event_publisher = None
 
     def ingest_player_stats(self, *, game_day: date, items: Iterable[dict]) -> int:
         """Ingest raw stat items and persist Score rows.
@@ -29,6 +39,34 @@ class ScoringService(ScoringServiceInterface):
             self.session.add(score)
             count += 1
         self.session.flush()
+
+        # Publish player stats ingested event
+        if self.event_publisher:
+            try:
+                import asyncio
+                asyncio.create_task(self.event_publisher.publish_event(
+                    "player_stats_ingested",
+                    f"{game_day.isoformat()}_batch",
+                    {
+                        "game_day": game_day.isoformat(),
+                        "player_count": count,
+                        "stats_ingested": True,
+                    }
+                ))
+
+                # Publish integration event for lineups to recalculate scores
+                asyncio.create_task(self.event_publisher.publish_integration_event(
+                    "stats_available",
+                    f"{game_day.isoformat()}_batch",
+                    {
+                        "game_day": game_day.isoformat(),
+                        "player_count": count,
+                    },
+                    target_domains=["lineups", "leagues"]
+                ))
+            except Exception as e:
+                print(f"Warning: Failed to publish player stats event: {e}")
+
         return count
 
     def compute_league_scoreboard(

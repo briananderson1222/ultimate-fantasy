@@ -9,11 +9,21 @@ from sqlalchemy.orm import Session
 
 from src.domains.lineups.models.lineup import Lineup
 from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
+from src.domains.shared.events.publisher import DomainEventPublisher
+from src.infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class LineupService(LineupServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
+
+        # Initialize event publishing
+        try:
+            dispatcher = get_event_dispatcher()
+            self.event_publisher = DomainEventPublisher(dispatcher, "lineups")
+        except RuntimeError:
+            # Event dispatcher not initialized, disable events
+            self.event_publisher = None
 
     def set_lineup(
         self, *, team_id: str | uuid.UUID, game_day: date, players: Iterable[dict]
@@ -37,6 +47,38 @@ class LineupService(LineupServiceInterface):
         )
         self.session.add(lineup)
         self.session.flush()
+
+        # Publish lineup set event
+        if self.event_publisher:
+            try:
+                import asyncio
+                asyncio.create_task(self.event_publisher.publish_event(
+                    "lineup_set",
+                    str(lineup.lineup_id),
+                    {
+                        "lineup_id": str(lineup.lineup_id),
+                        "team_id": str(team_uuid),
+                        "game_day": game_day.isoformat(),
+                        "player_count": len(serializable_players),
+                        "version": 1,
+                    }
+                ))
+
+                # Publish integration event for scoring domain
+                asyncio.create_task(self.event_publisher.publish_integration_event(
+                    "lineup_updated",
+                    str(lineup.lineup_id),
+                    {
+                        "lineup_id": str(lineup.lineup_id),
+                        "team_id": str(team_uuid),
+                        "game_day": game_day.isoformat(),
+                        "players": serializable_players,
+                    },
+                    target_domains=["scoring"]
+                ))
+            except Exception as e:
+                print(f"Warning: Failed to publish lineup set event: {e}")
+
         return lineup
 
     def list(

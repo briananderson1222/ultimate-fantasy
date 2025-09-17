@@ -9,11 +9,22 @@ from src.domains.leagues.models.league import League
 from src.domains.leagues.models.team import Team
 from src.domains.users.models.user import User
 from src.domains.shared.interfaces.league_service import LeagueServiceInterface
+from src.domains.shared.events.base import EventFactory
+from src.domains.shared.events.publisher import DomainEventPublisher
+from src.infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class LeagueService(LeagueServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
+
+        # Initialize event publishing
+        try:
+            dispatcher = get_event_dispatcher()
+            self.event_publisher = DomainEventPublisher(dispatcher, "leagues")
+        except RuntimeError:
+            # Event dispatcher not initialized, disable events
+            self.event_publisher = None
 
     def create(
         self,
@@ -60,6 +71,39 @@ class LeagueService(LeagueServiceInterface):
         self.session.flush()
         self.session.commit()
 
+        # Publish league created event
+        if self.event_publisher:
+            try:
+                import asyncio
+                asyncio.create_task(self.event_publisher.publish_event(
+                    "league_created",
+                    str(league.league_id),
+                    {
+                        "league_id": str(league.league_id),
+                        "name": name,
+                        "sport": sport,
+                        "league_type": league_type,
+                        "season": season,
+                        "commissioner_id": str(commissioner_id),
+                        "commissioner_team_id": str(team.team_id),
+                    }
+                ))
+
+                # Also publish integration event for other domains
+                asyncio.create_task(self.event_publisher.publish_integration_event(
+                    "league_created",
+                    str(league.league_id),
+                    {
+                        "league_id": str(league.league_id),
+                        "name": name,
+                        "commissioner_id": str(commissioner_id),
+                    },
+                    target_domains=["users", "scoring", "waitlist"]
+                ))
+            except Exception as e:
+                # Don't fail the operation if event publishing fails
+                print(f"Warning: Failed to publish league created event: {e}")
+
         return league
 
     def join(
@@ -97,6 +141,36 @@ class LeagueService(LeagueServiceInterface):
         self.session.flush()
         self.session.commit()
         print(f"LeagueService.join - returning team: {team}") # Add this
+
+        # Publish team joined event
+        if self.event_publisher:
+            try:
+                import asyncio
+                asyncio.create_task(self.event_publisher.publish_event(
+                    "user_joined_league",
+                    str(league_id),
+                    {
+                        "league_id": str(league_id),
+                        "user_id": str(user_id),
+                        "team_id": str(team.team_id),
+                        "team_name": team.team_name,
+                    }
+                ))
+
+                # Publish integration event for other domains
+                asyncio.create_task(self.event_publisher.publish_integration_event(
+                    "user_joined_league",
+                    str(league_id),
+                    {
+                        "league_id": str(league_id),
+                        "user_id": str(user_id),
+                        "team_id": str(team.team_id),
+                    },
+                    target_domains=["users", "lineups", "scoring"]
+                ))
+            except Exception as e:
+                print(f"Warning: Failed to publish user joined league event: {e}")
+
         return team
 
     # Read helpers for UI lists

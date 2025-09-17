@@ -8,11 +8,21 @@ from sqlalchemy.orm import Session
 
 from src.domains.trading.models.waiver import Waiver
 from src.domains.shared.interfaces.trading_service import TradingServiceInterface
+from src.domains.shared.events.publisher import DomainEventPublisher
+from src.infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class TradingService(TradingServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
+
+        # Initialize event publishing
+        try:
+            dispatcher = get_event_dispatcher()
+            self.event_publisher = DomainEventPublisher(dispatcher, "trading")
+        except RuntimeError:
+            # Event dispatcher not initialized, disable events
+            self.event_publisher = None
 
     async def validate_trade_eligibility(self, user_id: str, league_id: str) -> bool:
         """Validate if a user is eligible to make trades in a league."""
@@ -54,6 +64,38 @@ class TradingService(TradingServiceInterface):
             "status": "processed",
             "timestamp": datetime.now().isoformat(),
         }
+
+        # Publish waiver claim processed event
+        if self.event_publisher:
+            try:
+                import asyncio
+                asyncio.create_task(self.event_publisher.publish_event(
+                    "waiver_claim_processed",
+                    waiver_id,
+                    {
+                        "transaction_id": transaction["transaction_id"],
+                        "waiver_id": waiver_id,
+                        "user_id": user_id,
+                        "player_id": str(waiver.player_id),
+                        "bid": waiver.bid,
+                        "status": "processed",
+                    }
+                ))
+
+                # Publish integration event for other domains
+                asyncio.create_task(self.event_publisher.publish_integration_event(
+                    "player_acquired",
+                    waiver_id,
+                    {
+                        "user_id": user_id,
+                        "player_id": str(waiver.player_id),
+                        "acquisition_type": "waiver",
+                        "league_id": str(waiver.league_id),
+                    },
+                    target_domains=["lineups", "scoring"]
+                ))
+            except Exception as e:
+                print(f"Warning: Failed to publish waiver claim event: {e}")
 
         return transaction
 

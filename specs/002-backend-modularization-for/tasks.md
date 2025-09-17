@@ -123,16 +123,16 @@
 - [x] T059 Add middleware for domain request routing in backend/src/infrastructure/middleware/domain_router.py
 
 ## Phase 3.5: Event System Implementation
-- [ ] T060 [P] Create domain event base classes in backend/src/domains/shared/events/base.py
-- [ ] T061 [P] Create event publisher interface in backend/src/domains/shared/events/publisher.py
-- [ ] T062 [P] Create event subscriber interface in backend/src/domains/shared/events/subscriber.py
-- [ ] T063 Create event dispatcher implementation in backend/src/infrastructure/events/dispatcher.py
-- [ ] T064 [P] Add event publishing to LeagueService in backend/src/domains/leagues/services/league_service.py
-- [ ] T065 [P] Add event publishing to UserService in backend/src/domains/users/services/user_service.py
-- [ ] T066 [P] Add event publishing to LineupService in backend/src/domains/lineups/services/lineup_service.py
-- [ ] T067 [P] Add event publishing to TradingService in backend/src/domains/trading/services/trading_service.py
-- [ ] T068 [P] Add event publishing to ScoringService in backend/src/domains/scoring/services/scoring_service.py
-- [ ] T069 [P] Add event publishing to WaitlistService in backend/src/domains/waitlist/services/waitlist_service.py
+- [x] T060 [P] Create domain event base classes in backend/src/domains/shared/events/base.py
+- [x] T061 [P] Create event publisher interface in backend/src/domains/shared/events/publisher.py
+- [x] T062 [P] Create event subscriber interface in backend/src/domains/shared/events/subscriber.py
+- [x] T063 Create event dispatcher implementation in backend/src/infrastructure/events/dispatcher.py
+- [x] T064 [P] Add event publishing to LeagueService in backend/src/domains/leagues/services/league_service.py
+- [x] T065 [P] Add event publishing to UserService in backend/src/domains/users/services/user_service.py
+- [x] T066 [P] Add event publishing to LineupService in backend/src/domains/lineups/services/lineup_service.py
+- [x] T067 [P] Add event publishing to TradingService in backend/src/domains/trading/services/trading_service.py
+- [x] T068 [P] Add event publishing to ScoringService in backend/src/domains/scoring/services/scoring_service.py
+- [x] T069 [P] Add event publishing to WaitlistService in backend/src/domains/waitlist/services/waitlist_service.py
 
 ## Phase 3.6: Validation & Polish
 - [ ] T070 Run existing API test suite to verify no regression in backend/tests/api/

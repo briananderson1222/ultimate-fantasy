@@ -7,11 +7,21 @@ from sqlalchemy.orm import Session
 
 from src.domains.users.models.user import User
 from src.domains.shared.interfaces.user_service import UserServiceInterface
+from src.domains.shared.events.publisher import DomainEventPublisher
+from src.infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class UserService(UserServiceInterface):
     def __init__(self, session: Session) -> None:
         self.session = session
+
+        # Initialize event publishing
+        try:
+            dispatcher = get_event_dispatcher()
+            self.event_publisher = DomainEventPublisher(dispatcher, "users")
+        except RuntimeError:
+            # Event dispatcher not initialized, disable events
+            self.event_publisher = None
 
     def ensure_user_from_claims(self, claims: dict[str, Any]) -> User:
         """Upsert a User based on JWT claims.
@@ -53,6 +63,24 @@ class UserService(UserServiceInterface):
             if changed:
                 self.session.add(existing)
                 self.session.flush()
+
+                # Publish user updated event
+                if self.event_publisher:
+                    try:
+                        import asyncio
+                        asyncio.create_task(self.event_publisher.publish_event(
+                            "user_updated",
+                            str(user_id),
+                            {
+                                "user_id": str(user_id),
+                                "email": email,
+                                "display_name": display_name,
+                                "changes": ["email", "display_name"] if changed else [],
+                            }
+                        ))
+                    except Exception as e:
+                        print(f"Warning: Failed to publish user updated event: {e}")
+
             return existing
 
         user = User(
@@ -60,6 +88,36 @@ class UserService(UserServiceInterface):
         )
         self.session.add(user)
         self.session.flush()
+
+        # Publish user created event
+        if self.event_publisher:
+            try:
+                import asyncio
+                asyncio.create_task(self.event_publisher.publish_event(
+                    "user_created",
+                    str(user_id),
+                    {
+                        "user_id": str(user_id),
+                        "email": email,
+                        "display_name": display_name,
+                        "cognito_sub": sub,
+                    }
+                ))
+
+                # Publish integration event for other domains
+                asyncio.create_task(self.event_publisher.publish_integration_event(
+                    "user_created",
+                    str(user_id),
+                    {
+                        "user_id": str(user_id),
+                        "email": email,
+                        "display_name": display_name,
+                    },
+                    target_domains=["leagues", "lineups", "trading", "waitlist"]
+                ))
+            except Exception as e:
+                print(f"Warning: Failed to publish user created event: {e}")
+
         return user
 
     # Interface implementation methods
