@@ -1,5 +1,0 @@
-api
-domains
-infrastructure
-models
-services

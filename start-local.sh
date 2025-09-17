@@ -31,7 +31,7 @@ fi
 
 # Start backend
 echo "🔧 Starting Backend..."
-cd backend
+cd apps/api
 export DATABASE_URL="${DATABASE_URL:-sqlite+pysqlite:///ultimate_fantasy.db}"
 
 # Install dependencies if needed
@@ -73,7 +73,7 @@ cd ..
 
 # Start frontend
 echo "🎨 Starting Frontend..."
-cd frontend
+cd apps/web
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then

@@ -9,11 +9,14 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "test": "npx jest",
-    "test:watch": "npx jest --watch",
-    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "clean": "rm -rf dist",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

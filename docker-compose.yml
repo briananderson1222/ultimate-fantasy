@@ -17,8 +17,8 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
-    build: ./backend
+  api:
+    build: ./apps/api
     ports:
       - "8000:8000"
     environment:
@@ -27,20 +27,20 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./backend/src:/app/src
+      - ./apps/api/src:/app/src
     command: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-  frontend:
-    build: ./frontend
+  web:
+    build: ./apps/web
     ports:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
     depends_on:
-      - backend
+      - api
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - ./apps/web/src:/app/src
+      - ./apps/web/public:/app/public
 
 volumes:
   postgres_data:

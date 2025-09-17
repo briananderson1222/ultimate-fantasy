@@ -1,28 +1,28 @@
 version: '3.9'
 services:
-  backend:
+  api:
     image: python:3.11-slim
-    working_dir: /app/backend/src
+    working_dir: /app/apps/api/src
     environment:
       - AUTH_MODE=dev
       - AUTH_DEV_SECRET=test-e2e-secret
-      - PYTHONPATH=/app/backend/src
+      - PYTHONPATH=/app/apps/api/src
     volumes:
       - ./:/app
     command: bash -lc "python -m pip install --upgrade pip && pip install uvicorn fastapi sqlalchemy alembic pydantic httpx PyJWT && python -m uvicorn main:app --host 0.0.0.0 --port 8000"
     ports:
       - '8000:8000'
 
-  frontend:
+  web:
     image: node:20-alpine
-    working_dir: /app/frontend
+    working_dir: /app/apps/web
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:8000
+      - NEXT_PUBLIC_API_BASE_URL=http://api:8000
     volumes:
       - ./:/app
     command: sh -lc "npm ci && npm run dev -- -p 3000"
     ports:
       - '3000:3000'
     depends_on:
-      - backend
+      - api
 
