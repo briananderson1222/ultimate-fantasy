@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_db
-from src.domains.leagues.models.league import League
+from api.deps import get_db
+from domains.leagues.models.league import League
 
 router = APIRouter()
 

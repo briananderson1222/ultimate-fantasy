@@ -6,7 +6,7 @@ and MUST FAIL initially to follow TDD principles.
 """
 import pytest
 from typing import Dict, Any
-from backend.src.domains.shared.interfaces.user_service import UserServiceInterface
+from src.domains.shared.interfaces.user_service import UserServiceInterface
 
 
 class TestUserServiceContract:
@@ -16,7 +16,7 @@ class TestUserServiceContract:
     def user_service(self) -> UserServiceInterface:
         """Get UserService implementation."""
         # This will fail until the interface and implementation are created
-        from backend.src.domains.users.services.user_service import UserService
+        from src.domains.users.services.user_service import UserService
         return UserService()
 
     @pytest.mark.asyncio
@@ -27,7 +27,7 @@ class TestUserServiceContract:
 
         # Act & Assert
         # This will fail until User model is moved to new structure
-        from backend.src.domains.users.models.user import User
+        from src.domains.users.models.user import User
 
         user = await user_service.get_user(user_id)
         assert isinstance(user, User)
@@ -68,7 +68,7 @@ class TestUserServiceContract:
 
         # Act & Assert
         # This will fail until UserPreferences model is moved to new structure
-        from backend.src.domains.users.models.user_preference import UserPreferences
+        from src.domains.users.models.user_preference import UserPreferences
 
         preferences = await user_service.get_user_preferences(user_id)
         assert isinstance(preferences, UserPreferences)

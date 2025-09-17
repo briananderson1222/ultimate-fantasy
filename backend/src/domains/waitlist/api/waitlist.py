@@ -5,8 +5,8 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_db
-from src.services.waitlist_service import WaitlistService
+from api.deps import get_db
+from services.waitlist_service import WaitlistService
 
 router = APIRouter()
 

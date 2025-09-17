@@ -6,9 +6,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models import Waitlist
-from src.domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
-from src.domains.shared.events.publisher import DomainEventPublisher
-from src.infrastructure.events.dispatcher import get_event_dispatcher
+from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+from domains.shared.events.publisher import DomainEventPublisher
+from infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class WaitlistService(WaitlistServiceInterface):

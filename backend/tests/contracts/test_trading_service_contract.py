@@ -6,7 +6,7 @@ and MUST FAIL initially to follow TDD principles.
 """
 import pytest
 from typing import List
-from backend.src.domains.shared.interfaces.trading_service import TradingServiceInterface
+from src.domains.shared.interfaces.trading_service import TradingServiceInterface
 
 
 class TestTradingServiceContract:
@@ -16,7 +16,7 @@ class TestTradingServiceContract:
     def trading_service(self) -> TradingServiceInterface:
         """Get TradingService implementation."""
         # This will fail until the interface and implementation are created
-        from backend.src.domains.trading.services.trading_service import TradingService
+        from src.domains.trading.services.trading_service import TradingService
         return TradingService()
 
     @pytest.mark.asyncio
@@ -44,7 +44,7 @@ class TestTradingServiceContract:
 
         # Act & Assert
         # This will fail until Transaction model is moved to new structure
-        from backend.src.domains.trading.models.transaction import Transaction
+        from src.domains.trading.models.transaction import Transaction
 
         transaction = await trading_service.process_waiver_claim(waiver_id, user_id)
         assert isinstance(transaction, Transaction)
@@ -64,7 +64,7 @@ class TestTradingServiceContract:
 
         # Act & Assert
         # This will fail until Waiver model is moved to new structure
-        from backend.src.domains.trading.models.waiver import Waiver
+        from src.domains.trading.models.waiver import Waiver
 
         waivers = await trading_service.get_active_waivers(league_id)
         assert isinstance(waivers, list)

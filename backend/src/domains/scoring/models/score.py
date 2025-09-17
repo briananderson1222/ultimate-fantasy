@@ -7,7 +7,7 @@ from sqlalchemy import JSON, Date, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.domains.shared.models.base import Base
+from domains.shared.models.base import Base
 
 
 class Score(Base):

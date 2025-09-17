@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_current_user_id, get_db
-from services.league_service import LeagueService
+from api.deps import get_current_user_id, get_db
+from domains.leagues.services.league_service import LeagueService
 
 router = APIRouter()
 

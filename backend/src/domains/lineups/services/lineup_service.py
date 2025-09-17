@@ -7,10 +7,10 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from src.domains.lineups.models.lineup import Lineup
-from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
-from src.domains.shared.events.publisher import DomainEventPublisher
-from src.infrastructure.events.dispatcher import get_event_dispatcher
+from domains.lineups.models.lineup import Lineup
+from domains.shared.interfaces.lineup_service import LineupServiceInterface
+from domains.shared.events.publisher import DomainEventPublisher
+from infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class LineupService(LineupServiceInterface):
@@ -107,7 +107,7 @@ class LineupService(LineupServiceInterface):
 
     async def validate_lineup_ownership(self, lineup_id: str, user_id: str) -> bool:
         """Validate if a user owns a specific lineup."""
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         lineup_uuid = uuid.UUID(lineup_id)
         user_uuid = uuid.UUID(user_id)
@@ -126,7 +126,7 @@ class LineupService(LineupServiceInterface):
 
     async def get_lineup_by_user_league(self, user_id: str, league_id: str) -> Lineup:
         """Get user's lineup for a specific league."""
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         user_uuid = uuid.UUID(user_id)
         league_uuid = uuid.UUID(league_id)
@@ -154,7 +154,7 @@ class LineupService(LineupServiceInterface):
 
     async def get_lineups_by_league(self, league_id: str) -> List[Lineup]:
         """Get all lineups for a specific league."""
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         league_uuid = uuid.UUID(league_id)
 

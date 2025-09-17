@@ -13,9 +13,9 @@ from typing import Dict, List, Optional, Any, Set
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 
-from src.domains.shared.events.base import DomainEvent, IntegrationEvent, AggregateEvent
-from src.domains.shared.events.publisher import EventPublisher, EventPublishError, PublishResult
-from src.domains.shared.events.subscriber import (
+from domains.shared.events.base import DomainEvent, IntegrationEvent, AggregateEvent
+from domains.shared.events.publisher import EventPublisher, EventPublishError, PublishResult
+from domains.shared.events.subscriber import (
     EventSubscriber, SubscriptionConfig, EventHandler, HandlerResult,
     HandlerRegistry, EventMatcher, RetryPolicy, DeadLetterQueue,
     EventSubscriptionError
@@ -484,7 +484,7 @@ async def subscribe_to_events(
     Returns:
         Subscription ID
     """
-    from src.domains.shared.events.subscriber import SubscriptionConfig, SubscriptionType
+    from domains.shared.events.subscriber import SubscriptionConfig, SubscriptionType
 
     dispatcher = get_event_dispatcher()
     config = SubscriptionConfig(

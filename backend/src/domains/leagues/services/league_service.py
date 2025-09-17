@@ -5,13 +5,13 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.domains.leagues.models.league import League
-from src.domains.leagues.models.team import Team
-from src.domains.users.models.user import User
-from src.domains.shared.interfaces.league_service import LeagueServiceInterface
-from src.domains.shared.events.base import EventFactory
-from src.domains.shared.events.publisher import DomainEventPublisher
-from src.infrastructure.events.dispatcher import get_event_dispatcher
+from domains.leagues.models.league import League
+from domains.leagues.models.team import Team
+from domains.users.models.user import User
+from domains.shared.interfaces.league_service import LeagueServiceInterface
+from domains.shared.events.base import EventFactory
+from domains.shared.events.publisher import DomainEventPublisher
+from infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class LeagueService(LeagueServiceInterface):
@@ -175,7 +175,7 @@ class LeagueService(LeagueServiceInterface):
 
     # Read helpers for UI lists
     def list_by_user(self, *, user_id: _uuid.UUID) -> list[dict]:
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         q = (
             self.session.query(Team, League)
@@ -195,7 +195,7 @@ class LeagueService(LeagueServiceInterface):
         return items
 
     def list_members(self, *, league_id: _uuid.UUID) -> list[dict]:
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         q = self.session.query(Team).filter(Team.league_id == league_id)
         return [

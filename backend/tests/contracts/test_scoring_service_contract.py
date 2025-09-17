@@ -5,7 +5,7 @@ These tests define the expected behavior of the ScoringService interface
 and MUST FAIL initially to follow TDD principles.
 """
 import pytest
-from backend.src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
+from src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
 
 
 class TestScoringServiceContract:
@@ -15,7 +15,7 @@ class TestScoringServiceContract:
     def scoring_service(self) -> ScoringServiceInterface:
         """Get ScoringService implementation."""
         # This will fail until the interface and implementation are created
-        from backend.src.domains.scoring.services.scoring_service import ScoringService
+        from src.domains.scoring.services.scoring_service import ScoringService
         return ScoringService()
 
     @pytest.mark.asyncio
@@ -27,7 +27,7 @@ class TestScoringServiceContract:
 
         # Act & Assert
         # This will fail until Score model is moved to new structure
-        from backend.src.domains.scoring.models.score import Score
+        from src.domains.scoring.models.score import Score
 
         score = await scoring_service.calculate_lineup_score(lineup_id, period)
         assert isinstance(score, Score)
@@ -49,7 +49,7 @@ class TestScoringServiceContract:
 
         # Act & Assert
         # This will fail until ScoringRules model is moved to new structure
-        from backend.src.domains.scoring.models.scoring_rule import ScoringRules
+        from src.domains.scoring.models.scoring_rule import ScoringRules
 
         rules = await scoring_service.get_scoring_rules(league_id)
         assert isinstance(rules, ScoringRules)
@@ -69,7 +69,7 @@ class TestScoringServiceContract:
 
         # Act & Assert
         # This will fail until ScoreAudit model is moved to new structure
-        from backend.src.domains.scoring.models.score_audit import ScoreAudit
+        from src.domains.scoring.models.score_audit import ScoreAudit
 
         audit = await scoring_service.audit_score_calculation(score_id)
         assert isinstance(audit, ScoreAudit)

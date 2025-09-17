@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Path, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_db
-from src.services.scoring_service import ScoringService
+from api.deps import get_db
+from services.scoring_service import ScoringService
 
 router = APIRouter()
 

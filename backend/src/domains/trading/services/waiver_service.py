@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from src.domains.trading.models.waiver import Waiver
+from domains.trading.models.waiver import Waiver
 
 
 class WaiverService:

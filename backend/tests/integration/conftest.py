@@ -18,15 +18,15 @@ def client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
 
     # Import and setup database
-    from models.base import Base
-    from services.db import get_engine
+    from src.models.base import Base
+    from src.services.db import get_engine
 
     # Create tables
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
 
     # Import app and create client
-    app_module = importlib.import_module("main")
+    app_module = importlib.import_module("src.main")
     assert hasattr(
         app_module, "app"
     ), "Expected FastAPI instance named 'app' in main.py"

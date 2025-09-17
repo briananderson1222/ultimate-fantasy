@@ -60,7 +60,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 if request.state.user_claims and sub:
                     try:
                         from services.db import SessionLocal
-                        from services.user_service import UserService
+                        from domains.users.services.user_service import UserService
 
                         with SessionLocal() as sess:
                             user = UserService(sess).ensure_user_from_claims(

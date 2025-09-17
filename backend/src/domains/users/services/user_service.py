@@ -5,10 +5,10 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from src.domains.users.models.user import User
-from src.domains.shared.interfaces.user_service import UserServiceInterface
-from src.domains.shared.events.publisher import DomainEventPublisher
-from src.infrastructure.events.dispatcher import get_event_dispatcher
+from domains.users.models.user import User
+from domains.shared.interfaces.user_service import UserServiceInterface
+from domains.shared.events.publisher import DomainEventPublisher
+from infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class UserService(UserServiceInterface):

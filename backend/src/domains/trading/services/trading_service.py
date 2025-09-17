@@ -6,10 +6,10 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from src.domains.trading.models.waiver import Waiver
-from src.domains.shared.interfaces.trading_service import TradingServiceInterface
-from src.domains.shared.events.publisher import DomainEventPublisher
-from src.infrastructure.events.dispatcher import get_event_dispatcher
+from domains.trading.models.waiver import Waiver
+from domains.shared.interfaces.trading_service import TradingServiceInterface
+from domains.shared.events.publisher import DomainEventPublisher
+from infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class TradingService(TradingServiceInterface):
@@ -26,7 +26,7 @@ class TradingService(TradingServiceInterface):
 
     async def validate_trade_eligibility(self, user_id: str, league_id: str) -> bool:
         """Validate if a user is eligible to make trades in a league."""
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         user_uuid = uuid.UUID(user_id)
         league_uuid = uuid.UUID(league_id)
@@ -115,7 +115,7 @@ class TradingService(TradingServiceInterface):
 
     async def get_user_transactions(self, user_id: str, league_id: str) -> List[dict]:
         """Get all transactions for a user in a specific league."""
-        from src.domains.leagues.models.team import Team
+        from domains.leagues.models.team import Team
 
         user_uuid = uuid.UUID(user_id)
         league_uuid = uuid.UUID(league_id)

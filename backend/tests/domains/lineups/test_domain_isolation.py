@@ -4,6 +4,6 @@ import pytest
 class TestLineupsDomainIsolation:
     def test_lineups_domain_imports(self):
         try:
-            from backend.src.domains.lineups.services import lineups_service
+            from src.domains.lineups.services import lineups_service
         except ImportError as e:
             pytest.fail(f"Lineups domain imports failed: {e}")

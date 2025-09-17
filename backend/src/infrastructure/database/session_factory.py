@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, Engine, pool
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
 
-from src.domains.shared.models.base import Base
+from domains.shared.models.base import Base
 
 
 class SessionFactory:

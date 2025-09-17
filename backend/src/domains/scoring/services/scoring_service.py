@@ -7,10 +7,10 @@ from typing import Any, List, Dict
 
 from sqlalchemy.orm import Session
 
-from src.domains.scoring.models.score import Score
-from src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
-from src.domains.shared.events.publisher import DomainEventPublisher
-from src.infrastructure.events.dispatcher import get_event_dispatcher
+from domains.scoring.models.score import Score
+from domains.shared.interfaces.scoring_service import ScoringServiceInterface
+from domains.shared.events.publisher import DomainEventPublisher
+from infrastructure.events.dispatcher import get_event_dispatcher
 
 
 class ScoringService(ScoringServiceInterface):
@@ -85,9 +85,9 @@ class ScoringService(ScoringServiceInterface):
         print(f"ScoringService.compute_league_scoreboard - league_id: {league_id}") # Added
         import uuid as _uuid
 
-        from src.domains.scoring.models.lineup import Lineup
-        from src.domains.scoring.models.score import Score
-        from src.domains.scoring.models.team import Team
+        from domains.scoring.models.lineup import Lineup
+        from domains.scoring.models.score import Score
+        from domains.scoring.models.team import Team
 
         league_uuid = _uuid.UUID(league_id) if isinstance(league_id, str) else league_id
 
@@ -157,7 +157,7 @@ class ScoringService(ScoringServiceInterface):
     # Interface implementation methods
     async def calculate_lineup_score(self, lineup_id: str, period: str) -> Dict[str, Any]:
         """Calculate total score for a lineup in a specific period."""
-        from src.domains.lineups.models.lineup import Lineup
+        from domains.lineups.models.lineup import Lineup
 
         lineup_uuid = _uuid.UUID(lineup_id)
         lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
@@ -284,8 +284,8 @@ class ScoringService(ScoringServiceInterface):
 
     async def recalculate_scores(self, league_id: str, period: str) -> List[Dict[str, Any]]:
         """Recalculate all scores for a league in a specific period."""
-        from src.domains.lineups.models.lineup import Lineup
-        from src.domains.leagues.models.team import Team
+        from domains.lineups.models.lineup import Lineup
+        from domains.leagues.models.team import Team
 
         league_uuid = _uuid.UUID(league_id)
 

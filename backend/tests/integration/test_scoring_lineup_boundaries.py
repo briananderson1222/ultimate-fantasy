@@ -1,17 +1,17 @@
 """Integration tests for scoring-lineup domain boundaries."""
 import pytest
-from backend.src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
-from backend.src.domains.shared.interfaces.lineup_service import LineupServiceInterface
+from src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
+from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
 
 class TestScoringLineupBoundaries:
     @pytest.fixture
     def scoring_service(self) -> ScoringServiceInterface:
-        from backend.src.domains.scoring.services.scoring_service import ScoringService
+        from src.domains.scoring.services.scoring_service import ScoringService
         return ScoringService()
 
     @pytest.fixture
     def lineup_service(self) -> LineupServiceInterface:
-        from backend.src.domains.lineups.services.lineup_service import LineupService
+        from src.domains.lineups.services.lineup_service import LineupService
         return LineupService()
 
     @pytest.mark.asyncio

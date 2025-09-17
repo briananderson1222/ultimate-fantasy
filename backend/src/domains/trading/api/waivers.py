@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_current_user_id, get_db
-from src.services.waiver_service import WaiverService
+from api.deps import get_current_user_id, get_db
+from services.waiver_service import WaiverService
 
 router = APIRouter()
 

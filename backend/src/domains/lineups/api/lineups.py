@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_current_user_id, get_db
-from src.services.lineup_service import LineupService
+from api.deps import get_current_user_id, get_db
+from domains.lineups.services.lineup_service import LineupService
 
 router = APIRouter()
 

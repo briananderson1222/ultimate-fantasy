@@ -10,7 +10,7 @@ from typing import List
 import pytest
 import pytest_benchmark
 from fastapi.testclient import TestClient
-from backend.src.main import app
+from main import app
 
 client = TestClient(app)
 
@@ -68,7 +68,7 @@ class TestDatabasePerformanceBaseline:
         """Benchmark database connection establishment time."""
         async def connect_to_db():
             # Import here to avoid import issues during test collection
-            from backend.src.database import engine
+            from database import engine
             conn = engine.connect()
             conn.close()
             return True

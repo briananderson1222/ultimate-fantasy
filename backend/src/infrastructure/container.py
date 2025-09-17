@@ -12,8 +12,8 @@ from typing import AsyncGenerator, Dict, Any, Optional, Callable, TypeVar, Type
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.infrastructure.service_registry import ServiceRegistry, initialize_registry, cleanup_registry
-from src.infrastructure.database.session_factory import SessionFactory, get_session_factory
+from infrastructure.service_registry import ServiceRegistry, initialize_registry, cleanup_registry
+from infrastructure.database.session_factory import SessionFactory, get_session_factory
 
 T = TypeVar('T')
 

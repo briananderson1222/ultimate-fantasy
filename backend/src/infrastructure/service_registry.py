@@ -9,19 +9,19 @@ from __future__ import annotations
 from typing import TypeVar, Type, Dict, Any, Optional
 from sqlalchemy.orm import Session
 
-from src.domains.shared.interfaces.league_service import LeagueServiceInterface
-from src.domains.shared.interfaces.user_service import UserServiceInterface
-from src.domains.shared.interfaces.lineup_service import LineupServiceInterface
-from src.domains.shared.interfaces.trading_service import TradingServiceInterface
-from src.domains.shared.interfaces.scoring_service import ScoringServiceInterface
-from src.domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+from domains.shared.interfaces.league_service import LeagueServiceInterface
+from domains.shared.interfaces.user_service import UserServiceInterface
+from domains.shared.interfaces.lineup_service import LineupServiceInterface
+from domains.shared.interfaces.trading_service import TradingServiceInterface
+from domains.shared.interfaces.scoring_service import ScoringServiceInterface
+from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
 
-from src.domains.leagues.services.league_service import LeagueService
-from src.domains.users.services.user_service import UserService
-from src.domains.lineups.services.lineup_service import LineupService
-from src.domains.trading.services.trading_service import TradingService
-from src.domains.scoring.services.scoring_service import ScoringService
-from src.domains.waitlist.services.waitlist_service import WaitlistService
+from domains.leagues.services.league_service import LeagueService
+from domains.users.services.user_service import UserService
+from domains.lineups.services.lineup_service import LineupService
+from domains.trading.services.trading_service import TradingService
+from domains.scoring.services.scoring_service import ScoringService
+from domains.waitlist.services.waitlist_service import WaitlistService
 
 T = TypeVar('T')
 

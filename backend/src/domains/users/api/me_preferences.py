@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_current_user_id, get_db
-from src.domains.users.models.user_preference import UserPreference
+from api.deps import get_current_user_id, get_db
+from domains.users.models.user_preference import UserPreference
 
 router = APIRouter()
 
