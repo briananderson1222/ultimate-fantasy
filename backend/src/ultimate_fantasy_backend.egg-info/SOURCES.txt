@@ -7,6 +7,8 @@ src/api/middleware/auth.py
 src/api/middleware/logging.py
 src/domains/__init__.py
 src/domains/leagues/__init__.py
+src/domains/leagues/config.py
+src/domains/leagues/health.py
 src/domains/leagues/api/__init__.py
 src/domains/leagues/api/leagues_branding.py
 src/domains/leagues/api/leagues_create.py
@@ -23,6 +25,8 @@ src/domains/leagues/schemas/__init__.py
 src/domains/leagues/services/__init__.py
 src/domains/leagues/services/league_service.py
 src/domains/lineups/__init__.py
+src/domains/lineups/config.py
+src/domains/lineups/health.py
 src/domains/lineups/api/__init__.py
 src/domains/lineups/api/lineups.py
 src/domains/lineups/models/__init__.py
@@ -31,6 +35,8 @@ src/domains/lineups/schemas/__init__.py
 src/domains/lineups/services/__init__.py
 src/domains/lineups/services/lineup_service.py
 src/domains/scoring/__init__.py
+src/domains/scoring/config.py
+src/domains/scoring/health.py
 src/domains/scoring/api/__init__.py
 src/domains/scoring/api/scoreboard.py
 src/domains/scoring/models/__init__.py
@@ -56,6 +62,8 @@ src/domains/shared/models/base.py
 src/domains/shared/schemas/__init__.py
 src/domains/shared/services/__init__.py
 src/domains/trading/__init__.py
+src/domains/trading/config.py
+src/domains/trading/health.py
 src/domains/trading/api/__init__.py
 src/domains/trading/api/waivers.py
 src/domains/trading/models/__init__.py
@@ -66,6 +74,8 @@ src/domains/trading/services/__init__.py
 src/domains/trading/services/trading_service.py
 src/domains/trading/services/waiver_service.py
 src/domains/users/__init__.py
+src/domains/users/config.py
+src/domains/users/health.py
 src/domains/users/api/__init__.py
 src/domains/users/api/me_preferences.py
 src/domains/users/models/__init__.py
@@ -75,6 +85,8 @@ src/domains/users/schemas/__init__.py
 src/domains/users/services/__init__.py
 src/domains/users/services/user_service.py
 src/domains/waitlist/__init__.py
+src/domains/waitlist/config.py
+src/domains/waitlist/health.py
 src/domains/waitlist/api/__init__.py
 src/domains/waitlist/api/waitlist.py
 src/domains/waitlist/models/__init__.py

@@ -22,6 +22,14 @@ from domains.waitlist.api.waitlist import router as waitlist_router
 # User and preferences
 from domains.users.api.me_preferences import router as me_preferences_router
 
+# Domain health check routers
+from domains.leagues.health import router as leagues_health_router
+from domains.users.health import router as users_health_router
+from domains.lineups.health import router as lineups_health_router
+from domains.trading.health import router as trading_health_router
+from domains.scoring.health import router as scoring_health_router
+from domains.waitlist.health import router as waitlist_health_router
+
 # Middleware and security
 from api.middleware.auth import AuthContextMiddleware
 from api.middleware.logging import RequestLoggingMiddleware
@@ -83,6 +91,14 @@ app.include_router(waitlist_router, prefix="/api", tags=["waitlist"])
 
 # Legacy routers (to be moved to domains)
 app.include_router(me_preferences_router, prefix="/api", tags=["users"])
+
+# Domain health check endpoints
+app.include_router(leagues_health_router, prefix="/api/domains/leagues", tags=["health", "leagues"])
+app.include_router(users_health_router, prefix="/api/domains/users", tags=["health", "users"])
+app.include_router(lineups_health_router, prefix="/api/domains/lineups", tags=["health", "lineups"])
+app.include_router(trading_health_router, prefix="/api/domains/trading", tags=["health", "trading"])
+app.include_router(scoring_health_router, prefix="/api/domains/scoring", tags=["health", "scoring"])
+app.include_router(waitlist_health_router, prefix="/api/domains/waitlist", tags=["health", "waitlist"])
 
 # Domain-specific middleware (order matters!)
 metrics_middleware = DomainMetricsMiddleware(app)
