@@ -24,6 +24,7 @@ dependencies = [
   "psycopg2-binary>=2.9.10",
   "psutil>=7.0.0",
   "pydantic-settings>=2.10.1",
+  "pytest-benchmark>=5.1.0",
 ]
 
 [project.optional-dependencies]

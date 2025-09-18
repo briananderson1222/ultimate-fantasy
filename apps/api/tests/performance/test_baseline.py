@@ -120,7 +120,7 @@ def benchmark_save_results():
     import os
     from datetime import datetime
 
-    results_file = "backend/tests/performance/baseline_results.json"
+    results_file = "apps/api/tests/performance/baseline_results.json"
 
     # This would be populated by pytest-benchmark plugin
     # For now, create a placeholder structure

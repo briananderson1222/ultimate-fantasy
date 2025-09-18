@@ -1,0 +1,82 @@
+name: Packages
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "packages/**"
+      - ".github/workflows/packages.yml"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "packages/**"
+      - ".github/workflows/packages.yml"
+
+jobs:
+  test-packages:
+    name: Test Shared Packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [shared-logic, ui-components, api-client]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install package dependencies
+        run: npm ci --workspace=packages/${{ matrix.package }}
+
+      - name: Lint (${{ matrix.package }})
+        run: npm run lint --workspace=packages/${{ matrix.package }}
+
+      - name: Format check (${{ matrix.package }})
+        run: npm run format:check --workspace=packages/${{ matrix.package }}
+
+      - name: Type check (${{ matrix.package }})
+        run: npm run typecheck --workspace=packages/${{ matrix.package }}
+
+      - name: Test (${{ matrix.package }})
+        run: npm test --workspace=packages/${{ matrix.package }}
+
+      - name: Build (${{ matrix.package }})
+        run: npm run build --workspace=packages/${{ matrix.package }}
+
+  build-all-packages:
+    name: Build All Packages Together
+    runs-on: ubuntu-latest
+    needs: test-packages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all packages
+        run: npm run build:packages
+
+      - name: Test all packages
+        run: npm run test:packages
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-packages
+          path: |
+            packages/*/dist/
+          retention-days: 1
