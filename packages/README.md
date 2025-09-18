@@ -384,8 +384,8 @@ MIT - See [LICENSE](../LICENSE) for details.
 
 ## Related Documentation
 
-- [Frontend README](../frontend/README.md) - NextJS web application
+- [Web App README](../apps/web/README.md) - NextJS web application
 - [Mobile README](../apps/mobile/README.md) - React Native mobile app
-- [API Documentation](../backend/README.md) - Backend API
+- [API Documentation](../apps/api/README.md) - Backend API
 - [Deployment Guide](../DEPLOYMENT.md) - Production deployment
 - [Contributing Guide](../CONTRIBUTING.md) - Development guidelines

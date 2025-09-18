@@ -27,12 +27,14 @@ export interface NavigationState {
 }
 
 interface AppState {
+  theme: 'light' | 'dark';
   settings: AppSettings;
   connection: ConnectionState;
   navigation: NavigationState;
   isInitialized: boolean;
   isLoading: boolean;
   error: string | null;
+  isOnline: boolean;
   notifications: Array<{
     id: string;
     type: 'info' | 'warning' | 'error' | 'success';
@@ -43,6 +45,7 @@ interface AppState {
   }>;
 
   // Actions
+  setTheme: (theme: 'light' | 'dark') => void;
   setSettings: (settings: Partial<AppSettings>) => void;
   updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   setConnectionState: (connection: Partial<ConnectionState>) => void;
@@ -91,13 +94,17 @@ const defaultNavigation: NavigationState = {
 export const createAppStore = () => create<AppState>()(
   persist(
     (set, get) => ({
+      theme: 'light',
       settings: defaultSettings,
       connection: defaultConnection,
       navigation: defaultNavigation,
       isInitialized: false,
       isLoading: false,
       error: null,
+      isOnline: true,
       notifications: [],
+
+      setTheme: (theme) => set({ theme }),
 
       setSettings: (settings) => set((state) => ({
         settings: { ...state.settings, ...settings }
@@ -112,6 +119,7 @@ export const createAppStore = () => create<AppState>()(
       })),
 
       setOnlineStatus: (isOnline) => set((state) => ({
+        isOnline,
         connection: { ...state.connection, isOnline }
       })),
 

@@ -100,7 +100,7 @@ export class DesignTokenSystem {
       offsetX: 0,
       offsetY: 1,
       blurRadius: 2,
-      color: '#00000010'
+      color: { hex: '#00000010' }
     }, {
       elevation: 1
     }));
@@ -114,7 +114,7 @@ export class DesignTokenSystem {
       offsetX: 0,
       offsetY: 4,
       blurRadius: 6,
-      color: '#00000015'
+      color: { hex: '#00000015' }
     }, {
       elevation: 3
     }));
@@ -128,7 +128,7 @@ export class DesignTokenSystem {
       offsetX: 0,
       offsetY: 10,
       blurRadius: 15,
-      color: '#00000020'
+      color: { hex: '#00000020' }
     }, {
       elevation: 5
     }));

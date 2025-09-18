@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@ultimate-fantasy/(.*)$': '<rootDir>/../../packages/$1/src',
   },
   transformIgnorePatterns: [

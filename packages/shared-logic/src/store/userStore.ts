@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { storeEvents, STORE_EVENTS } from './storeEvents';
 
 export interface User {
   user_id: string;
@@ -32,6 +33,7 @@ export interface UserPreferences {
 
 interface UserState {
   user: User | null;
+  authToken: string | null;
   preferences: UserPreferences;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -39,6 +41,9 @@ interface UserState {
 
   // Actions
   setUser: (user: User | null) => void;
+  setAuthToken: (token: string | null) => void;
+  login: (user: User, token: string) => void;
+  logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   setPreferences: (preferences: Partial<UserPreferences>) => void;
   updatePreference: <K extends keyof UserPreferences>(
@@ -48,7 +53,6 @@ interface UserState {
   setAuthenticated: (authenticated: boolean) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  logout: () => void;
   clearState: () => void;
 }
 
@@ -72,6 +76,7 @@ export const createUserStore = () => create<UserState>()(
   persist(
     (set, get) => ({
       user: null,
+      authToken: null,
       preferences: defaultPreferences,
       isAuthenticated: false,
       isLoading: false,
@@ -80,6 +85,26 @@ export const createUserStore = () => create<UserState>()(
       setUser: (user) => set({
         user,
         isAuthenticated: !!user
+      }),
+
+      setAuthToken: (token) => set({ authToken: token }),
+
+      login: (user, token) => {
+        set({
+          user,
+          authToken: token,
+          isAuthenticated: true,
+          error: null
+        });
+        // Emit login event for inter-store communication
+        storeEvents.emit(STORE_EVENTS.USER_LOGIN, user, token);
+      },
+
+      logout: () => set({
+        user: null,
+        authToken: null,
+        isAuthenticated: false,
+        preferences: defaultPreferences
       }),
 
       updateUser: (updates) => set((state) => ({
@@ -100,14 +125,9 @@ export const createUserStore = () => create<UserState>()(
 
       setError: (error) => set({ error }),
 
-      logout: () => set({
-        user: null,
-        isAuthenticated: false,
-        error: null
-      }),
-
       clearState: () => set({
         user: null,
+        authToken: null,
         preferences: defaultPreferences,
         isAuthenticated: false,
         isLoading: false,
@@ -119,6 +139,7 @@ export const createUserStore = () => create<UserState>()(
       // Persist user and preferences, but not loading/error states
       partialize: (state) => ({
         user: state.user,
+        authToken: state.authToken,
         preferences: state.preferences,
         isAuthenticated: state.isAuthenticated
       })

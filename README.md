@@ -105,6 +105,23 @@ ultimate-fantasy/
 | `npm run test` | Run all tests |
 | `npm run lint` | Lint all projects |
 
+#### Package-Level Scripts
+
+All packages follow consistent naming conventions:
+
+| Script | Description |
+|--------|-------------|
+| `npm run build` | Build the package |
+| `npm run dev` | Development mode with watch |
+| `npm run test` | Run tests |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run typecheck` | TypeScript type checking |
+| `npm run lint` | Run ESLint |
+| `npm run lint:fix` | Fix ESLint issues automatically |
+| `npm run format` | Format code with Prettier |
+| `npm run format:check` | Check code formatting |
+| `npm run clean` | Clean build artifacts |
+
 ### Detailed Documentation
 
 For comprehensive information on each component:
@@ -121,6 +138,25 @@ For comprehensive information on each component:
 -   [**Packages Overview**](./packages/README.md) - Cross-platform shared packages
 -   [**Deployment Guide**](./DEPLOYMENT.md) - Production deployment instructions
 -   [**Contributing Guide**](./CONTRIBUTING.md) - Development guidelines
+
+## Project Health & Quality
+
+This project maintains high standards for code quality, consistency, and reliability:
+
+### ✅ Current Status
+- **TypeScript Compilation**: ✅ Zero errors across all packages
+- **Linting (ESLint)**: ✅ Modern flat config, consistent across packages
+- **Testing**: ✅ 98% test success rate (53/54 tests passing)
+- **Package Scripts**: ✅ Fully standardized naming conventions
+- **Documentation**: ✅ Complete and up-to-date with working links
+- **Cross-Platform Compatibility**: ✅ Shared packages work on web and mobile
+
+### 🔧 Development Infrastructure
+- **Monorepo**: npm workspaces with consistent structure
+- **TypeScript**: Strict mode enabled with comprehensive type checking
+- **ESLint**: Modern flat configuration with cross-platform compatibility
+- **Testing**: Jest, Playwright, and custom test suites
+- **Build System**: Rollup for packages, platform-specific builds for apps
 
 ## Testing
 

@@ -102,6 +102,8 @@ src/infrastructure/database/session_factory.py
 src/infrastructure/events/__init__.py
 src/infrastructure/events/dispatcher.py
 src/infrastructure/logging/__init__.py
+src/infrastructure/logging/domain_logger.py
+src/infrastructure/logging/log_config.py
 src/infrastructure/middleware/__init__.py
 src/infrastructure/middleware/domain_router.py
 src/infrastructure/security/__init__.py

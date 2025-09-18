@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 // Hook parameter validation schema
 const HookParameterSchema = z.object({
-  name: z.string().min(1, 'Parameter name is required'),
+  name: z.string()
+    .min(1, 'Parameter name is required')
+    .regex(/^[a-zA-Z_$][a-zA-Z0-9_$]*$/, 'Parameter name must be a valid JavaScript identifier'),
   type: z.string().min(1, 'Parameter type is required'),
   optional: z.boolean().default(false),
   defaultValue: z.any().optional(),
@@ -28,7 +30,7 @@ const SharedHookSchema = z.object({
   ),
   description: z.string().min(1, 'Hook description is required'),
   category: z.enum(['state', 'api', 'utility', 'ui', 'form', 'navigation', 'data']),
-  platform: z.enum(['shared', 'web', 'mobile', 'universal']),
+  platform: z.literal('universal'),
   parameters: z.array(HookParameterSchema).default([]),
   returns: HookReturnSchema,
   dependencies: z.array(z.string()).default([]),
@@ -50,7 +52,7 @@ export class SharedHook {
   public readonly name: string;
   public readonly description: string;
   public readonly category: 'state' | 'api' | 'utility' | 'ui' | 'form' | 'navigation' | 'data';
-  public readonly platform: 'shared' | 'web' | 'mobile' | 'universal';
+  public readonly platform: 'universal';
   public readonly parameters: HookParameter[];
   public readonly returns: HookReturn;
   public readonly dependencies: string[];
@@ -72,6 +74,11 @@ export class SharedHook {
     this.examples = validatedData.examples;
     this.deprecated = validatedData.deprecated;
     this.version = validatedData.version;
+  }
+
+  // Computed properties for backward compatibility
+  public get returnType(): string {
+    return this.returns?.type || '';
   }
 
   // Helper methods

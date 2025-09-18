@@ -1,4 +1,18 @@
 // Platform adapter system for cross-platform UI components
+import React from 'react';
+
+// Global type declarations for platform detection
+declare global {
+  const __DEV__: boolean | undefined;
+  interface Window {
+    ReactNativeWebView?: any;
+  }
+  namespace NodeJS {
+    interface Global {
+      expo?: any;
+    }
+  }
+}
 
 export type Platform = 'web' | 'mobile';
 
@@ -25,7 +39,7 @@ export function getPlatform(): Platform {
   }
 
   // Check for React Native runtime (Expo)
-  if (typeof global !== 'undefined' && global.expo) {
+  if (typeof global !== 'undefined' && (global as any).expo) {
     return 'mobile';
   }
 
@@ -118,7 +132,7 @@ export class StylePlatformAdapter {
     return '';
   }
 
-  adaptStylesForMobile(styles: string[] | object): object {
+  adaptStylesForMobile(styles: string[] | string | object): object {
     if (Array.isArray(styles)) {
       return styles.reduce((acc, style) => {
         const mobileStyle = this.mobileStyleMap.get(style);
@@ -254,10 +268,10 @@ export function withPlatformAdapter<TWebProps, TMobileProps>(
 
     if (platform === 'web') {
       const adaptedProps = propsAdapter?.web ? propsAdapter.web(props) : (props as TWebProps);
-      return React.createElement(WebComponent, adaptedProps);
+      return React.createElement(WebComponent as any, adaptedProps as any);
     } else {
       const adaptedProps = propsAdapter?.mobile ? propsAdapter.mobile(props) : (props as TMobileProps);
-      return React.createElement(MobileComponent, adaptedProps);
+      return React.createElement(MobileComponent as any, adaptedProps as any);
     }
   };
 }
@@ -296,5 +310,4 @@ export class PlatformAdapter {
   }
 }
 
-// Export utility functions
-export { EventAdapter };
+// EventAdapter is already exported above with the class declaration

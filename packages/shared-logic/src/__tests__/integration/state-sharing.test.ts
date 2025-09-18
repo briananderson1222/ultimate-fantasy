@@ -1,6 +1,7 @@
 import { createLeagueStore } from '../../store/leagueStore';
 import { createUserStore } from '../../store/userStore';
 import { createAppStore } from '../../store/appStore';
+import '../setup/storage-mock';
 
 describe('Cross-Platform State Management Integration Tests', () => {
   describe('League Store', () => {
@@ -146,8 +147,8 @@ describe('Cross-Platform State Management Integration Tests', () => {
       const { addNotification, removeNotification } = store.getState();
 
       const notification = {
-        id: 'notif-1',
-        type: 'success',
+        title: 'Test',
+        type: 'success' as const,
         message: 'Test notification'
       };
 
@@ -155,7 +156,9 @@ describe('Cross-Platform State Management Integration Tests', () => {
       let state = store.getState();
       expect(state.notifications).toHaveLength(1);
 
-      removeNotification('notif-1');
+      // Get the actual notification ID to remove
+      const notificationId = state.notifications[0].id;
+      removeNotification(notificationId);
       state = store.getState();
       expect(state.notifications).toHaveLength(0);
     });

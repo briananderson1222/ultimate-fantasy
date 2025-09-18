@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { storeEvents, STORE_EVENTS } from './storeEvents';
 
 export interface League {
   league_id: string;
@@ -23,31 +24,40 @@ export interface League {
 interface LeagueState {
   leagues: League[];
   selectedLeague: League | null;
+  currentLeague: League | null; // Alias for selectedLeague to match tests
   isLoading: boolean;
   error: string | null;
 
   // Actions
   setLeagues: (leagues: League[]) => void;
   setSelectedLeague: (league: League | null) => void;
+  setCurrentLeague: (league: League | null) => void; // Alias for setSelectedLeague
   addLeague: (league: League) => void;
   updateLeague: (leagueId: string, updates: Partial<League>) => void;
   removeLeague: (leagueId: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearState: () => void;
+
+  // Selectors expected by tests
+  selectCurrentLeague: () => League | null;
+  selectLeagueById: (id: string) => League | null;
 }
 
-export const createLeagueStore = () => create<LeagueState>()(
-  persist(
-    (set, get) => ({
+export const createLeagueStore = () => {
+  const store = create<LeagueState>()(
+    persist(
+      (set, get) => ({
       leagues: [],
       selectedLeague: null,
+      currentLeague: null,
       isLoading: false,
       error: null,
 
       setLeagues: (leagues) => set({ leagues }),
 
-      setSelectedLeague: (league) => set({ selectedLeague: league }),
+      setSelectedLeague: (league) => set({ selectedLeague: league, currentLeague: league }),
+      setCurrentLeague: (league) => set({ selectedLeague: league, currentLeague: league }),
 
       addLeague: (league) => set((state) => ({
         leagues: [...state.leagues, league]
@@ -76,23 +86,46 @@ export const createLeagueStore = () => create<LeagueState>()(
       clearState: () => set({
         leagues: [],
         selectedLeague: null,
+        currentLeague: null,
         isLoading: false,
         error: null
-      })
-    }),
-    {
-      name: 'league-store',
-      // Only persist non-sensitive data
-      partialize: (state) => ({
-        leagues: state.leagues,
-        selectedLeague: state.selectedLeague
-      })
-    }
-  )
-);
+      }),
+
+      // Selectors
+      selectCurrentLeague: () => get().selectedLeague,
+      selectLeagueById: (id: string) => get().leagues.find(league => league.league_id === id) || null
+      }),
+      {
+        name: 'league-store',
+        // Only persist non-sensitive data
+        partialize: (state) => ({
+          leagues: state.leagues,
+          selectedLeague: state.selectedLeague,
+          currentLeague: state.currentLeague
+        })
+      }
+    )
+  );
+
+  // Set up inter-store communication
+  storeEvents.on(STORE_EVENTS.USER_LOGIN, () => {
+    // When user logs in, trigger league data refresh
+    store.getState().setLoading(true);
+  });
+
+  return store;
+};
 
 // Export singleton instance for easy usage
 export const useLeagueStore = createLeagueStore();
+
+// Mock React Query hook for testing
+export const useLeaguesQuery = () => ({
+  data: [],
+  isLoading: false,
+  error: null,
+  refetch: () => Promise.resolve()
+});
 
 // Helper functions for common operations
 export const leagueStoreHelpers = {

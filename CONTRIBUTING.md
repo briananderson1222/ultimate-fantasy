@@ -27,8 +27,8 @@ We welcome contributions in various forms, including:
 To get your development environment set up, please follow the instructions in the `README.md` files of the respective projects:
 
 -   **For the entire platform (recommended):** See the main [README.md](./README.md) for instructions on how to get the full stack running with Docker.
--   **For backend development:** See the [backend/README.md](./backend/README.md).
--   **For frontend development:** See the [frontend/README.md](./frontend/README.md).
+-   **For backend development:** See the [apps/api/README.md](./apps/api/README.md).
+-   **For frontend development:** See the [apps/web/README.md](./apps/web/README.md).
 
 ## Coding Style
 
@@ -39,7 +39,7 @@ We enforce a consistent coding style across the project using automated tools. P
     -   **Linting:** We use `ruff` for linting and `mypy` for static type checking.
     -   You can run all checks with:
         ```bash
-        cd backend
+        cd apps/api
         ruff check .
         black --check .
         isort --check-only .
@@ -51,7 +51,7 @@ We enforce a consistent coding style across the project using automated tools. P
     -   **Linting:** We use `eslint` to catch common issues.
     -   You can run all checks with:
         ```bash
-        cd frontend
+        cd apps/web
         npm run format:check
         npm run lint
         npm run typecheck

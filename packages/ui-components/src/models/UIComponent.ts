@@ -1,3 +1,4 @@
+import React from 'react';
 import { z } from 'zod';
 
 // ComponentProp validation schema
@@ -36,6 +37,13 @@ const UIComponentSchema = z.object({
 export type ComponentPropData = z.infer<typeof ComponentPropSchema>;
 export type PlatformData = z.infer<typeof PlatformSchema>;
 export type UIComponentData = z.infer<typeof UIComponentSchema>;
+
+// Base props interface for UI components
+export interface UIComponentProps {
+  className?: string;
+  style?: React.CSSProperties | object;
+  children?: React.ReactNode;
+}
 
 // UIComponent class
 export class UIComponent {

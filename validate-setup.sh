@@ -14,7 +14,7 @@ echo "✅ Project structure validated"
 # Check backend dependencies
 echo ""
 echo "🔍 Checking Backend Setup..."
-cd backend
+cd apps/api
 
 if [ ! -f "pyproject.toml" ]; then
     echo "❌ Backend pyproject.toml not found"
@@ -46,12 +46,12 @@ else
     echo "⚠️  uv not found. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"
 fi
 
-cd ..
+cd ../..
 
 # Check frontend dependencies
 echo ""
 echo "🔍 Checking Frontend Setup..."
-cd frontend
+cd apps/web
 
 if [ ! -f "package.json" ]; then
     echo "❌ Frontend package.json not found"
