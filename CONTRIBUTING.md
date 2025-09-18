@@ -89,12 +89,44 @@ When you are ready to submit a pull request, please ensure the following:
 
 Thank you for your contribution!
 
-▌I want to plan out detailed action plan for three big initiatives for my applications in this repo. 1. Related to modularizing the backend with the idea that we can split out the backend into microservices in the
-▌future when it makes sense financially to do so. Treat each domain as a module  such that each domain could be owned by different teams if needed 2. I want to split out all shared logic in our 'frontend'
-▌application that is currently nextjs. I am planning to introduce mobile applications via react native and want as much shared logic as possible  3. UI Overhaul with the attached images as inspiration for an easy to
-▌use user interface that can be pretty consistent across both the nextjs AND react native frontends C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\179eb8c4-61e0-4fe0-b6b2-d50d2080dc19.JPEG
-▌C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\314bbc92-300c-4282-be2c-c235f31ae276.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\815bf813-f1df-4036-bfd8-
-▌327cea1476d0.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\926a0012-4973-424d-95ce-8aa0091a3512.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\8770d59c-
-▌5dcf-493a-ab1d-d4934e2cf181.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\2791709a-77a1-4d33-8329-29c661465eba.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-
-▌examples\e26eba5d-60e6-47c5-96e0-afcbd8ed751b.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\06f09582-3af8-4f42-aa1c-b25b20b237c7.JPEG C:\Users\ander\Downloads\UX-examples-
-▌20250914T202843Z-1-001\UX-examples\6e44e462-74f4-4683-80dd-4c94fc16bfb5.JPEG C:\Users\ander\Downloads\UX-examples-20250914T202843Z-1-001\UX-examples\08f9e695-4a63-4264-8fb2-b55593f4a645.JPEG
+## Additional Development Guidelines
+
+### Shared Packages
+
+When working with the shared packages in `packages/`, ensure cross-platform compatibility:
+
+```bash
+# Test packages individually
+cd packages/shared-logic
+npm test
+
+cd packages/ui-components
+npm test
+
+cd packages/api-client
+npm test
+
+# Test packages together
+npm run test:packages
+```
+
+### Platform-Specific Testing
+
+- **Web Application**: Tests use Vitest and Playwright
+- **Mobile Application**: Tests use Jest and Detox
+- **API**: Tests use pytest with multiple test types (unit, integration, contract, performance)
+
+### Code Quality Standards
+
+All code must pass:
+- TypeScript compilation (`npm run typecheck`)
+- ESLint rules (`npm run lint`)
+- Prettier formatting (`npm run format:check`)
+- All existing tests (`npm test`)
+
+## Package Management
+
+This project uses:
+- **Node.js applications**: npm with workspaces
+- **Python API**: uv for fast dependency management
+- **Cross-platform packages**: Shared dependencies across web and mobile

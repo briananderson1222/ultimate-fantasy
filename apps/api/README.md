@@ -34,11 +34,10 @@ Middleware for authentication and logging is applied in `src/main.py`.
 
 2.  **Install dependencies:**
 
-    The project uses `pip` for dependency management. The `dev` extras include tools for testing, linting, and formatting.
+    The project uses `uv` for dependency management. The `--all-extras` flag includes tools for testing, linting, and formatting.
 
     ```bash
-    pip install -U pip
-    pip install -e .[dev]
+    uv sync --all-extras
     ```
 
 3.  **Configure the database:**
@@ -65,10 +64,10 @@ Middleware for authentication and logging is applied in `src/main.py`.
 
 5.  **Run the server:**
 
-    Uvicorn is used to run the FastAPI application. The `--reload` flag enables hot-reloading for development.
+    Uvicorn is used to run the FastAPI application via uv. The `--reload` flag enables hot-reloading for development.
 
     ```bash
-    uvicorn main:app --reload --app-dir src
+    uv run uvicorn main:app --reload --app-dir src
     ```
 
     The API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
@@ -79,10 +78,10 @@ The project includes a comprehensive test suite and linting configuration to ens
 
 -   **Run tests:**
 
-    Tests are organized into `contract`, `integration`, `unit`, and `perf` directories. You can run all tests with `pytest`.
+    Tests are organized into `contract`, `integration`, `unit`, and `perf` directories. You can run all tests with `pytest` via uv.
 
     ```bash
-    pytest -q
+    uv run pytest -q
     ```
 
 -   **Lint and format:**
@@ -90,16 +89,16 @@ The project includes a comprehensive test suite and linting configuration to ens
     The project uses `ruff` for linting, `black` for formatting, `isort` for import sorting, and `mypy` for static type checking.
 
     ```bash
-    ruff check .
-    black .
-    isort .
-    mypy .
+    uv run ruff check .
+    uv run black .
+    uv run isort .
+    uv run mypy .
     ```
 
 ## Project Structure
 
 ```
-backend/
+apps/api/
 ├── alembic/              # Alembic migration scripts
 ├── alembic.ini           # Alembic configuration
 ├── pyproject.toml        # Project metadata and dependencies

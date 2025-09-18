@@ -6,10 +6,10 @@ This document outlines the deployment process for the Ultimate Fantasy Sports Pl
 
 The platform uses a monorepo structure with the following applications:
 
-- **Frontend** (`frontend/`) - NextJS web application
-- **Backend** (`backend/`) - Python FastAPI server
+- **Web** (`apps/web/`) - NextJS web application
+- **API** (`apps/api/`) - Python FastAPI server
 - **Mobile** (`apps/mobile/`) - React Native (Expo) mobile application
-- **Landing** (`landing/`) - Marketing website
+- **Landing** (`apps/landing/`) - Marketing website
 - **Shared Packages** (`packages/`) - Cross-platform shared logic
 
 ## Prerequisites
@@ -33,22 +33,22 @@ npm run build --workspace=packages/ui-components
 npm run build --workspace=packages/api-client
 ```
 
-## Frontend Deployment (NextJS)
+## Web App Deployment (NextJS)
 
 ### Development
 ```bash
-npm run dev:frontend
+npm run dev:web
 ```
 
 ### Production Build
 ```bash
-cd frontend
+cd apps/web
 npm run build
 npm start
 ```
 
 ### Environment Variables
-Create `.env.local` in the frontend directory:
+Create `.env.local` in the apps/web directory:
 ```
 NEXT_PUBLIC_API_URL=https://api.ultimatefantasy.app
 NEXT_PUBLIC_WS_URL=wss://api.ultimatefantasy.app/ws
@@ -59,22 +59,22 @@ NEXT_PUBLIC_WS_URL=wss://api.ultimatefantasy.app/ws
 - **Netlify**: Static site generation with API routes
 - **Docker**: Use the provided Dockerfile
 
-## Backend Deployment (FastAPI)
+## API Deployment (FastAPI)
 
 ### Development
 ```bash
-npm run dev:backend
+npm run dev:api
 ```
 
 ### Production Setup
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn src.main:app --host 0.0.0.0 --port 8000
+cd apps/api
+uv sync --all-extras
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --app-dir src
 ```
 
 ### Environment Variables
-Create `.env` in the backend directory:
+Create `.env` in the apps/api directory:
 ```
 DATABASE_URL=postgresql://user:password@localhost/ultimatefantasy
 REDIS_URL=redis://localhost:6379
@@ -167,13 +167,13 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### Individual Services
 ```bash
-# Frontend
-docker build -t uf-frontend ./frontend
-docker run -p 3000:3000 uf-frontend
+# Web App
+docker build -t uf-web ./apps/web
+docker run -p 3000:3000 uf-web
 
-# Backend
-docker build -t uf-backend ./backend
-docker run -p 8000:8000 uf-backend
+# API
+docker build -t uf-api ./apps/api
+docker run -p 8000:8000 uf-api
 ```
 
 ## CI/CD Pipeline
@@ -192,11 +192,11 @@ The repository includes GitHub Actions workflows for:
    - Runs on: Push to `packages/*`
    - Steps: Install, build, test shared packages
 
-2. **Frontend Deploy** (`.github/workflows/frontend.yml`)
+2. **Web Deploy** (`.github/workflows/web.yml`)
    - Runs on: Push to `main` branch
-   - Steps: Build packages, build frontend, deploy to Vercel
+   - Steps: Build packages, build web app, deploy to Vercel
 
-3. **Backend Deploy** (`.github/workflows/backend.yml`)
+3. **API Deploy** (`.github/workflows/api.yml`)
    - Runs on: Push to `main` branch
    - Steps: Test, build Docker image, deploy to production
 
@@ -266,9 +266,9 @@ eas update --branch production --message "Rollback to previous version"
 
 ### Database Migrations
 ```bash
-cd backend
-alembic upgrade head  # Apply latest migrations
-alembic downgrade -1  # Rollback one migration
+cd apps/api
+uv run alembic upgrade head  # Apply latest migrations
+uv run alembic downgrade -1  # Rollback one migration
 ```
 
 ### Package Updates

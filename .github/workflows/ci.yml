@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/api
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,7 +90,7 @@ jobs:
           node-version: '20'
 
       - name: Install Playwright deps
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           npm install
           npx playwright install --with-deps
@@ -104,19 +104,19 @@ jobs:
         run: uv python install 3.11
 
       - name: Backend deps
-        working-directory: backend
+        working-directory: apps/api
         run: uv sync --all-extras
 
       - name: Start backend
-        working-directory: backend/src
+        working-directory: apps/api/src
         run: |
-          uv run uvicorn main:app --host 127.0.0.1 --port 8000 &
+          uv run uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src &
           for i in `seq 1 30`; do
             curl -fsS http://127.0.0.1:8000/openapi.json && break || sleep 1;
           done
 
       - name: Start frontend
-        working-directory: frontend
+        working-directory: apps/web
         env:
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
         run: |
@@ -127,7 +127,7 @@ jobs:
           done
 
       - name: Run E2E tests
-        working-directory: frontend
+        working-directory: apps/web
         run: npm run test:e2e -- --reporter=line
 
   frontend-visual:
@@ -147,7 +147,7 @@ jobs:
           node-version: '20'
 
       - name: Install Playwright deps
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           npm install
           npx playwright install --with-deps chromium
@@ -161,19 +161,19 @@ jobs:
         run: uv python install 3.11
 
       - name: Backend deps
-        working-directory: backend
+        working-directory: apps/api
         run: uv sync --all-extras
 
       - name: Start backend
-        working-directory: backend/src
+        working-directory: apps/api/src
         run: |
-          uv run uvicorn main:app --host 127.0.0.1 --port 8000 &
+          uv run uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src &
           for i in `seq 1 30`; do
             curl -fsS http://127.0.0.1:8000/openapi.json && break || sleep 1;
           done
 
       - name: Start frontend
-        working-directory: frontend
+        working-directory: apps/web
         env:
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
         run: |
@@ -184,7 +184,7 @@ jobs:
           done
 
       - name: Run Visual tests
-        working-directory: frontend
+        working-directory: apps/web
         run: npm run test:visual -- --reporter=line
 
   frontend-playground:
@@ -192,7 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
