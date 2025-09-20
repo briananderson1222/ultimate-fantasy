@@ -17,6 +17,18 @@ Requires-Dist: PyJWT[crypto]==2.9.0
 Requires-Dist: psycopg2-binary>=2.9.10
 Requires-Dist: psutil>=7.0.0
 Requires-Dist: pydantic-settings>=2.10.1
+Requires-Dist: pytest-benchmark>=5.1.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: redis>=5.0.0
+Requires-Dist: websockets>=12.0
+Requires-Dist: fastapi-websocket-pubsub>=0.3.0
+Requires-Dist: opentelemetry-api>=1.21.0
+Requires-Dist: opentelemetry-sdk>=1.21.0
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.42b0
+Requires-Dist: opentelemetry-instrumentation-sqlalchemy>=0.42b0
+Requires-Dist: opentelemetry-exporter-jaeger>=1.21.0
 Provides-Extra: dev
 Requires-Dist: pytest==8.4.2; extra == "dev"
 Requires-Dist: pytest-asyncio==1.2.0; extra == "dev"
@@ -63,11 +75,10 @@ Middleware for authentication and logging is applied in `src/main.py`.
 
 2.  **Install dependencies:**
 
-    The project uses `pip` for dependency management. The `dev` extras include tools for testing, linting, and formatting.
+    The project uses `uv` for dependency management. The `--all-extras` flag includes tools for testing, linting, and formatting.
 
     ```bash
-    pip install -U pip
-    pip install -e .[dev]
+    uv sync --all-extras
     ```
 
 3.  **Configure the database:**
@@ -94,10 +105,10 @@ Middleware for authentication and logging is applied in `src/main.py`.
 
 5.  **Run the server:**
 
-    Uvicorn is used to run the FastAPI application. The `--reload` flag enables hot-reloading for development.
+    Uvicorn is used to run the FastAPI application via uv. The `--reload` flag enables hot-reloading for development.
 
     ```bash
-    uvicorn main:app --reload --app-dir src
+    uv run uvicorn main:app --reload --app-dir src
     ```
 
     The API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
@@ -108,10 +119,10 @@ The project includes a comprehensive test suite and linting configuration to ens
 
 -   **Run tests:**
 
-    Tests are organized into `contract`, `integration`, `unit`, and `perf` directories. You can run all tests with `pytest`.
+    Tests are organized into `contract`, `integration`, `unit`, and `perf` directories. You can run all tests with `pytest` via uv.
 
     ```bash
-    pytest -q
+    uv run pytest -q
     ```
 
 -   **Lint and format:**
@@ -119,16 +130,16 @@ The project includes a comprehensive test suite and linting configuration to ens
     The project uses `ruff` for linting, `black` for formatting, `isort` for import sorting, and `mypy` for static type checking.
 
     ```bash
-    ruff check .
-    black .
-    isort .
-    mypy .
+    uv run ruff check .
+    uv run black .
+    uv run isort .
+    uv run mypy .
     ```
 
 ## Project Structure
 
 ```
-backend/
+apps/api/
 ├── alembic/              # Alembic migration scripts
 ├── alembic.ini           # Alembic configuration
 ├── pyproject.toml        # Project metadata and dependencies

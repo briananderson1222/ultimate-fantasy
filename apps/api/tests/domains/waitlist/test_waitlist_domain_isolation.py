@@ -1,5 +1,7 @@
 """Domain isolation tests for Waitlist domain."""
+
 import pytest
+
 
 class TestWaitlistDomainIsolation:
     def test_waitlist_domain_imports(self):

@@ -4,6 +4,7 @@ Domain Event Base Classes.
 This module provides the foundation for domain events that enable
 loose coupling between domains and support event-driven architecture.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -16,6 +17,7 @@ from typing import Any, Generic, TypeVar
 
 class EventPriority(Enum):
     """Event priority levels for processing order."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -24,6 +26,7 @@ class EventPriority(Enum):
 
 class EventStatus(Enum):
     """Event processing status."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -34,6 +37,7 @@ class EventStatus(Enum):
 @dataclass
 class EventMetadata:
     """Metadata associated with domain events."""
+
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: datetime = field(default_factory=datetime.utcnow)
     version: str = "1.0"
@@ -48,10 +52,10 @@ class EventMetadata:
     custom_headers: dict[str, Any] = field(default_factory=dict)
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
-class DomainEvent(ABC):
+class DomainEvent(ABC):  # noqa: B024
     """
     Abstract base class for all domain events.
 
@@ -65,7 +69,7 @@ class DomainEvent(ABC):
         domain: str,
         event_type: str,
         data: dict[str, Any],
-        metadata: EventMetadata | None = None
+        metadata: EventMetadata | None = None,
     ):
         """
         Initialize a domain event.
@@ -123,7 +127,7 @@ class DomainEvent(ABC):
                 "max_retries": self.metadata.max_retries,
                 "tags": self.metadata.tags,
                 "custom_headers": self.metadata.custom_headers,
-            }
+            },
         }
 
     @classmethod
@@ -140,7 +144,9 @@ class DomainEvent(ABC):
         metadata_dict = data.get("metadata", {})
         metadata = EventMetadata(
             event_id=data["event_id"],
-            timestamp=datetime.fromisoformat(metadata_dict.get("timestamp", datetime.utcnow().isoformat())),
+            timestamp=datetime.fromisoformat(
+                metadata_dict.get("timestamp", datetime.utcnow().isoformat())
+            ),
             version=metadata_dict.get("version", "1.0"),
             source=metadata_dict.get("source"),
             correlation_id=metadata_dict.get("correlation_id"),
@@ -158,7 +164,7 @@ class DomainEvent(ABC):
             domain=data["domain"],
             event_type=data["event_type"],
             data=data["data"],
-            metadata=metadata
+            metadata=metadata,
         )
 
     def with_correlation_id(self, correlation_id: str) -> DomainEvent:
@@ -191,7 +197,7 @@ class DomainEvent(ABC):
             domain=self.domain,
             event_type=self.event_type,
             data=self.data.copy(),
-            metadata=new_metadata
+            metadata=new_metadata,
         )
 
     def mark_as_processing(self) -> None:
@@ -239,14 +245,14 @@ class IntegrationEvent(DomainEvent):
     These events are published to external systems and other domains.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         aggregate_id: str,
         domain: str,
         event_type: str,
         data: dict[str, Any],
         target_domains: list[str] | None = None,
-        metadata: EventMetadata | None = None
+        metadata: EventMetadata | None = None,
     ):
         """
         Initialize integration event.
@@ -339,42 +345,78 @@ class AggregateEvent(Generic[T]):
 class LeagueEvent(DomainEvent):
     """Base class for league domain events."""
 
-    def __init__(self, aggregate_id: str, event_type: str, data: dict[str, Any], metadata: EventMetadata | None = None):
+    def __init__(
+        self,
+        aggregate_id: str,
+        event_type: str,
+        data: dict[str, Any],
+        metadata: EventMetadata | None = None,
+    ):
         super().__init__(aggregate_id, "leagues", event_type, data, metadata)
 
 
 class UserEvent(DomainEvent):
     """Base class for user domain events."""
 
-    def __init__(self, aggregate_id: str, event_type: str, data: dict[str, Any], metadata: EventMetadata | None = None):
+    def __init__(
+        self,
+        aggregate_id: str,
+        event_type: str,
+        data: dict[str, Any],
+        metadata: EventMetadata | None = None,
+    ):
         super().__init__(aggregate_id, "users", event_type, data, metadata)
 
 
 class LineupEvent(DomainEvent):
     """Base class for lineup domain events."""
 
-    def __init__(self, aggregate_id: str, event_type: str, data: dict[str, Any], metadata: EventMetadata | None = None):
+    def __init__(
+        self,
+        aggregate_id: str,
+        event_type: str,
+        data: dict[str, Any],
+        metadata: EventMetadata | None = None,
+    ):
         super().__init__(aggregate_id, "lineups", event_type, data, metadata)
 
 
 class TradingEvent(DomainEvent):
     """Base class for trading domain events."""
 
-    def __init__(self, aggregate_id: str, event_type: str, data: dict[str, Any], metadata: EventMetadata | None = None):
+    def __init__(
+        self,
+        aggregate_id: str,
+        event_type: str,
+        data: dict[str, Any],
+        metadata: EventMetadata | None = None,
+    ):
         super().__init__(aggregate_id, "trading", event_type, data, metadata)
 
 
 class ScoringEvent(DomainEvent):
     """Base class for scoring domain events."""
 
-    def __init__(self, aggregate_id: str, event_type: str, data: dict[str, Any], metadata: EventMetadata | None = None):
+    def __init__(
+        self,
+        aggregate_id: str,
+        event_type: str,
+        data: dict[str, Any],
+        metadata: EventMetadata | None = None,
+    ):
         super().__init__(aggregate_id, "scoring", event_type, data, metadata)
 
 
 class WaitlistEvent(DomainEvent):
     """Base class for waitlist domain events."""
 
-    def __init__(self, aggregate_id: str, event_type: str, data: dict[str, Any], metadata: EventMetadata | None = None):
+    def __init__(
+        self,
+        aggregate_id: str,
+        event_type: str,
+        data: dict[str, Any],
+        metadata: EventMetadata | None = None,
+    ):
         super().__init__(aggregate_id, "waitlist", event_type, data, metadata)
 
 
@@ -388,11 +430,13 @@ class EventFactory:
         league_id: str,
         data: dict[str, Any],
         integration: bool = False,
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> DomainEvent:
         """Create a league domain event."""
         if integration:
-            return IntegrationEvent(league_id, "leagues", event_type, data, target_domains)
+            return IntegrationEvent(
+                league_id, "leagues", event_type, data, target_domains
+            )
         return LeagueEvent(league_id, event_type, data)
 
     @staticmethod
@@ -401,7 +445,7 @@ class EventFactory:
         user_id: str,
         data: dict[str, Any],
         integration: bool = False,
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> DomainEvent:
         """Create a user domain event."""
         if integration:
@@ -414,11 +458,13 @@ class EventFactory:
         lineup_id: str,
         data: dict[str, Any],
         integration: bool = False,
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> DomainEvent:
         """Create a lineup domain event."""
         if integration:
-            return IntegrationEvent(lineup_id, "lineups", event_type, data, target_domains)
+            return IntegrationEvent(
+                lineup_id, "lineups", event_type, data, target_domains
+            )
         return LineupEvent(lineup_id, event_type, data)
 
     @staticmethod
@@ -427,11 +473,13 @@ class EventFactory:
         aggregate_id: str,
         data: dict[str, Any],
         integration: bool = False,
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> DomainEvent:
         """Create a trading domain event."""
         if integration:
-            return IntegrationEvent(aggregate_id, "trading", event_type, data, target_domains)
+            return IntegrationEvent(
+                aggregate_id, "trading", event_type, data, target_domains
+            )
         return TradingEvent(aggregate_id, event_type, data)
 
     @staticmethod
@@ -440,11 +488,13 @@ class EventFactory:
         aggregate_id: str,
         data: dict[str, Any],
         integration: bool = False,
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> DomainEvent:
         """Create a scoring domain event."""
         if integration:
-            return IntegrationEvent(aggregate_id, "scoring", event_type, data, target_domains)
+            return IntegrationEvent(
+                aggregate_id, "scoring", event_type, data, target_domains
+            )
         return ScoringEvent(aggregate_id, event_type, data)
 
     @staticmethod
@@ -453,9 +503,11 @@ class EventFactory:
         aggregate_id: str,
         data: dict[str, Any],
         integration: bool = False,
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> DomainEvent:
         """Create a waitlist domain event."""
         if integration:
-            return IntegrationEvent(aggregate_id, "waitlist", event_type, data, target_domains)
+            return IntegrationEvent(
+                aggregate_id, "waitlist", event_type, data, target_domains
+            )
         return WaitlistEvent(aggregate_id, event_type, data)

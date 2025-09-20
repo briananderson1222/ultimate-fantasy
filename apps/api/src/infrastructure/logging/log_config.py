@@ -10,7 +10,9 @@ class LogConfig(BaseSettings):
 
     # Global logging settings
     log_level: str = "INFO"
-    log_format: str = "%(asctime)s - %(name)s - %(levelname)s - [%(domain)s] - %(message)s"
+    log_format: str = (
+        "%(asctime)s - %(name)s - %(levelname)s - [%(domain)s] - %(message)s"
+    )
     log_file_path: str = "logs/ultimate_fantasy.log"
 
     # Domain-specific log levels

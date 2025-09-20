@@ -4,8 +4,9 @@ Abstract Base Class for Waitlist Service interface.
 This interface defines the contract for waitlist domain operations
 and enables cross-domain communication without tight coupling.
 """
+
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 
 class WaitlistServiceInterface(ABC):
@@ -113,6 +114,6 @@ class WaitlistServiceInterface(ABC):
 
 
 # Type hints for forward references
-if False:  # TYPE_CHECKING equivalent
-    from backend.src.domains.waitlist.models.waitlist_entry import WaitlistEntry
-    from backend.src.domains.waitlist.models.waitlist_invite import WaitlistInvite
+if TYPE_CHECKING:
+    from domains.waitlist.models.waitlist_entry import WaitlistEntry
+    from domains.waitlist.models.waitlist_invite import WaitlistInvite

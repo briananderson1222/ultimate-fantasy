@@ -4,12 +4,15 @@ Dependency Injection Container for the Ultimate Fantasy backend.
 This container manages the lifecycle and injection of dependencies
 throughout the application, following the Dependency Inversion Principle.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from infrastructure.database.session_factory import SessionFactory, get_session_factory
@@ -19,13 +22,13 @@ from infrastructure.service_registry import (
     initialize_registry,
 )
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Container:
     """Dependency injection container for managing application services."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._session_factory: SessionFactory | None = None
         self._service_registry: ServiceRegistry | None = None
         self._singletons: dict[type, Any] = {}
@@ -43,7 +46,13 @@ class Container:
 
         # Initialize service registry with a session
         async with self.get_db_session() as session:
-            self._service_registry = initialize_registry(session)
+            # Initialize registry expects a Session, so we need to get a sync session
+            if isinstance(session, AsyncSession):
+                # For async sessions, we need to create a sync session separately
+                sync_session = self._session_factory.get_sync_session()
+                self._service_registry = initialize_registry(sync_session)
+            else:
+                self._service_registry = initialize_registry(session)
 
     async def cleanup(self) -> None:
         """Clean up container resources."""
@@ -54,7 +63,7 @@ class Container:
         self._factories.clear()
 
     @asynccontextmanager
-    async def get_db_session(self) -> AsyncGenerator[Session, None]:
+    async def get_db_session(self) -> AsyncGenerator[Session | AsyncSession, None]:
         """
         Get a database session.
 
@@ -119,11 +128,11 @@ class Container:
         """
         # Check singletons first
         if service_type in self._singletons:
-            return self._singletons[service_type]
+            return cast(T, self._singletons[service_type])
 
         # Check factories
         if service_type in self._factories:
-            return self._factories[service_type]()
+            return cast(T, self._factories[service_type]())
 
         # Try to get from service registry
         if self._service_registry:
@@ -141,11 +150,15 @@ class Container:
         Returns:
             Health status information
         """
-        health = {
+        health: dict[str, Any] = {
             "container": "healthy",
-            "session_factory": "healthy" if self._session_factory else "not_initialized",
-            "service_registry": "healthy" if self._service_registry else "not_initialized",
-            "services": {}
+            "session_factory": (
+                "healthy" if self._session_factory else "not_initialized"
+            ),
+            "service_registry": (
+                "healthy" if self._service_registry else "not_initialized"
+            ),
+            "services": {},
         }
 
         # Check service registry health
@@ -160,7 +173,10 @@ class Container:
             if self._session_factory:
                 async with self.get_db_session() as session:
                     # Simple query to test connection
-                    await session.execute("SELECT 1")
+                    if isinstance(session, AsyncSession):
+                        await session.execute(text("SELECT 1"))
+                    else:
+                        session.execute(text("SELECT 1"))
                 health["database"] = "healthy"
             else:
                 health["database"] = "not_initialized"
@@ -198,9 +214,11 @@ async def get_container() -> Container:
     Raises:
         RuntimeError: If container not initialized
     """
-    global _container
+    global _container  # noqa: PLW0602
     if _container is None:
-        raise RuntimeError("Container not initialized. Call initialize_container() first.")
+        raise RuntimeError(
+            "Container not initialized. Call initialize_container() first."
+        )
     return _container
 
 
@@ -246,7 +264,7 @@ async def container_lifespan() -> AsyncGenerator[Container, None]:
 
 
 # Dependency injection helpers for FastAPI
-async def get_db_session() -> AsyncGenerator[Session, None]:
+async def get_db_session() -> AsyncGenerator[Session | AsyncSession, None]:
     """
     FastAPI dependency for database sessions.
 

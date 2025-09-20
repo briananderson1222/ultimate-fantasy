@@ -4,7 +4,12 @@ import HomeScreen from './HomeScreen';
 
 describe('HomeScreen', () => {
   it('renders correctly', () => {
-    const { getByText } = render(<HomeScreen />);
-    expect(getByText('Home Screen')).toBeDefined();
+    const navigation = {
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+    } as any;
+
+    const { getByText } = render(<HomeScreen navigation={navigation} />);
+    expect(getByText('Ultimate Fantasy')).toBeDefined();
   });
 });

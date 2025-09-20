@@ -6,7 +6,7 @@ import yaml
 
 
 def repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[4]
 
 
 def load_openapi_spec() -> dict:

@@ -1,0 +1,1 @@
+"""Sports domain for external sports data integration."""

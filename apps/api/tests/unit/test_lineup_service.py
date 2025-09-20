@@ -17,7 +17,21 @@ def backend_src_path() -> Path:
 
 def make_session() -> Session:
     sys.path.insert(0, str(backend_src_path()))
-    Base = importlib.import_module("models.base").Base
+    Base = importlib.import_module("domains.shared.models.base").Base
+
+    # Import all domain models to ensure they're registered with Base.metadata
+    importlib.import_module("domains.users.models.user")
+    importlib.import_module("domains.leagues.models.league")
+    importlib.import_module("domains.leagues.models.team")
+    importlib.import_module("domains.lineups.models.lineup")
+    importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("models.notification")  # Central models still exist
+    importlib.import_module("models.player")
+    importlib.import_module("models.preset")
+    importlib.import_module("models.roster")
+    importlib.import_module("models.rule")
+    importlib.import_module("models.schedule")
+
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         future=True,
@@ -31,7 +45,7 @@ def make_session() -> Session:
 
 
 def create_user(session: Session, user_id: _uuid.UUID | None = None):
-    User = importlib.import_module("models.user").User
+    User = importlib.import_module("domains.users.models.user").User
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
@@ -45,7 +59,9 @@ def create_user(session: Session, user_id: _uuid.UUID | None = None):
 
 
 def create_league_and_team(session: Session):
-    LeagueService = importlib.import_module("services.league_service").LeagueService
+    LeagueService = importlib.import_module(
+        "domains.leagues.services.league_service"
+    ).LeagueService
 
     commissioner_id = _uuid.uuid4()
     create_user(session, commissioner_id)
@@ -58,7 +74,7 @@ def create_league_and_team(session: Session):
         season="2025",
     )
     # Commissioner team created by service; return it for convenience
-    Team = importlib.import_module("models.team").Team
+    Team = importlib.import_module("domains.leagues.models.team").Team
     team = (
         session.query(Team)
         .filter(Team.league_id == league.league_id, Team.user_id == commissioner_id)
@@ -69,8 +85,10 @@ def create_league_and_team(session: Session):
 
 def test_set_lineup_persists_players_and_version():
     sys.path.insert(0, str(backend_src_path()))
-    LineupService = importlib.import_module("services.lineup_service").LineupService
-    Lineup = importlib.import_module("models.lineup").Lineup
+    LineupService = importlib.import_module(
+        "domains.lineups.services.lineup_service"
+    ).LineupService
+    Lineup = importlib.import_module("domains.lineups.models.lineup").Lineup
 
     with make_session() as session:
         league, team = create_league_and_team(session)

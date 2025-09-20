@@ -4,6 +4,10 @@ export interface HttpClientConfig {
   baseUrl: string;
   timeout?: number;
   defaultHeaders?: Record<string, string>;
+  retryAttempts?: number;
+  retryDelay?: number;
+  enableTokenRefresh?: boolean;
+  refreshTokenEndpoint?: string;
 }
 
 export interface HttpClient {
@@ -14,6 +18,7 @@ export interface HttpClient {
   delete<T>(path: string, options?: RequestInit): Promise<T>;
   setAuthToken(token: string): void;
   clearAuthToken(): void;
+  updateConfig(newConfig: Partial<HttpClientConfig>): void;
 }
 
 export class ApiError extends Error {
@@ -61,6 +66,14 @@ export class UniversalHttpClient implements HttpClient {
     path: string,
     options: RequestInit = {}
   ): Promise<T> {
+    return this.makeRequestWithRetry<T>(path, options, 0);
+  }
+
+  private async makeRequestWithRetry<T>(
+    path: string,
+    options: RequestInit = {},
+    attempt: number
+  ): Promise<T> {
     const url = `${this.config.baseUrl}${path}`;
     const token = this.getAuthToken();
 
@@ -74,10 +87,15 @@ export class UniversalHttpClient implements HttpClient {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const requestOptions: RequestInit = {
+    // Apply request interceptors
+    let requestOptions: RequestInit = {
       ...options,
       headers,
     };
+
+    for (const interceptor of this.requestInterceptors) {
+      requestOptions = await interceptor(requestOptions);
+    }
 
     // Add timeout if supported
     if (this.config.timeout && 'signal' in options === false) {
@@ -86,16 +104,141 @@ export class UniversalHttpClient implements HttpClient {
       requestOptions.signal = controller.signal;
 
       try {
-        const response = await fetch(url, requestOptions);
+        let response = await fetch(url, requestOptions);
         clearTimeout(timeoutId);
+
+        // Apply response interceptors
+        for (const interceptor of this.responseInterceptors) {
+          response = await interceptor(response);
+        }
+
+        // Handle 401 with token refresh
+        if (response.status === 401 && this.config.enableTokenRefresh && attempt === 0) {
+          const refreshSuccess = await this.attemptTokenRefresh();
+          if (refreshSuccess) {
+            return this.makeRequestWithRetry<T>(path, options, attempt + 1);
+          }
+        }
+
         return await this.handleResponse<T>(response);
       } catch (error) {
         clearTimeout(timeoutId);
+
+        // Retry logic for network errors
+        if (this.shouldRetry(error, attempt)) {
+          await this.delay(this.config.retryDelay || 1000);
+          return this.makeRequestWithRetry<T>(path, options, attempt + 1);
+        }
+
         throw error;
       }
     } else {
-      const response = await fetch(url, requestOptions);
-      return await this.handleResponse<T>(response);
+      try {
+        let response = await fetch(url, requestOptions);
+
+        // Apply response interceptors
+        for (const interceptor of this.responseInterceptors) {
+          response = await interceptor(response);
+        }
+
+        // Handle 401 with token refresh
+        if (response.status === 401 && this.config.enableTokenRefresh && attempt === 0) {
+          const refreshSuccess = await this.attemptTokenRefresh();
+          if (refreshSuccess) {
+            return this.makeRequestWithRetry<T>(path, options, attempt + 1);
+          }
+        }
+
+        return await this.handleResponse<T>(response);
+      } catch (error) {
+        // Retry logic for network errors
+        if (this.shouldRetry(error, attempt)) {
+          await this.delay(this.config.retryDelay || 1000);
+          return this.makeRequestWithRetry<T>(path, options, attempt + 1);
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  private shouldRetry(error: unknown, attempt: number): boolean {
+    if (!this.config.retryAttempts || attempt >= this.config.retryAttempts) {
+      return false;
+    }
+
+    // Retry on network errors, timeouts, and some server errors
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes('network') ||
+        message.includes('timeout') ||
+        message.includes('fetch') ||
+        message.includes('aborted')
+      );
+    }
+
+    return false;
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async attemptTokenRefresh(): Promise<boolean> {
+    if (!this.config.refreshTokenEndpoint) {
+      return false;
+    }
+
+    try {
+      const refreshToken = this.getRefreshToken();
+      if (!refreshToken) {
+        return false;
+      }
+
+      const response = await fetch(`${this.config.baseUrl}${this.config.refreshTokenEndpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.access_token) {
+          this.setAuthToken(data.access_token);
+          if (data.refresh_token) {
+            this.setRefreshToken(data.refresh_token);
+          }
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+    }
+
+    return false;
+  }
+
+  private getRefreshToken(): string | null {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return localStorage.getItem('uf_refresh_token');
+      }
+    } catch {
+      // Storage not available
+    }
+    return null;
+  }
+
+  private setRefreshToken(token: string): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('uf_refresh_token', token);
+      }
+    } catch {
+      // Storage not available
     }
   }
 
@@ -125,7 +268,28 @@ export class UniversalHttpClient implements HttpClient {
     if (contentType && contentType.includes('application/json')) {
       return (await response.json()) as T;
     }
-    return undefined as unknown as T;
+
+    // 204 No Content: return null instead of undefined to satisfy consumers like React Query.
+    if (response.status === 204) {
+      return null as unknown as T;
+    }
+
+    // If content-type is not JSON, attempt to read text and throw a descriptive error
+    // instead of returning undefined (which breaks consumers expecting a value).
+    try {
+      const text = await response.text();
+      throw new ApiError(
+        `Unexpected response content-type: ${contentType || 'unknown'} (${response.status}).`,
+        response.status,
+        text
+      );
+    } catch (e) {
+      if (e instanceof ApiError) throw e;
+      throw new ApiError(
+        `Unexpected non-JSON response (${response.status}).`,
+        response.status
+      );
+    }
   }
 
   async get<T>(path: string, options?: RequestInit): Promise<T> {
@@ -186,6 +350,7 @@ export class UniversalHttpClient implements HttpClient {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.removeItem('uf_token');
+        localStorage.removeItem('uf_refresh_token');
       }
     } catch {
       // Storage not available or failed
@@ -219,9 +384,29 @@ export function createHttpClient(config: HttpClientConfig): HttpClient {
   return new UniversalHttpClient(config);
 }
 
+function resolveDefaultBaseUrl(): string {
+  if (typeof process !== 'undefined' && process?.env) {
+    const env = process.env as Record<string, string | undefined>;
+    const candidates = [
+      env.NEXT_PUBLIC_API_BASE_URL,
+      env.EXPO_PUBLIC_API_BASE_URL,
+      env.API_BASE_URL,
+      env.REACT_NATIVE_API_BASE_URL,
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+  }
+
+  return '/api';
+}
+
 // Default configuration
 export const DEFAULT_HTTP_CONFIG: HttpClientConfig = {
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
+  baseUrl: resolveDefaultBaseUrl(),
   timeout: 30000, // 30 seconds
   defaultHeaders: {
     'Accept': 'application/json',

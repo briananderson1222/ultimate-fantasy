@@ -4,25 +4,22 @@ Contract tests for LineupService domain interface.
 These tests define the expected behavior of the LineupService interface
 and MUST FAIL initially to follow TDD principles.
 """
+
 import pytest
+
 from domains.shared.interfaces.lineup_service import LineupServiceInterface
 
 
 class TestLineupServiceContract:
     """Contract tests for LineupService interface."""
 
-    @pytest.fixture
-    def lineup_service(self) -> LineupServiceInterface:
-        """Get LineupService implementation."""
-        # This will fail until the interface and implementation are created
-        from domains.lineups.services.lineup_service import LineupService
-        return LineupService()
+    # Use the lineup_service fixture from conftest.py
 
     @pytest.mark.asyncio
     async def test_get_lineup_contract(self, lineup_service):
         """Test LineupService.get_lineup contract."""
         # Arrange
-        lineup_id = "test-lineup-123"
+        lineup_id = "12345678-1234-5678-1234-567812345682"
 
         # Act & Assert
         # This will fail until Lineup model is moved to new structure
@@ -30,10 +27,10 @@ class TestLineupServiceContract:
 
         lineup = await lineup_service.get_lineup(lineup_id)
         assert isinstance(lineup, Lineup)
-        assert hasattr(lineup, 'id')
-        assert hasattr(lineup, 'user_id')
-        assert hasattr(lineup, 'league_id')
-        assert hasattr(lineup, 'slots')
+        assert hasattr(lineup, "id")
+        assert hasattr(lineup, "user_id")
+        assert hasattr(lineup, "league_id")
+        assert hasattr(lineup, "slots")
 
         # Should handle non-existent lineups gracefully
         with pytest.raises(ValueError):
@@ -43,15 +40,17 @@ class TestLineupServiceContract:
     async def test_validate_lineup_ownership_contract(self, lineup_service):
         """Test LineupService.validate_lineup_ownership contract."""
         # Arrange
-        lineup_id = "test-lineup-123"
-        user_id = "test-user-456"
+        lineup_id = "12345678-1234-5678-1234-567812345682"
+        user_id = "12345678-1234-5678-1234-567812345681"
 
         # Act & Assert
         is_owner = await lineup_service.validate_lineup_ownership(lineup_id, user_id)
         assert isinstance(is_owner, bool)
 
         # Should handle invalid IDs gracefully
-        invalid_ownership = await lineup_service.validate_lineup_ownership("invalid", "invalid")
+        invalid_ownership = await lineup_service.validate_lineup_ownership(
+            "invalid", "invalid"
+        )
         assert isinstance(invalid_ownership, bool)
         assert invalid_ownership is False
 
@@ -59,8 +58,8 @@ class TestLineupServiceContract:
     async def test_get_lineup_by_user_league_contract(self, lineup_service):
         """Test LineupService.get_lineup_by_user_league contract."""
         # Arrange
-        user_id = "test-user-123"
-        league_id = "test-league-456"
+        user_id = "12345678-1234-5678-1234-567812345678"
+        league_id = "12345678-1234-5678-1234-567812345679"
 
         # Act & Assert
         from domains.lineups.models.lineup import Lineup
@@ -81,9 +80,9 @@ class TestLineupServiceContract:
 
         # Verify all required methods exist
         required_methods = [
-            'get_lineup',
-            'validate_lineup_ownership',
-            'get_lineup_by_user_league'
+            "get_lineup",
+            "validate_lineup_ownership",
+            "get_lineup_by_user_league",
         ]
 
         for method_name in required_methods:

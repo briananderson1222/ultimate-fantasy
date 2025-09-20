@@ -4,12 +4,14 @@ Event Dispatcher Implementation.
 This module provides the concrete implementation of event publishing and
 subscribing, enabling event-driven communication between domains.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
 from collections import deque
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -45,7 +47,7 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
         max_retry_attempts: int = 3,
         retry_delay_seconds: float = 1.0,
         enable_dead_letter: bool = True,
-        max_concurrent_handlers: int = 10
+        max_concurrent_handlers: int = 10,
     ):
         """
         Initialize the event dispatcher.
@@ -126,7 +128,9 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
         # Integration events are handled the same as domain events in this implementation
         return await self.publish(event)
 
-    async def publish_aggregate_events(self, aggregate: AggregateEvent) -> dict[str, bool]:
+    async def publish_aggregate_events(
+        self, aggregate: AggregateEvent
+    ) -> dict[str, bool]:
         """Publish all events from an aggregate."""
         events = aggregate.get_events()
         results = await self.publish_batch(events)
@@ -146,11 +150,14 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
         }
 
         # Start background task to publish the event
-        asyncio.create_task(self._publish_scheduled_event(event, delay_seconds))
+        task = asyncio.create_task(self._publish_scheduled_event(event, delay_seconds))
+        task.add_done_callback(lambda t: t.exception())
 
         return True
 
-    async def _publish_scheduled_event(self, event: DomainEvent, delay_seconds: int) -> None:
+    async def _publish_scheduled_event(
+        self, event: DomainEvent, delay_seconds: int
+    ) -> None:
         """Background task to publish a scheduled event."""
         await asyncio.sleep(delay_seconds)
 
@@ -163,19 +170,23 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
     # Subscriber interface implementation
 
     async def subscribe(
-        self,
-        subscription_config: SubscriptionConfig,
-        handler: EventHandler
+        self, subscription_config: SubscriptionConfig, handler: EventHandler
     ) -> str:
         """Subscribe to events with a handler."""
         try:
             self.handler_registry.register_handler(subscription_config, handler)
-            logger.info(f"Registered subscription {subscription_config.subscription_id}")
+            logger.info(
+                f"Registered subscription {subscription_config.subscription_id}"
+            )
             return subscription_config.subscription_id
 
         except Exception as e:
-            logger.error(f"Failed to register subscription {subscription_config.subscription_id}: {e}")
-            raise EventSubscriptionError(f"Subscription failed: {e}", subscription_config.subscription_id)
+            logger.error(
+                f"Failed to register subscription {subscription_config.subscription_id}: {e}"
+            )
+            raise EventSubscriptionError(
+                f"Subscription failed: {e}", subscription_config.subscription_id
+            )
 
     async def unsubscribe(self, subscription_id: str) -> bool:
         """Remove a subscription."""
@@ -205,7 +216,9 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
                 logger.debug(f"No handlers found for event {event.event_id}")
                 return {}
 
-            logger.debug(f"Found {len(matching_handlers)} handlers for event {event.event_id}")
+            logger.debug(
+                f"Found {len(matching_handlers)} handlers for event {event.event_id}"
+            )
 
             # Execute handlers concurrently with semaphore control
             tasks = []
@@ -224,7 +237,9 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
                 subscription_id = config.subscription_id
 
                 if isinstance(result, Exception):
-                    logger.error(f"Handler {subscription_id} failed with exception: {result}")
+                    logger.error(
+                        f"Handler {subscription_id} failed with exception: {result}"
+                    )
                     handler_results[subscription_id] = False
                 elif isinstance(result, HandlerResult):
                     handler_results[subscription_id] = result.success
@@ -237,9 +252,7 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
             self._processing_events.discard(event.event_id)
 
     async def _execute_handler_with_retry(
-        self,
-        event: DomainEvent,
-        handler_info: dict[str, Any]
+        self, event: DomainEvent, handler_info: dict[str, Any]
     ) -> HandlerResult:
         """Execute a handler with retry logic."""
         config = handler_info["config"]
@@ -253,8 +266,7 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
 
                     # Execute handler with timeout
                     success = await asyncio.wait_for(
-                        handler(event),
-                        timeout=config.timeout_seconds
+                        handler(event), timeout=config.timeout_seconds
                     )
 
                     execution_time = (time.time() - start_time) * 1000  # Convert to ms
@@ -264,16 +276,22 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
                         success=success,
                         subscription_id=subscription_id,
                         event_id=event.event_id,
-                        execution_time_ms=execution_time
+                        execution_time_ms=execution_time,
                     )
 
                 except TimeoutError:
-                    error_msg = f"Handler timeout after {config.timeout_seconds} seconds"
-                    logger.warning(f"Handler {subscription_id} timed out on attempt {attempt}: {error_msg}")
+                    error_msg = (
+                        f"Handler timeout after {config.timeout_seconds} seconds"
+                    )
+                    logger.warning(
+                        f"Handler {subscription_id} timed out on attempt {attempt}: {error_msg}"
+                    )
 
                 except Exception as e:
                     error_msg = f"Handler error: {e}"
-                    logger.warning(f"Handler {subscription_id} failed on attempt {attempt}: {error_msg}")
+                    logger.warning(
+                        f"Handler {subscription_id} failed on attempt {attempt}: {error_msg}"
+                    )
 
                 # Check if we should retry
                 if attempt < config.max_retry_attempts:
@@ -295,7 +313,7 @@ class InMemoryEventDispatcher(EventPublisher, EventSubscriber):
                 success=False,
                 subscription_id=subscription_id,
                 event_id=event.event_id,
-                error=f"Failed after {config.max_retry_attempts} attempts"
+                error=f"Failed after {config.max_retry_attempts} attempts",
             )
 
     async def get_subscriptions(self) -> list[SubscriptionConfig]:
@@ -381,13 +399,15 @@ def get_event_dispatcher() -> InMemoryEventDispatcher:
     Raises:
         RuntimeError: If dispatcher not initialized
     """
-    global _dispatcher
+    global _dispatcher  # noqa: PLW0602
     if _dispatcher is None:
-        raise RuntimeError("Event dispatcher not initialized. Call initialize_dispatcher() first.")
+        raise RuntimeError(
+            "Event dispatcher not initialized. Call initialize_dispatcher() first."
+        )
     return _dispatcher
 
 
-def initialize_dispatcher(**kwargs) -> InMemoryEventDispatcher:
+def initialize_dispatcher(**kwargs: Any) -> InMemoryEventDispatcher:
     """
     Initialize the global event dispatcher.
 
@@ -409,7 +429,9 @@ def reset_dispatcher() -> None:
 
 
 @asynccontextmanager
-async def dispatcher_context(**kwargs):
+async def dispatcher_context(
+    **kwargs: Any,
+) -> AsyncGenerator[InMemoryEventDispatcher, None]:
     """
     Context manager for event dispatcher lifecycle.
 
@@ -427,11 +449,9 @@ async def dispatcher_context(**kwargs):
 
 # Convenience functions for common operations
 
+
 async def publish_event(
-    domain: str,
-    event_type: str,
-    aggregate_id: str,
-    data: dict[str, Any]
+    domain: str, event_type: str, aggregate_id: str, data: dict[str, Any]
 ) -> bool:
     """
     Convenience function to publish a domain event.
@@ -455,7 +475,7 @@ async def publish_integration_event(
     event_type: str,
     aggregate_id: str,
     data: dict[str, Any],
-    target_domains: list[str] | None = None
+    target_domains: list[str] | None = None,
 ) -> bool:
     """
     Convenience function to publish an integration event.
@@ -476,9 +496,7 @@ async def publish_integration_event(
 
 
 async def subscribe_to_events(
-    subscription_id: str,
-    event_types: list[str],
-    handler: EventHandler
+    subscription_id: str, event_types: list[str], handler: EventHandler
 ) -> str:
     """
     Convenience function to subscribe to specific event types.
@@ -497,7 +515,7 @@ async def subscribe_to_events(
     config = SubscriptionConfig(
         subscription_id=subscription_id,
         subscription_type=SubscriptionType.EVENT_TYPE,
-        filter_criteria={"event_types": event_types}
+        filter_criteria={"event_types": event_types},
     )
 
     return await dispatcher.subscribe(config, handler)

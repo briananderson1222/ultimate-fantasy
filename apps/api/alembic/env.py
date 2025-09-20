@@ -11,7 +11,7 @@ from alembic import context
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from models.base import Base  # type: ignore
+from domains.shared.models.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

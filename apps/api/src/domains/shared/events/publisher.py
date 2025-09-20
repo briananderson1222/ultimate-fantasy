@@ -4,11 +4,12 @@ Event Publisher Interface.
 This module defines the interface for publishing domain events,
 enabling loose coupling between event producers and consumers.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -66,7 +67,9 @@ class EventPublisher(ABC):
         """
 
     @abstractmethod
-    async def publish_aggregate_events(self, aggregate: AggregateEvent) -> dict[str, bool]:
+    async def publish_aggregate_events(
+        self, aggregate: AggregateEvent
+    ) -> dict[str, bool]:
         """
         Publish all events from an aggregate.
 
@@ -94,7 +97,12 @@ class EventPublisher(ABC):
 class EventPublishError(Exception):
     """Exception raised when event publishing fails."""
 
-    def __init__(self, message: str, event_id: str | None = None, original_error: Exception | None = None):
+    def __init__(
+        self,
+        message: str,
+        event_id: str | None = None,
+        original_error: Exception | None = None,
+    ):
         super().__init__(message)
         self.event_id = event_id
         self.original_error = original_error
@@ -103,7 +111,13 @@ class EventPublishError(Exception):
 class PublishResult:
     """Result of an event publishing operation."""
 
-    def __init__(self, success: bool, event_id: str, error: str | None = None, retry_after: int | None = None):
+    def __init__(
+        self,
+        success: bool,
+        event_id: str,
+        error: str | None = None,
+        retry_after: int | None = None,
+    ):
         self.success = success
         self.event_id = event_id
         self.error = error
@@ -121,7 +135,7 @@ class EventBuffer:
     be published after successful completion of business operations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._events: list[DomainEvent] = []
         self._integration_events: list[IntegrationEvent] = []
 
@@ -177,7 +191,7 @@ class TransactionalEventPublisher:
         self._in_transaction = False
 
     @asynccontextmanager
-    async def transaction(self):
+    async def transaction(self) -> AsyncGenerator[None, None]:
         """
         Context manager for transactional event publishing.
 
@@ -191,7 +205,7 @@ class TransactionalEventPublisher:
         self.buffer.clear()
 
         try:
-            yield self
+            yield
             # Commit: publish all buffered events
             await self._commit()
         except Exception:
@@ -240,11 +254,15 @@ class TransactionalEventPublisher:
 class EventFilter:
     """Filter for selectively publishing events based on criteria."""
 
-    def __init__(self):
-        self._domain_filters: dict[str, list[Callable[[DomainEvent], bool]]] = defaultdict(list)
+    def __init__(self) -> None:
+        self._domain_filters: dict[str, list[Callable[[DomainEvent], bool]]] = (
+            defaultdict(list)
+        )
         self._global_filters: list[Callable[[DomainEvent], bool]] = []
 
-    def add_domain_filter(self, domain: str, filter_func: Callable[[DomainEvent], bool]) -> None:
+    def add_domain_filter(
+        self, domain: str, filter_func: Callable[[DomainEvent], bool]
+    ) -> None:
         """
         Add a filter for a specific domain.
 
@@ -280,11 +298,7 @@ class EventFilter:
 
         # Check domain-specific filters
         domain_filters = self._domain_filters.get(event.domain, [])
-        for filter_func in domain_filters:
-            if not filter_func(event):
-                return False
-
-        return True
+        return all(filter_func(event) for filter_func in domain_filters)
 
 
 class FilteredEventPublisher:
@@ -302,7 +316,9 @@ class FilteredEventPublisher:
 
     async def publish_batch(self, events: list[DomainEvent]) -> dict[str, bool]:
         """Publish batch of events, filtering as needed."""
-        filtered_events = [event for event in events if self.filter.should_publish(event)]
+        filtered_events = [
+            event for event in events if self.filter.should_publish(event)
+        ]
 
         if not filtered_events:
             # All events filtered - return success for all
@@ -330,7 +346,9 @@ class DomainEventPublisher:
         self.publisher = publisher
         self.domain = domain
 
-    async def publish_event(self, event_type: str, aggregate_id: str, data: dict[str, Any]) -> bool:
+    async def publish_event(
+        self, event_type: str, aggregate_id: str, data: dict[str, Any]
+    ) -> bool:
         """
         Publish a domain event.
 
@@ -352,7 +370,7 @@ class DomainEventPublisher:
         event_type: str,
         aggregate_id: str,
         data: dict[str, Any],
-        target_domains: list[str] | None = None
+        target_domains: list[str] | None = None,
     ) -> bool:
         """
         Publish an integration event for cross-domain communication.
@@ -366,10 +384,14 @@ class DomainEventPublisher:
         Returns:
             True if successful, False otherwise
         """
-        event = IntegrationEvent(aggregate_id, self.domain, event_type, data, target_domains)
+        event = IntegrationEvent(
+            aggregate_id, self.domain, event_type, data, target_domains
+        )
         return await self.publisher.publish_integration_event(event)
 
-    async def publish_aggregate_events(self, aggregate: AggregateEvent) -> dict[str, bool]:
+    async def publish_aggregate_events(
+        self, aggregate: AggregateEvent
+    ) -> dict[str, bool]:
         """
         Publish all events from an aggregate.
 

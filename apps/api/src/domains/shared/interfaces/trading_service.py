@@ -4,7 +4,9 @@ Abstract Base Class for Trading Service interface.
 This interface defines the contract for trading domain operations
 and enables cross-domain communication without tight coupling.
 """
+
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 
 class TradingServiceInterface(ABC):
@@ -58,7 +60,9 @@ class TradingServiceInterface(ABC):
         """
 
     @abstractmethod
-    async def get_user_transactions(self, user_id: str, league_id: str) -> list["Transaction"]:
+    async def get_user_transactions(
+        self, user_id: str, league_id: str
+    ) -> list["Transaction"]:
         """
         Get all transactions for a user in a specific league.
 
@@ -100,8 +104,8 @@ class TradingServiceInterface(ABC):
 
 
 # Type hints for forward references
-if False:  # TYPE_CHECKING equivalent
+if TYPE_CHECKING:
     from datetime import datetime
 
-    from backend.src.domains.trading.models.transaction import Transaction
-    from backend.src.domains.trading.models.waiver import Waiver
+    from domains.trading.models.transaction import Transaction
+    from domains.trading.models.waiver import Waiver

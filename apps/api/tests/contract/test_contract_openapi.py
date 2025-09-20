@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 
 
 def repo_root() -> Path:
-    # backend/tests/contract/test_*.py -> up three to repo root
-    return Path(__file__).resolve().parents[3]
+    # apps/api/tests/contract/test_*.py -> up four to repo root
+    return Path(__file__).resolve().parents[4]
 
 
 def load_openapi_spec() -> dict:
@@ -46,7 +46,7 @@ def test_contract_spec_contains_required_paths():
 
 def test_app_openapi_matches_contract_paths():
     # Ensure we can import the app and compare its generated OpenAPI doc to the contract
-    # Add backend/src to import path for module imports (T027 will create main.py)
+    # Add api/src to import path for module imports
     backend_src = Path(__file__).resolve().parents[2] / "src"
     sys.path.insert(0, str(backend_src))
 

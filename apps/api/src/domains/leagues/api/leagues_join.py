@@ -54,10 +54,11 @@ def join_league(
     svc = LeagueService(db)
     try:
         team = svc.join(user_id=user_id, league_id=league_uuid)
-    except Exception as e: # Catch all exceptions
+    except Exception as e:  # Catch all exceptions
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        ) from e # Change to 500 for now, to distinguish from 404
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        ) from e  # Change to 500 for now, to distinguish from 404
 
     return JoinResponse(
         team_id=team.team_id,

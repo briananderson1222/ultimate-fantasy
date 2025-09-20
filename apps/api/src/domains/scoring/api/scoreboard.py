@@ -54,7 +54,8 @@ def get_scoreboard(
     except Exception as e:
         # Log the exception for debugging
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="League not found or other error"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="League not found or other error",
         ) from e
 
     return ScoreboardResponse(league_id=_uuid.UUID(leagueId), items=items)

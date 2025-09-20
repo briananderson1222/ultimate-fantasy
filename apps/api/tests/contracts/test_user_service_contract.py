@@ -4,26 +4,24 @@ Contract tests for UserService domain interface.
 These tests define the expected behavior of the UserService interface
 and MUST FAIL initially to follow TDD principles.
 """
+
+from typing import Any, Dict
+
 import pytest
-from typing import Dict, Any
+
 from domains.shared.interfaces.user_service import UserServiceInterface
 
 
 class TestUserServiceContract:
     """Contract tests for UserService interface."""
 
-    @pytest.fixture
-    def user_service(self) -> UserServiceInterface:
-        """Get UserService implementation."""
-        # This will fail until the interface and implementation are created
-        from domains.users.services.user_service import UserService
-        return UserService()
+    # Use the user_service fixture from conftest.py
 
     @pytest.mark.asyncio
     async def test_get_user_contract(self, user_service):
         """Test UserService.get_user contract."""
         # Arrange
-        user_id = "test-user-123"
+        user_id = "12345678-1234-5678-1234-567812345678"
 
         # Act & Assert
         # This will fail until User model is moved to new structure
@@ -31,9 +29,9 @@ class TestUserServiceContract:
 
         user = await user_service.get_user(user_id)
         assert isinstance(user, User)
-        assert hasattr(user, 'id')
-        assert hasattr(user, 'username')
-        assert hasattr(user, 'email')
+        assert hasattr(user, "id")
+        assert hasattr(user, "username")
+        assert hasattr(user, "email")
 
         # Should handle non-existent users gracefully
         with pytest.raises(ValueError):
@@ -43,20 +41,26 @@ class TestUserServiceContract:
     async def test_validate_user_permissions_contract(self, user_service):
         """Test UserService.validate_user_permissions contract."""
         # Arrange
-        user_id = "test-user-123"
-        resource = "league:test-league-456"
+        user_id = "12345678-1234-5678-1234-567812345678"
+        resource = "league:12345678-1234-5678-1234-567812345679"
         action = "read"
 
         # Act & Assert
-        has_permission = await user_service.validate_user_permissions(user_id, resource, action)
+        has_permission = await user_service.validate_user_permissions(
+            user_id, resource, action
+        )
         assert isinstance(has_permission, bool)
 
         # Test different permission scenarios
-        admin_permission = await user_service.validate_user_permissions(user_id, "admin:settings", "write")
+        admin_permission = await user_service.validate_user_permissions(
+            user_id, "admin:settings", "write"
+        )
         assert isinstance(admin_permission, bool)
 
         # Should handle invalid inputs gracefully
-        invalid_permission = await user_service.validate_user_permissions("invalid", "invalid", "invalid")
+        invalid_permission = await user_service.validate_user_permissions(
+            "invalid", "invalid", "invalid"
+        )
         assert isinstance(invalid_permission, bool)
         assert invalid_permission is False
 
@@ -64,7 +68,7 @@ class TestUserServiceContract:
     async def test_get_user_preferences_contract(self, user_service):
         """Test UserService.get_user_preferences contract."""
         # Arrange
-        user_id = "test-user-123"
+        user_id = "12345678-1234-5678-1234-567812345678"
 
         # Act & Assert
         # This will fail until UserPreferences model is moved to new structure
@@ -84,9 +88,9 @@ class TestUserServiceContract:
 
         # Verify all required methods exist
         required_methods = [
-            'get_user',
-            'validate_user_permissions',
-            'get_user_preferences'
+            "get_user",
+            "validate_user_permissions",
+            "get_user_preferences",
         ]
 
         for method_name in required_methods:
@@ -98,7 +102,7 @@ class TestUserServiceContract:
     async def test_user_caching_contract(self, user_service):
         """Test user data caching behavior."""
         # Arrange
-        user_id = "test-user-123"
+        user_id = "12345678-1234-5678-1234-567812345678"
 
         # Act - Get user twice
         user1 = await user_service.get_user(user_id)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 
@@ -71,11 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await cleanup_container()
 
 
-app = FastAPI(
-    title="Ultimate Fantasy Platform API",
-    version="0.1.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="Ultimate Fantasy Platform API", version="0.1.0", lifespan=lifespan)
 
 
 # Domain-based routers with /api prefix
@@ -110,12 +107,24 @@ app.include_router(waitlist_router, tags=["waitlist-legacy"])
 app.include_router(me_preferences_router, tags=["users-legacy"])
 
 # Domain health check endpoints
-app.include_router(leagues_health_router, prefix="/api/domains/leagues", tags=["health", "leagues"])
-app.include_router(users_health_router, prefix="/api/domains/users", tags=["health", "users"])
-app.include_router(lineups_health_router, prefix="/api/domains/lineups", tags=["health", "lineups"])
-app.include_router(trading_health_router, prefix="/api/domains/trading", tags=["health", "trading"])
-app.include_router(scoring_health_router, prefix="/api/domains/scoring", tags=["health", "scoring"])
-app.include_router(waitlist_health_router, prefix="/api/domains/waitlist", tags=["health", "waitlist"])
+app.include_router(
+    leagues_health_router, prefix="/api/domains/leagues", tags=["health", "leagues"]
+)
+app.include_router(
+    users_health_router, prefix="/api/domains/users", tags=["health", "users"]
+)
+app.include_router(
+    lineups_health_router, prefix="/api/domains/lineups", tags=["health", "lineups"]
+)
+app.include_router(
+    trading_health_router, prefix="/api/domains/trading", tags=["health", "trading"]
+)
+app.include_router(
+    scoring_health_router, prefix="/api/domains/scoring", tags=["health", "scoring"]
+)
+app.include_router(
+    waitlist_health_router, prefix="/api/domains/waitlist", tags=["health", "waitlist"]
+)
 
 # Domain-specific middleware (order matters!)
 metrics_middleware = DomainMetricsMiddleware(app)
@@ -132,7 +141,7 @@ configure_security(app)
 
 
 @app.get("/health", tags=["system"])
-async def health_check():
+async def health_check() -> dict[str, Any]:
     """Application health check endpoint."""
     try:
         container = await get_container()
@@ -143,7 +152,7 @@ async def health_check():
 
 
 @app.get("/health/services", tags=["system"])
-async def services_health_check():
+async def services_health_check() -> dict[str, Any]:
     """Services health check endpoint."""
     try:
         container = await get_container()
@@ -154,7 +163,7 @@ async def services_health_check():
 
 
 @app.get("/system/info", tags=["system"])
-async def system_info():
+async def system_info() -> dict[str, Any]:
     """System configuration information."""
     try:
         container = await get_container()
@@ -167,21 +176,22 @@ async def system_info():
             "environment": {
                 "database_url_provided": bool(os.getenv("DATABASE_URL")),
                 "async_mode": os.getenv("DATABASE_ASYNC", "false").lower() == "true",
-            }
+            },
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
 
 @app.get("/metrics/domains", tags=["metrics"])
-async def domain_metrics():
+async def domain_metrics() -> dict[str, Any]:
     """Get domain-specific metrics."""
     return get_domain_metrics()
 
 
 @app.post("/metrics/reset", tags=["metrics"])
-async def reset_metrics():
+async def reset_metrics() -> dict[str, str]:
     """Reset domain metrics."""
     from infrastructure.middleware.domain_router import reset_domain_metrics
+
     reset_domain_metrics()
     return {"status": "metrics_reset"}

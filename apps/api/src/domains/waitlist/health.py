@@ -19,13 +19,13 @@ async def waitlist_health_check(db: Session = Depends(get_db)) -> dict[str, Any]
     """Health check for the Waitlist domain."""
     start_time = time.time()
 
-    health_status = {
+    health_status: dict[str, Any] = {
         "domain": "waitlist",
         "status": "healthy",
         "timestamp": int(time.time()),
         "checks": {},
         "config": {},
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
     try:
@@ -37,7 +37,7 @@ async def waitlist_health_check(db: Session = Depends(get_db)) -> dict[str, Any]
 
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "response_time_ms": round(db_time * 1000, 2)
+            "response_time_ms": round(db_time * 1000, 2),
         }
 
         # Waitlist-specific table check
@@ -48,7 +48,7 @@ async def waitlist_health_check(db: Session = Depends(get_db)) -> dict[str, Any]
         health_status["checks"]["waitlists_table"] = {
             "status": "healthy",
             "response_time_ms": round(table_time * 1000, 2),
-            "waitlist_count": waitlist_count
+            "waitlist_count": waitlist_count,
         }
 
         # Configuration check
@@ -59,16 +59,13 @@ async def waitlist_health_check(db: Session = Depends(get_db)) -> dict[str, Any]
             "features": {
                 "position_visible": config.waitlist_position_visible,
                 "priority_enabled": config.enable_waitlist_priority,
-                "referral_bonus": config.enable_referral_bonus
-            }
+                "referral_bonus": config.enable_referral_bonus,
+            },
         }
 
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["checks"]["error"] = {
-            "status": "failed",
-            "error": str(e)
-        }
+        health_status["checks"]["error"] = {"status": "failed", "error": str(e)}
 
     # Overall response time
     total_time = time.time() - start_time
@@ -78,49 +75,63 @@ async def waitlist_health_check(db: Session = Depends(get_db)) -> dict[str, Any]
 
 
 @router.get("/health/detailed", status_code=status.HTTP_200_OK)
-async def waitlist_detailed_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
+async def waitlist_detailed_health_check(
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     """Detailed health check for the Waitlist domain."""
     detailed_status = await waitlist_health_check(db)
 
     try:
         # Check for active waitlists
-        active_waitlists = db.execute(text("""
+        active_waitlists = db.execute(
+            text(
+                """
             SELECT COUNT(DISTINCT league_id) FROM waitlists
             WHERE status = 'active'
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["active_waitlists"] = {
             "status": "healthy",
-            "active_count": active_waitlists
+            "active_count": active_waitlists,
         }
 
         # Check for recent waitlist activity
-        recent_joins = db.execute(text("""
+        recent_joins = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM waitlists
             WHERE created_at > NOW() - INTERVAL '24 hours'
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {
             "status": "healthy",
-            "joins_24h": recent_joins
+            "joins_24h": recent_joins,
         }
 
         # Check for expired invitations
-        expired_invitations = db.execute(text("""
+        expired_invitations = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM waitlists
             WHERE status = 'invited'
             AND created_at < NOW() - INTERVAL '72 hours'
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["expired_invitations"] = {
-            "status": "healthy" if expired_invitations < 10 else "warning",
-            "expired_count": expired_invitations
+            "status": "healthy" if (expired_invitations or 0) < 10 else "warning",
+            "expired_count": expired_invitations,
         }
 
     except Exception as e:
         detailed_status["checks"]["detailed_error"] = {
             "status": "failed",
-            "error": str(e)
+            "error": str(e),
         }
 
     return detailed_status

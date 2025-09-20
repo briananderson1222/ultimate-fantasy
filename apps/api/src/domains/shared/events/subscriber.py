@@ -4,6 +4,7 @@ Event Subscriber Interface.
 This module defines the interface for subscribing to and handling domain events,
 enabling event-driven architecture and loose coupling between domains.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -18,14 +19,16 @@ from .base import DomainEvent, IntegrationEvent
 
 class SubscriptionType(Enum):
     """Type of event subscription."""
-    DOMAIN = "domain"              # Subscribe to all events from a domain
-    EVENT_TYPE = "event_type"      # Subscribe to specific event types
-    AGGREGATE = "aggregate"        # Subscribe to events from specific aggregates
-    PATTERN = "pattern"           # Subscribe using pattern matching
+
+    DOMAIN = "domain"  # Subscribe to all events from a domain
+    EVENT_TYPE = "event_type"  # Subscribe to specific event types
+    AGGREGATE = "aggregate"  # Subscribe to events from specific aggregates
+    PATTERN = "pattern"  # Subscribe using pattern matching
 
 
 class HandlerPriority(Enum):
     """Priority levels for event handlers."""
+
     LOWEST = 0
     LOW = 25
     NORMAL = 50
@@ -36,6 +39,7 @@ class HandlerPriority(Enum):
 @dataclass
 class SubscriptionConfig:
     """Configuration for event subscriptions."""
+
     subscription_id: str
     subscription_type: SubscriptionType
     filter_criteria: dict[str, Any]
@@ -61,9 +65,7 @@ class EventSubscriber(ABC):
 
     @abstractmethod
     async def subscribe(
-        self,
-        subscription_config: SubscriptionConfig,
-        handler: EventHandler
+        self, subscription_config: SubscriptionConfig, handler: EventHandler
     ) -> str:
         """
         Subscribe to events with a handler.
@@ -130,7 +132,7 @@ class HandlerResult:
         subscription_id: str,
         event_id: str,
         error: str | None = None,
-        execution_time_ms: float | None = None
+        execution_time_ms: float | None = None,
     ):
         self.success = success
         self.subscription_id = subscription_id
@@ -168,6 +170,7 @@ class EventMatcher:
     def matches_pattern(event: DomainEvent, pattern: str) -> bool:
         """Check if event matches a pattern (simple wildcard matching)."""
         import fnmatch
+
         return fnmatch.fnmatch(event.event_type, pattern)
 
     @staticmethod
@@ -179,15 +182,20 @@ class EventMatcher:
             return EventMatcher.matches_domain(event, criteria.get("domain", ""))
 
         elif config.subscription_type == SubscriptionType.EVENT_TYPE:
-            return EventMatcher.matches_event_type(event, criteria.get("event_types", []))
+            return EventMatcher.matches_event_type(
+                event, criteria.get("event_types", [])
+            )
 
         elif config.subscription_type == SubscriptionType.AGGREGATE:
-            return EventMatcher.matches_aggregate(event, criteria.get("aggregate_ids", []))
+            return EventMatcher.matches_aggregate(
+                event, criteria.get("aggregate_ids", [])
+            )
 
         elif config.subscription_type == SubscriptionType.PATTERN:
             return EventMatcher.matches_pattern(event, criteria.get("pattern", ""))
 
-        return False
+        # Fallback for unknown subscription types (safety check)
+        return False  # type: ignore[unreachable]
 
 
 class RetryPolicy:
@@ -198,7 +206,7 @@ class RetryPolicy:
         max_attempts: int = 3,
         initial_delay: float = 1.0,
         max_delay: float = 60.0,
-        exponential_base: float = 2.0
+        exponential_base: float = 2.0,
     ):
         self.max_attempts = max_attempts
         self.initial_delay = initial_delay
@@ -221,24 +229,22 @@ class RetryPolicy:
 class DeadLetterQueue:
     """Queue for events that failed all retry attempts."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._failed_events: list[dict[str, Any]] = []
 
     async def add_failed_event(
-        self,
-        event: DomainEvent,
-        subscription_id: str,
-        error: str,
-        attempts: int
+        self, event: DomainEvent, subscription_id: str, error: str, attempts: int
     ) -> None:
         """Add a failed event to the dead letter queue."""
-        self._failed_events.append({
-            "event": event.to_dict(),
-            "subscription_id": subscription_id,
-            "error": error,
-            "attempts": attempts,
-            "failed_at": event.timestamp.isoformat(),
-        })
+        self._failed_events.append(
+            {
+                "event": event.to_dict(),
+                "subscription_id": subscription_id,
+                "error": error,
+                "attempts": attempts,
+                "failed_at": event.timestamp.isoformat(),
+            }
+        )
 
     async def get_failed_events(self) -> list[dict[str, Any]]:
         """Get all failed events."""
@@ -256,16 +262,14 @@ class DeadLetterQueue:
 class HandlerRegistry:
     """Registry for managing event handlers and subscriptions."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._handlers: dict[str, dict[str, Any]] = {}
         self._domain_handlers: dict[str, list[str]] = defaultdict(list)
         self._event_type_handlers: dict[str, list[str]] = defaultdict(list)
         self._pattern_handlers: list[str] = []
 
     def register_handler(
-        self,
-        subscription_config: SubscriptionConfig,
-        handler: EventHandler
+        self, subscription_config: SubscriptionConfig, handler: EventHandler
     ) -> None:
         """Register an event handler."""
         sub_id = subscription_config.subscription_id
@@ -343,8 +347,7 @@ class HandlerRegistry:
 
         # Sort by priority (highest first)
         matching_handlers.sort(
-            key=lambda h: h["config"].handler_priority.value,
-            reverse=True
+            key=lambda h: h["config"].handler_priority.value, reverse=True
         )
 
         return matching_handlers
@@ -369,7 +372,7 @@ class DomainEventSubscriber:
         self,
         target_domain: str,
         handler: EventHandler,
-        priority: HandlerPriority = HandlerPriority.NORMAL
+        priority: HandlerPriority = HandlerPriority.NORMAL,
     ) -> str:
         """
         Subscribe to all events from a specific domain.
@@ -386,7 +389,7 @@ class DomainEventSubscriber:
             subscription_id=f"{self.domain}_to_{target_domain}_{id(handler)}",
             subscription_type=SubscriptionType.DOMAIN,
             filter_criteria={"domain": target_domain},
-            handler_priority=priority
+            handler_priority=priority,
         )
 
         return await self.subscriber.subscribe(config, handler)
@@ -395,7 +398,7 @@ class DomainEventSubscriber:
         self,
         event_types: str | list[str],
         handler: EventHandler,
-        priority: HandlerPriority = HandlerPriority.NORMAL
+        priority: HandlerPriority = HandlerPriority.NORMAL,
     ) -> str:
         """
         Subscribe to specific event types.
@@ -415,15 +418,13 @@ class DomainEventSubscriber:
             subscription_id=f"{self.domain}_events_{id(handler)}",
             subscription_type=SubscriptionType.EVENT_TYPE,
             filter_criteria={"event_types": event_types},
-            handler_priority=priority
+            handler_priority=priority,
         )
 
         return await self.subscriber.subscribe(config, handler)
 
     async def subscribe_to_integration_events(
-        self,
-        handler: EventHandler,
-        priority: HandlerPriority = HandlerPriority.NORMAL
+        self, handler: EventHandler, priority: HandlerPriority = HandlerPriority.NORMAL
     ) -> str:
         """
         Subscribe to integration events targeting this domain.
@@ -435,6 +436,7 @@ class DomainEventSubscriber:
         Returns:
             Subscription ID
         """
+
         async def integration_handler(event: DomainEvent) -> bool:
             if isinstance(event, IntegrationEvent):
                 if event.is_for_domain(self.domain):
@@ -446,7 +448,7 @@ class DomainEventSubscriber:
             subscription_id=f"{self.domain}_integration_{id(handler)}",
             subscription_type=SubscriptionType.PATTERN,
             filter_criteria={"pattern": "*"},  # Match all, filter in handler
-            handler_priority=priority
+            handler_priority=priority,
         )
 
         return await self.subscriber.subscribe(config, integration_handler)

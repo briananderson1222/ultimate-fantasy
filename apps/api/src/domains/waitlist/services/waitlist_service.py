@@ -19,7 +19,9 @@ class WaitlistService(WaitlistServiceInterface):
         # Initialize event publishing
         try:
             dispatcher = get_event_dispatcher()
-            self.event_publisher = DomainEventPublisher(dispatcher, "waitlist")
+            self.event_publisher: DomainEventPublisher | None = DomainEventPublisher(
+                dispatcher, "waitlist"
+            )
         except RuntimeError:
             # Event dispatcher not initialized, disable events
             self.event_publisher = None
@@ -46,27 +48,36 @@ class WaitlistService(WaitlistServiceInterface):
             if self.event_publisher:
                 try:
                     import asyncio
-                    asyncio.create_task(self.event_publisher.publish_event(
-                        "user_added_to_waitlist",
-                        str(waitlist_entry.id),
-                        {
-                            "waitlist_id": str(waitlist_entry.id),
-                            "email": email,
-                            "created_at": waitlist_entry.created_at.isoformat(),
-                        }
-                    ))
+
+                    task = asyncio.create_task(
+                        self.event_publisher.publish_event(
+                            "user_added_to_waitlist",
+                            str(waitlist_entry.id),
+                            {
+                                "waitlist_id": str(waitlist_entry.id),
+                                "email": email,
+                                "created_at": waitlist_entry.created_at.isoformat(),
+                            },
+                        )
+                    )
+                    task.add_done_callback(lambda t: t.exception())
 
                     # Publish integration event for marketing/notification
-                    asyncio.create_task(self.event_publisher.publish_integration_event(
-                        "waitlist_signup",
-                        str(waitlist_entry.id),
-                        {
-                            "email": email,
-                            "signup_date": waitlist_entry.created_at.isoformat(),
-                        }
-                    ))
+                    task = asyncio.create_task(
+                        self.event_publisher.publish_integration_event(
+                            "waitlist_signup",
+                            str(waitlist_entry.id),
+                            {
+                                "email": email,
+                                "signup_date": waitlist_entry.created_at.isoformat(),
+                            },
+                        )
+                    )
+                    task.add_done_callback(lambda t: t.exception())
                 except Exception as e:
-                    pass
+                    import logging
+
+                    logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
             return waitlist_entry
         except IntegrityError:

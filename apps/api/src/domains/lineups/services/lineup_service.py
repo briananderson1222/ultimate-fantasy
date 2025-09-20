@@ -20,7 +20,9 @@ class LineupService(LineupServiceInterface):
         # Initialize event publishing
         try:
             dispatcher = get_event_dispatcher()
-            self.event_publisher = DomainEventPublisher(dispatcher, "lineups")
+            self.event_publisher: DomainEventPublisher | None = DomainEventPublisher(
+                dispatcher, "lineups"
+            )
         except RuntimeError:
             # Event dispatcher not initialized, disable events
             self.event_publisher = None
@@ -52,32 +54,41 @@ class LineupService(LineupServiceInterface):
         if self.event_publisher:
             try:
                 import asyncio
-                asyncio.create_task(self.event_publisher.publish_event(
-                    "lineup_set",
-                    str(lineup.lineup_id),
-                    {
-                        "lineup_id": str(lineup.lineup_id),
-                        "team_id": str(team_uuid),
-                        "game_day": game_day.isoformat(),
-                        "player_count": len(serializable_players),
-                        "version": 1,
-                    }
-                ))
+
+                task = asyncio.create_task(
+                    self.event_publisher.publish_event(
+                        "lineup_set",
+                        str(lineup.lineup_id),
+                        {
+                            "lineup_id": str(lineup.lineup_id),
+                            "team_id": str(team_uuid),
+                            "game_day": game_day.isoformat(),
+                            "player_count": len(serializable_players),
+                            "version": 1,
+                        },
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
 
                 # Publish integration event for scoring domain
-                asyncio.create_task(self.event_publisher.publish_integration_event(
-                    "lineup_updated",
-                    str(lineup.lineup_id),
-                    {
-                        "lineup_id": str(lineup.lineup_id),
-                        "team_id": str(team_uuid),
-                        "game_day": game_day.isoformat(),
-                        "players": serializable_players,
-                    },
-                    target_domains=["scoring"]
-                ))
+                task = asyncio.create_task(
+                    self.event_publisher.publish_integration_event(
+                        "lineup_updated",
+                        str(lineup.lineup_id),
+                        {
+                            "lineup_id": str(lineup.lineup_id),
+                            "team_id": str(team_uuid),
+                            "game_day": game_day.isoformat(),
+                            "players": serializable_players,
+                        },
+                        target_domains=["scoring"],
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
             except Exception as e:
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return lineup
 
@@ -100,7 +111,9 @@ class LineupService(LineupServiceInterface):
     async def get_lineup(self, lineup_id: str) -> Lineup:
         """Get lineup by ID."""
         lineup_uuid = uuid.UUID(lineup_id)
-        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        lineup = (
+            self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        )
         if not lineup:
             raise ValueError(f"Lineup with ID {lineup_id} not found")
         return lineup
@@ -113,7 +126,9 @@ class LineupService(LineupServiceInterface):
         user_uuid = uuid.UUID(user_id)
 
         # Get the lineup
-        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        lineup = (
+            self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        )
         if not lineup:
             return False
 
@@ -148,7 +163,9 @@ class LineupService(LineupServiceInterface):
             .first()
         )
         if not lineup:
-            raise ValueError(f"No lineup found for user {user_id} in league {league_id}")
+            raise ValueError(
+                f"No lineup found for user {user_id} in league {league_id}"
+            )
 
         return lineup
 
@@ -169,18 +186,19 @@ class LineupService(LineupServiceInterface):
     async def is_lineup_active(self, lineup_id: str) -> bool:
         """Check if a lineup is active for the current period."""
         lineup_uuid = uuid.UUID(lineup_id)
-        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
-        if not lineup:
-            return False
-
-        # For now, all lineups are considered active
+        lineup = (
+            self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        )
+        # For now, all lineups are considered active if they exist
         # In the future, this could check against current game week/day
-        return True
+        return lineup is not None
 
     async def get_lineup_slots(self, lineup_id: str) -> builtins.list[dict]:
         """Get all slots for a specific lineup."""
         lineup_uuid = uuid.UUID(lineup_id)
-        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        lineup = (
+            self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        )
         if not lineup:
             raise ValueError(f"Lineup with ID {lineup_id} not found")
 

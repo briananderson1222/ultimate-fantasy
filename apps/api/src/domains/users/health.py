@@ -19,13 +19,13 @@ async def users_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Health check for the User domain."""
     start_time = time.time()
 
-    health_status = {
+    health_status: dict[str, Any] = {
         "domain": "users",
         "status": "healthy",
         "timestamp": int(time.time()),
         "checks": {},
         "config": {},
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
     try:
@@ -37,7 +37,7 @@ async def users_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
 
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "response_time_ms": round(db_time * 1000, 2)
+            "response_time_ms": round(db_time * 1000, 2),
         }
 
         # User-specific table check
@@ -48,7 +48,7 @@ async def users_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
         health_status["checks"]["users_table"] = {
             "status": "healthy",
             "response_time_ms": round(table_time * 1000, 2),
-            "user_count": user_count
+            "user_count": user_count,
         }
 
         # Configuration check
@@ -58,16 +58,13 @@ async def users_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
             "token_expiry_minutes": config.access_token_expire_minutes,
             "security": {
                 "password_min_length": config.password_min_length,
-                "max_login_attempts": config.max_login_attempts
-            }
+                "max_login_attempts": config.max_login_attempts,
+            },
         }
 
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["checks"]["error"] = {
-            "status": "failed",
-            "error": str(e)
-        }
+        health_status["checks"]["error"] = {"status": "failed", "error": str(e)}
 
     # Overall response time
     total_time = time.time() - start_time
@@ -83,27 +80,33 @@ async def users_detailed_health_check(db: Session = Depends(get_db)) -> dict[str
 
     try:
         # Additional detailed checks
-        preferences_count = db.execute(text("SELECT COUNT(*) FROM user_preferences")).scalar()
+        preferences_count = db.execute(
+            text("SELECT COUNT(*) FROM user_preferences")
+        ).scalar()
         detailed_status["checks"]["user_preferences_table"] = {
             "status": "healthy",
-            "preferences_count": preferences_count
+            "preferences_count": preferences_count,
         }
 
         # Check for users with recent activity
-        recent_users = db.execute(text("""
+        recent_users = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM users
             WHERE last_login > NOW() - INTERVAL '24 hours'
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {
             "status": "healthy",
-            "active_users_24h": recent_users
+            "active_users_24h": recent_users,
         }
 
     except Exception as e:
         detailed_status["checks"]["detailed_error"] = {
             "status": "failed",
-            "error": str(e)
+            "error": str(e),
         }
 
     return detailed_status

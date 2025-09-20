@@ -28,5 +28,5 @@ __all__ = [
     "shared_logger",
     "trading_logger",
     "users_logger",
-    "waitlist_logger"
+    "waitlist_logger",
 ]

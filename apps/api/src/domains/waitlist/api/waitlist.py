@@ -45,7 +45,7 @@ def join_waitlist(
     """
     waitlist_service = WaitlistService(db)
     try:
-        waitlist_entry = waitlist_service.add_to_waitlist(email=payload.email)
+        waitlist_entry = waitlist_service.add_to_waitlist_by_email(payload.email)
         return WaitlistResponse.from_orm(waitlist_entry)
     except IntegrityError:
         raise HTTPException(

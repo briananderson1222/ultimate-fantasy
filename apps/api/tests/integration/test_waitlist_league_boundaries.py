@@ -1,24 +1,21 @@
 """Integration tests for waitlist-league domain boundaries."""
+
 import pytest
-from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+
 from domains.shared.interfaces.league_service import LeagueServiceInterface
+from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
+
 
 class TestWaitlistLeagueBoundaries:
-    @pytest.fixture
-    def waitlist_service(self) -> WaitlistServiceInterface:
-        from domains.waitlist.services.waitlist_service import WaitlistService
-        return WaitlistService()
-
-    @pytest.fixture
-    def league_service(self) -> LeagueServiceInterface:
-        from domains.leagues.services.league_service import LeagueService
-        return LeagueService()
+    # Use the waitlist_service and league_service fixtures from conftest.py
 
     @pytest.mark.asyncio
-    async def test_waitlist_for_valid_league_only(self, waitlist_service, league_service):
+    async def test_waitlist_for_valid_league_only(
+        self, waitlist_service, league_service
+    ):
         """Test that users can only join waitlists for valid leagues."""
-        user_id = "test-user-123"
-        league_id = "test-league-456"
+        user_id = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
+        league_id = "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
 
         # Should validate league exists before adding to waitlist
         league_settings = await league_service.get_league_settings(league_id)

@@ -18,12 +18,13 @@ def client() -> TestClient:
     sys.path.insert(0, str(backend_src_path()))
 
     # Import and setup database
-    from models.base import Base
-    from services.db import get_engine
+    from domains.shared.models.base import Base
+    from infrastructure.database.session_factory import get_session_factory
 
     # Create tables
-    engine = get_engine()
-    Base.metadata.create_all(bind=engine)
+    session_factory = get_session_factory()
+    if session_factory._engine:
+        Base.metadata.create_all(bind=session_factory._engine)
 
     # Import app and create client
     app_module = importlib.import_module("main")

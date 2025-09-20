@@ -1,23 +1,20 @@
 """Integration tests for scoring-lineup domain boundaries."""
+
 import pytest
-from domains.shared.interfaces.scoring_service import ScoringServiceInterface
+
 from domains.shared.interfaces.lineup_service import LineupServiceInterface
+from domains.shared.interfaces.scoring_service import ScoringServiceInterface
+
 
 class TestScoringLineupBoundaries:
-    @pytest.fixture
-    def scoring_service(self) -> ScoringServiceInterface:
-        from domains.scoring.services.scoring_service import ScoringService
-        return ScoringService()
-
-    @pytest.fixture
-    def lineup_service(self) -> LineupServiceInterface:
-        from domains.lineups.services.lineup_service import LineupService
-        return LineupService()
+    # Use the scoring_service and lineup_service fixtures from conftest.py
 
     @pytest.mark.asyncio
-    async def test_score_calculation_for_valid_lineup(self, scoring_service, lineup_service):
+    async def test_score_calculation_for_valid_lineup(
+        self, scoring_service, lineup_service
+    ):
         """Test that scores can only be calculated for valid lineups."""
-        lineup_id = "test-lineup-123"
+        lineup_id = "123e4567-e89b-12d3-a456-426614174000"
         period = "week-1"
 
         lineup = await lineup_service.get_lineup(lineup_id)

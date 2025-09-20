@@ -19,7 +19,7 @@ class ScoringConfig(BaseSettings):
     default_rushing_td: float = 6.0
     default_receiving_td: float = 6.0
     default_passing_yard_points: float = 0.04  # 1 point per 25 yards
-    default_rushing_yard_points: float = 0.1   # 1 point per 10 yards
+    default_rushing_yard_points: float = 0.1  # 1 point per 10 yards
     default_receiving_yard_points: float = 0.1  # 1 point per 10 yards
 
     # Performance settings

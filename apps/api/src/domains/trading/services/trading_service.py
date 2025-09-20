@@ -18,7 +18,9 @@ class TradingService(TradingServiceInterface):
         # Initialize event publishing
         try:
             dispatcher = get_event_dispatcher()
-            self.event_publisher = DomainEventPublisher(dispatcher, "trading")
+            self.event_publisher: DomainEventPublisher | None = DomainEventPublisher(
+                dispatcher, "trading"
+            )
         except RuntimeError:
             # Event dispatcher not initialized, disable events
             self.event_publisher = None
@@ -36,20 +38,20 @@ class TradingService(TradingServiceInterface):
             .filter(Team.user_id == user_uuid, Team.league_id == league_uuid)
             .first()
         )
-        if not team:
-            return False
-
-        # For now, all team members are eligible to trade
+        # For now, all team members are eligible to trade if they exist
         # In the future, this could check trade deadlines, league settings, etc.
-        return True
+        return team is not None
 
     async def process_waiver_claim(self, waiver_id: str, user_id: str) -> dict:
         """Process a waiver claim for a user."""
         waiver_uuid = uuid.UUID(waiver_id)
-        user_uuid = uuid.UUID(user_id)
+        # user_id is passed as string and not converted to UUID since it's not used
+        # user_uuid = uuid.UUID(user_id)
 
         # Get the waiver
-        waiver = self.session.query(Waiver).filter(Waiver.waiver_id == waiver_uuid).first()
+        waiver = (
+            self.session.query(Waiver).filter(Waiver.waiver_id == waiver_uuid).first()
+        )
         if not waiver:
             raise ValueError(f"Waiver with ID {waiver_id} not found")
 
@@ -68,33 +70,42 @@ class TradingService(TradingServiceInterface):
         if self.event_publisher:
             try:
                 import asyncio
-                asyncio.create_task(self.event_publisher.publish_event(
-                    "waiver_claim_processed",
-                    waiver_id,
-                    {
-                        "transaction_id": transaction["transaction_id"],
-                        "waiver_id": waiver_id,
-                        "user_id": user_id,
-                        "player_id": str(waiver.player_id),
-                        "bid": waiver.bid,
-                        "status": "processed",
-                    }
-                ))
+
+                task = asyncio.create_task(
+                    self.event_publisher.publish_event(
+                        "waiver_claim_processed",
+                        waiver_id,
+                        {
+                            "transaction_id": transaction["transaction_id"],
+                            "waiver_id": waiver_id,
+                            "user_id": user_id,
+                            "player_id": str(waiver.player_id),
+                            "bid": waiver.bid,
+                            "status": "processed",
+                        },
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
 
                 # Publish integration event for other domains
-                asyncio.create_task(self.event_publisher.publish_integration_event(
-                    "player_acquired",
-                    waiver_id,
-                    {
-                        "user_id": user_id,
-                        "player_id": str(waiver.player_id),
-                        "acquisition_type": "waiver",
-                        "league_id": str(waiver.league_id),
-                    },
-                    target_domains=["lineups", "scoring"]
-                ))
+                task = asyncio.create_task(
+                    self.event_publisher.publish_integration_event(
+                        "player_acquired",
+                        waiver_id,
+                        {
+                            "user_id": user_id,
+                            "player_id": str(waiver.player_id),
+                            "acquisition_type": "waiver",
+                            "league_id": str(waiver.league_id),
+                        },
+                        target_domains=["lineups", "scoring"],
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
             except Exception as e:
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return transaction
 
@@ -131,9 +142,7 @@ class TradingService(TradingServiceInterface):
         # For now, return waiver transactions
         # In the future, this would include actual Transaction objects
         waivers = (
-            self.session.query(Waiver)
-            .filter(Waiver.team_id == team.team_id)
-            .all()
+            self.session.query(Waiver).filter(Waiver.team_id == team.team_id).all()
         )
 
         transactions = []
@@ -145,7 +154,9 @@ class TradingService(TradingServiceInterface):
                     "player_id": str(waiver.player_id),
                     "bid": waiver.bid,
                     "status": "pending",
-                    "created_at": waiver.created_at.isoformat() if waiver.created_at else None,
+                    "created_at": (
+                        waiver.created_at.isoformat() if waiver.created_at else None
+                    ),
                 }
             )
 
@@ -154,10 +165,13 @@ class TradingService(TradingServiceInterface):
     async def validate_waiver_claim(self, waiver_id: str, user_id: str) -> bool:
         """Validate if a user can claim a specific waiver."""
         waiver_uuid = uuid.UUID(waiver_id)
-        user_uuid = uuid.UUID(user_id)
+        # user_uuid is not used in current implementation
+        # user_uuid = uuid.UUID(user_id)
 
         # Get the waiver
-        waiver = self.session.query(Waiver).filter(Waiver.waiver_id == waiver_uuid).first()
+        waiver = (
+            self.session.query(Waiver).filter(Waiver.waiver_id == waiver_uuid).first()
+        )
         if not waiver:
             return False
 

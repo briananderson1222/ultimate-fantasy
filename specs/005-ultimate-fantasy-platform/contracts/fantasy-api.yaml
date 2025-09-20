@@ -1,0 +1,655 @@
+openapi: 3.0.3
+info:
+  title: Ultimate Fantasy - Fantasy Management API
+  description: API contracts for fantasy league, draft, and trading functionality
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Primary API server
+
+paths:
+  /draft/{leagueId}:
+    get:
+      summary: Get draft status
+      description: Current draft state and pick information
+      tags: [Draft]
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Draft status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '404':
+          description: League or draft not found
+
+    post:
+      summary: Start draft
+      description: Begin the draft process for a league
+      tags: [Draft]
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartDraftRequest'
+      responses:
+        '201':
+          description: Draft started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '400':
+          description: Invalid request or league not ready
+        '403':
+          description: Not authorized to start draft
+
+  /draft/{leagueId}/pick:
+    post:
+      summary: Make draft pick
+      description: Select a player during draft
+      tags: [Draft]
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftPickRequest'
+      responses:
+        '201':
+          description: Pick made successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftPick'
+        '400':
+          description: Invalid pick or not your turn
+        '409':
+          description: Player already drafted
+
+  /draft/{leagueId}/autopick:
+    post:
+      summary: Enable/disable auto-draft
+      description: Toggle automatic draft picks for user
+      tags: [Draft]
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoDraftRequest'
+      responses:
+        '200':
+          description: Auto-draft setting updated
+        '400':
+          description: Invalid request
+
+  /trades:
+    get:
+      summary: List trades
+      description: Get trades for user's teams
+      tags: [Trading]
+      parameters:
+        - name: league_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, rejected, expired]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Trades list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradesResponse'
+
+    post:
+      summary: Propose trade
+      description: Create a new trade proposal
+      tags: [Trading]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeProposal'
+      responses:
+        '201':
+          description: Trade proposed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        '400':
+          description: Invalid trade proposal
+        '403':
+          description: Trade deadline passed or not authorized
+
+  /trades/{tradeId}:
+    get:
+      summary: Get trade details
+      description: Detailed trade information and analysis
+      tags: [Trading]
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trade details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        '404':
+          description: Trade not found
+
+    patch:
+      summary: Respond to trade
+      description: Accept, reject, or counter a trade proposal
+      tags: [Trading]
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeResponse'
+      responses:
+        '200':
+          description: Trade response processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        '400':
+          description: Invalid response
+        '403':
+          description: Not authorized to respond
+        '409':
+          description: Trade no longer available
+
+  /analytics/recommendations:
+    get:
+      summary: Get AI recommendations
+      description: AI-powered lineup and waiver recommendations
+      tags: [Analytics]
+      parameters:
+        - name: team_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [lineup, waiver, trade, draft]
+        - name: week
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: AI recommendations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationsResponse'
+        '400':
+          description: Invalid parameters
+
+  /analytics/insights:
+    get:
+      summary: Get performance insights
+      description: Team and league performance analytics
+      tags: [Analytics]
+      parameters:
+        - name: team_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: league_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            enum: [week, month, season]
+            default: season
+      responses:
+        '200':
+          description: Performance insights
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightsResponse'
+
+  /real-time/connect:
+    get:
+      summary: WebSocket connection
+      description: Establish WebSocket for real-time updates
+      tags: [Real-time]
+      parameters:
+        - name: league_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: types
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [draft, scores, trades, waivers, chat]
+      responses:
+        '101':
+          description: WebSocket connection established
+        '400':
+          description: Invalid connection parameters
+
+components:
+  schemas:
+    Draft:
+      type: object
+      required:
+        - draft_id
+        - league_id
+        - draft_type
+        - status
+        - current_pick
+        - pick_timer
+      properties:
+        draft_id:
+          type: string
+          format: uuid
+        league_id:
+          type: string
+          format: uuid
+        draft_type:
+          type: string
+          enum: [snake, auction, linear]
+        status:
+          type: string
+          enum: [scheduled, active, paused, completed]
+        current_pick:
+          type: integer
+          description: Current pick number
+        current_team_id:
+          type: string
+          format: uuid
+          nullable: true
+        pick_timer:
+          type: integer
+          description: Seconds per pick
+        time_remaining:
+          type: integer
+          description: Seconds left for current pick
+          nullable: true
+        picks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DraftPick'
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    StartDraftRequest:
+      type: object
+      required:
+        - draft_type
+        - pick_timer
+      properties:
+        draft_type:
+          type: string
+          enum: [snake, auction, linear]
+        pick_timer:
+          type: integer
+          minimum: 30
+          maximum: 300
+
+    DraftPick:
+      type: object
+      required:
+        - pick_number
+        - team_id
+        - player_id
+        - round
+        - picked_at
+      properties:
+        pick_number:
+          type: integer
+        team_id:
+          type: string
+          format: uuid
+        player_id:
+          type: string
+          format: uuid
+        round:
+          type: integer
+        auction_price:
+          type: integer
+          nullable: true
+        picked_at:
+          type: string
+          format: date-time
+
+    DraftPickRequest:
+      type: object
+      required:
+        - player_id
+      properties:
+        player_id:
+          type: string
+          format: uuid
+        auction_bid:
+          type: integer
+          nullable: true
+
+    AutoDraftRequest:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+        strategy:
+          type: string
+          enum: [best_available, positional_need, value_based]
+          default: best_available
+
+    Trade:
+      type: object
+      required:
+        - trade_id
+        - league_id
+        - proposing_team_id
+        - receiving_team_id
+        - proposed_players
+        - requested_players
+        - status
+      properties:
+        trade_id:
+          type: string
+          format: uuid
+        league_id:
+          type: string
+          format: uuid
+        proposing_team_id:
+          type: string
+          format: uuid
+        receiving_team_id:
+          type: string
+          format: uuid
+        proposed_players:
+          type: array
+          items:
+            type: string
+            format: uuid
+        requested_players:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum: [pending, accepted, rejected, expired]
+        message:
+          type: string
+          nullable: true
+        evaluation_score:
+          type: number
+          format: float
+          description: AI fairness evaluation (0-100)
+        expires_at:
+          type: string
+          format: date-time
+        processed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    TradeProposal:
+      type: object
+      required:
+        - league_id
+        - receiving_team_id
+        - proposed_players
+        - requested_players
+      properties:
+        league_id:
+          type: string
+          format: uuid
+        receiving_team_id:
+          type: string
+          format: uuid
+        proposed_players:
+          type: array
+          items:
+            type: string
+            format: uuid
+        requested_players:
+          type: array
+          items:
+            type: string
+            format: uuid
+        message:
+          type: string
+          maxLength: 500
+
+    TradeResponse:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [accept, reject, counter]
+        counter_proposal:
+          type: object
+          properties:
+            proposed_players:
+              type: array
+              items:
+                type: string
+                format: uuid
+            requested_players:
+              type: array
+              items:
+                type: string
+                format: uuid
+            message:
+              type: string
+              maxLength: 500
+
+    TradesResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trade'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Recommendation:
+      type: object
+      required:
+        - type
+        - confidence
+        - reasoning
+      properties:
+        type:
+          type: string
+          enum: [lineup_change, waiver_add, trade_target]
+        player_id:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+        projected_impact:
+          type: number
+          format: float
+          nullable: true
+
+    RecommendationsResponse:
+      type: object
+      required:
+        - recommendations
+        - generated_at
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+        generated_at:
+          type: string
+          format: date-time
+        next_update:
+          type: string
+          format: date-time
+
+    Insight:
+      type: object
+      required:
+        - category
+        - metric
+        - value
+        - context
+      properties:
+        category:
+          type: string
+          enum: [performance, trends, opportunities, risks]
+        metric:
+          type: string
+        value:
+          type: number
+        context:
+          type: string
+        comparison:
+          type: object
+          properties:
+            league_average:
+              type: number
+            percentile:
+              type: number
+
+    InsightsResponse:
+      type: object
+      required:
+        - insights
+        - summary
+      properties:
+        insights:
+          type: array
+          items:
+            $ref: '#/components/schemas/Insight'
+        summary:
+          type: object
+          properties:
+            overall_grade:
+              type: string
+              enum: [A+, A, B+, B, C+, C, D, F]
+            key_strengths:
+              type: array
+              items:
+                type: string
+            improvement_areas:
+              type: array
+              items:
+                type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { dashboardUtils, DEFAULT_WIDGETS, WidgetKey } from '@ultimate-fantasy/shared-logic';
+import { dashboardUtils, DEFAULT_WIDGETS, type WidgetKey } from '@ultimate-fantasy/shared-logic/utils/dashboard';
 
 export default function DashboardScreen() {
   const [order, setOrder] = useState<WidgetKey[]>(DEFAULT_WIDGETS);

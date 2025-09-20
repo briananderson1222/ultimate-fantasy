@@ -4,9 +4,10 @@ Domain Service Registry for managing service instances and dependencies.
 This registry provides centralized access to domain services and manages
 their lifecycle and dependencies.
 """
+
 from __future__ import annotations
 
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +24,7 @@ from domains.trading.services.trading_service import TradingService
 from domains.users.services.user_service import UserService
 from domains.waitlist.services.waitlist_service import WaitlistService
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ServiceRegistry:
@@ -68,31 +69,31 @@ class ServiceRegistry:
         if service_type not in self._services:
             raise KeyError(f"Service {service_type.__name__} not registered")
 
-        return self._services[service_type]
+        return cast(T, self._services[service_type])
 
     def get_league_service(self) -> LeagueServiceInterface:
         """Get the league service instance."""
-        return self.get_service(LeagueServiceInterface)
+        return cast(LeagueServiceInterface, self._services[LeagueServiceInterface])
 
     def get_user_service(self) -> UserServiceInterface:
         """Get the user service instance."""
-        return self.get_service(UserServiceInterface)
+        return cast(UserServiceInterface, self._services[UserServiceInterface])
 
     def get_lineup_service(self) -> LineupServiceInterface:
         """Get the lineup service instance."""
-        return self.get_service(LineupServiceInterface)
+        return cast(LineupServiceInterface, self._services[LineupServiceInterface])
 
     def get_trading_service(self) -> TradingServiceInterface:
         """Get the trading service instance."""
-        return self.get_service(TradingServiceInterface)
+        return cast(TradingServiceInterface, self._services[TradingServiceInterface])
 
     def get_scoring_service(self) -> ScoringServiceInterface:
         """Get the scoring service instance."""
-        return self.get_service(ScoringServiceInterface)
+        return cast(ScoringServiceInterface, self._services[ScoringServiceInterface])
 
     def get_waitlist_service(self) -> WaitlistServiceInterface:
         """Get the waitlist service instance."""
-        return self.get_service(WaitlistServiceInterface)
+        return cast(WaitlistServiceInterface, self._services[WaitlistServiceInterface])
 
     def register_service(self, service_type: type[T], instance: T) -> None:
         """
@@ -152,9 +153,11 @@ def get_registry() -> ServiceRegistry:
     Raises:
         RuntimeError: If registry not initialized
     """
-    global _registry
+    global _registry  # noqa: PLW0602
     if _registry is None:
-        raise RuntimeError("Service registry not initialized. Call initialize_registry() first.")
+        raise RuntimeError(
+            "Service registry not initialized. Call initialize_registry() first."
+        )
     return _registry
 
 

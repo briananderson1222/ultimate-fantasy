@@ -1,17 +1,59 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
+import { httpClient } from '@ultimate-fantasy/api-client';
 
-// Import screens
-import HomeScreen from './src/screens/HomeScreen';
-import LeaguesScreen from './src/screens/LeaguesScreen';
-import DashboardScreen from './src/screens/DashboardScreen';
+// Import navigation and auth
+import AppNavigator from './src/navigation/AppNavigator';
+import { AuthProvider } from './src/contexts/AuthContext';
 
-// Create navigation stack
-const Stack = createStackNavigator();
+const DEFAULT_HTTP_PORT = 8000;
+
+const resolveApiBaseUrl = (): string => {
+  const env =
+    (typeof process !== 'undefined' && process?.env) ||
+    ({} as NodeJS.ProcessEnv);
+
+  const candidates = [
+    env.EXPO_PUBLIC_API_BASE_URL,
+    env.NEXT_PUBLIC_API_BASE_URL,
+    env.API_BASE_URL,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim().replace(/\/+$/, '');
+    }
+  }
+
+  const extra = (Constants.expoConfig?.extra ?? (Constants.manifest as any)?.extra) as
+    | { apiBaseUrl?: unknown }
+    | undefined;
+
+  if (typeof extra?.apiBaseUrl === 'string' && extra.apiBaseUrl.trim()) {
+    return extra.apiBaseUrl.trim().replace(/\/+$/, '');
+  }
+
+  const debuggerHost =
+    Constants.expoConfig?.hostUri ??
+    (Constants.expoConfig as any)?.debuggerHost ??
+    (Constants.manifest as any)?.debuggerHost ??
+    null;
+
+  if (typeof debuggerHost === 'string' && debuggerHost.length > 0) {
+    const [host] = debuggerHost.split(':');
+    if (host) {
+      return `http://${host}:${DEFAULT_HTTP_PORT}`;
+    }
+  }
+
+  return `http://localhost:${DEFAULT_HTTP_PORT}`;
+};
+
+// Configure API client before components mount to avoid race conditions
+httpClient.updateConfig({ baseUrl: resolveApiBaseUrl() });
 
 // Create query client for React Query
 const queryClient = new QueryClient({
@@ -27,37 +69,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
-          <Stack.Navigator
-            initialRouteName="Home"
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: '#3b82f6',
-              },
-              headerTintColor: '#fff',
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-            }}
-          >
-            <Stack.Screen
-              name="Home"
-              component={HomeScreen}
-              options={{ title: 'Ultimate Fantasy' }}
-            />
-            <Stack.Screen
-              name="Dashboard"
-              component={DashboardScreen}
-              options={{ title: 'Dashboard' }}
-            />
-            <Stack.Screen
-              name="Leagues"
-              component={LeaguesScreen}
-              options={{ title: 'My Leagues' }}
-            />
-          </Stack.Navigator>
+        <AuthProvider>
+          <AppNavigator />
           <StatusBar style="light" />
-        </NavigationContainer>
+        </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

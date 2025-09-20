@@ -4,7 +4,9 @@ Abstract Base Class for Lineup Service interface.
 This interface defines the contract for lineup domain operations
 and enables cross-domain communication without tight coupling.
 """
+
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 
 class LineupServiceInterface(ABC):
@@ -82,7 +84,7 @@ class LineupServiceInterface(ABC):
         """
 
     @abstractmethod
-    async def get_lineup_slots(self, lineup_id: str) -> list["LineupSlot"]:
+    async def get_lineup_slots(self, lineup_id: str) -> list[dict]:
         """
         Get all slots for a specific lineup.
 
@@ -90,10 +92,10 @@ class LineupServiceInterface(ABC):
             lineup_id: Unique identifier for the lineup
 
         Returns:
-            List of LineupSlot objects
+            List of dict (ie. LineupSlot objects)
         """
 
 
 # Type hints for forward references
-if False:  # TYPE_CHECKING equivalent
-    from backend.src.domains.lineups.models.lineup import Lineup, LineupSlot
+if TYPE_CHECKING:
+    from domains.lineups.models.lineup import Lineup

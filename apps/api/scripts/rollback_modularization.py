@@ -9,13 +9,11 @@ Usage:
     python scripts/rollback_modularization.py [--dry-run] [--backup]
 """
 
-import os
-import sys
-import shutil
 import argparse
-from pathlib import Path
-from typing import List, Dict
+import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 
 class ModularizationRollback:
@@ -47,7 +45,7 @@ class ModularizationRollback:
     def log(self, message: str, level: str = "INFO") -> None:
         """Log a message with level."""
         prefix = "[DRY-RUN] " if self.dry_run else ""
-        print(f"{prefix}[{level}] {message}")
+        print(f"{prefix}[{level}] {message}")  # noqa: T201
 
     def create_backup_if_requested(self) -> None:
         """Create backup of current state before rollback."""
@@ -61,23 +59,30 @@ class ModularizationRollback:
 
         self.log(f"Creating backup at {self.backup_path}")
         if not self.dry_run:
-            shutil.copytree(self.backend_path, self.backup_path,
-                          ignore=shutil.ignore_patterns('.git', '__pycache__', '*.pyc', '.venv'))
+            shutil.copytree(
+                self.backend_path,
+                self.backup_path,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc", ".venv"),
+            )
 
     def restore_from_git_history(self) -> bool:
         """Attempt to restore files from git history before modularization."""
         try:
             # Find the commit before modularization started
             self.log("Looking for pre-modularization commit...")
-            result = subprocess.run([
-                "git", "log", "--oneline", "--grep=modular", "-n", "20"
-            ], capture_output=True, text=True, cwd=self.backend_path)
+            result = subprocess.run(
+                ["git", "log", "--oneline", "--grep=modular", "-n", "20"],  # noqa: S607
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=self.backend_path,
+            )
 
             if result.returncode != 0:
                 self.log("Could not access git history", "WARNING")
                 return False
 
-            commits = result.stdout.strip().split('\n')
+            commits = result.stdout.strip().split("\n")
             if not commits:
                 self.log("No modularization commits found in recent history", "WARNING")
                 return False
@@ -99,9 +104,17 @@ class ModularizationRollback:
                 self.log(f"Restoring {file_path} from {pre_modular_commit}")
                 if not self.dry_run:
                     try:
-                        subprocess.run([
-                            "git", "checkout", pre_modular_commit, "--", file_path
-                        ], cwd=self.backend_path, check=True)
+                        subprocess.run(  # noqa: S603
+                            [  # noqa: S607
+                                "git",
+                                "checkout",
+                                pre_modular_commit,
+                                "--",
+                                file_path,
+                            ],
+                            cwd=self.backend_path,
+                            check=True,
+                        )
                     except subprocess.CalledProcessError:
                         self.log(f"Could not restore {file_path}", "WARNING")
 
@@ -139,7 +152,7 @@ class ModularizationRollback:
             self.log(f"Restoring imports in {file_path}")
             if not self.dry_run:
                 try:
-                    with open(full_path, 'r') as f:
+                    with open(full_path) as f:
                         content = f.read()
 
                     # Apply import replacements
@@ -148,7 +161,7 @@ class ModularizationRollback:
                         content = content.replace(old_import, new_import)
 
                     if content != original_content:
-                        with open(full_path, 'w') as f:
+                        with open(full_path, "w") as f:
                             f.write(content)
                         self.log(f"Updated imports in {file_path}")
 
@@ -172,7 +185,9 @@ class ModularizationRollback:
                 if domain_dir.is_dir():
                     models_dir = domain_dir / "models"
                     if models_dir.exists():
-                        self.log(f"Moving models from {domain_dir.name} domain back to models/")
+                        self.log(
+                            f"Moving models from {domain_dir.name} domain back to models/"
+                        )
                         if not self.dry_run:
                             for model_file in models_dir.glob("*.py"):
                                 if model_file.name != "__init__.py":
@@ -190,13 +205,13 @@ class ModularizationRollback:
         self.log("Updating pyproject.toml")
         if not self.dry_run:
             try:
-                with open(pyproject_path, 'r') as f:
+                with open(pyproject_path) as f:
                     content = f.read()
 
                 # Remove modularization-specific dependencies if any were added
                 # This is a placeholder - adjust based on actual changes made
 
-                with open(pyproject_path, 'w') as f:
+                with open(pyproject_path, "w") as f:
                     f.write(content)
 
             except Exception as e:
@@ -242,7 +257,7 @@ class ModularizationRollback:
             return False
 
 
-def main():
+def main() -> None:
     """Main entry point for rollback script."""
     parser = argparse.ArgumentParser(
         description="Rollback backend modularization changes"
@@ -250,19 +265,16 @@ def main():
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be done without making changes"
+        help="Show what would be done without making changes",
     )
     parser.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="Skip creating backup before rollback"
+        "--no-backup", action="store_true", help="Skip creating backup before rollback"
     )
 
     args = parser.parse_args()
 
     rollback = ModularizationRollback(
-        dry_run=args.dry_run,
-        create_backup=not args.no_backup
+        dry_run=args.dry_run, create_backup=not args.no_backup
     )
 
     success = rollback.run_rollback()

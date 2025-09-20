@@ -4,6 +4,7 @@ Database Session Factory for domain-specific database access.
 This factory provides centralized database session management with
 support for different domains and connection pooling.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,7 +12,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, pool
+from sqlalchemy import Engine, create_engine, pool, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -26,14 +27,19 @@ from domains.shared.models.base import Base
 class SessionFactory:
     """Factory for creating and managing database sessions."""
 
-    def __init__(
+    _engine: Engine | None
+    _session_maker: sessionmaker[Session] | None
+    _async_engine: AsyncEngine | None
+    _async_session_maker: async_sessionmaker[AsyncSession] | None
+
+    def __init__(  # noqa: PLR0913
         self,
         database_url: str,
         echo: bool = False,
         pool_size: int = 5,
         max_overflow: int = 10,
         pool_timeout: int = 30,
-        async_mode: bool = False
+        async_mode: bool = False,
     ):
         """
         Initialize the session factory.
@@ -57,17 +63,14 @@ class SessionFactory:
         if async_mode:
             self._async_engine = self._create_async_engine()
             self._async_session_maker = async_sessionmaker(
-                bind=self._async_engine,
-                class_=AsyncSession,
-                expire_on_commit=False
+                bind=self._async_engine, class_=AsyncSession, expire_on_commit=False
             )
             self._engine = None
             self._session_maker = None
         else:
             self._engine = self._create_sync_engine()
             self._session_maker = sessionmaker(
-                bind=self._engine,
-                expire_on_commit=False
+                bind=self._engine, expire_on_commit=False
             )
             self._async_engine = None
             self._async_session_maker = None
@@ -103,7 +106,7 @@ class SessionFactory:
         )
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[Session, None]:
+    async def get_session(self) -> AsyncGenerator[Session | AsyncSession, None]:
         """
         Get a database session.
 
@@ -182,13 +185,17 @@ class SessionFactory:
             async with self.get_session() as session:
                 # Simple query to test connection
                 if self.async_mode:
-                    await session.execute("SELECT 1")
+                    await session.execute(text("SELECT 1"))  # type: ignore[misc]
                 else:
-                    session.execute("SELECT 1")
+                    session.execute(text("SELECT 1"))
 
             return {
                 "status": "healthy",
-                "database_url": self.database_url.split("@")[-1] if "@" in self.database_url else "hidden",
+                "database_url": (
+                    self.database_url.split("@")[-1]
+                    if "@" in self.database_url
+                    else "hidden"
+                ),
                 "async_mode": self.async_mode,
                 "pool_size": self.pool_size,
                 "max_overflow": self.max_overflow,
@@ -197,7 +204,11 @@ class SessionFactory:
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "database_url": self.database_url.split("@")[-1] if "@" in self.database_url else "hidden",
+                "database_url": (
+                    self.database_url.split("@")[-1]
+                    if "@" in self.database_url
+                    else "hidden"
+                ),
                 "async_mode": self.async_mode,
             }
 
@@ -216,7 +227,11 @@ class SessionFactory:
             Engine configuration information
         """
         return {
-            "database_url": self.database_url.split("@")[-1] if "@" in self.database_url else "hidden",
+            "database_url": (
+                self.database_url.split("@")[-1]
+                if "@" in self.database_url
+                else "hidden"
+            ),
             "echo": self.echo,
             "pool_size": self.pool_size,
             "max_overflow": self.max_overflow,
@@ -244,8 +259,7 @@ def get_session_factory(database_url: str | None = None) -> SessionFactory:
     if _session_factory is None:
         # Get database URL from environment or use default
         url = database_url or os.getenv(
-            "DATABASE_URL",
-            "sqlite:///./ultimate_fantasy.db"
+            "DATABASE_URL", "sqlite:///./ultimate_fantasy.db"
         )
 
         # Determine if we should use async mode
@@ -258,7 +272,7 @@ def get_session_factory(database_url: str | None = None) -> SessionFactory:
         pool_timeout = int(os.getenv("DATABASE_POOL_TIMEOUT", "30"))
 
         _session_factory = SessionFactory(
-            database_url=url,
+            database_url=str(url),
             echo=echo,
             pool_size=pool_size,
             max_overflow=max_overflow,
@@ -276,7 +290,7 @@ def reset_session_factory() -> None:
 
 
 # FastAPI dependency for database sessions
-async def get_db_session() -> AsyncGenerator[Session, None]:
+async def get_db_session() -> AsyncGenerator[Session | AsyncSession, None]:
     """
     FastAPI dependency for database sessions.
 
@@ -299,7 +313,7 @@ class DomainSessionFactory:
         self.base_factory = base_factory
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[Session, None]:
+    async def get_session(self) -> AsyncGenerator[Session | AsyncSession, None]:
         """Get a session for this domain."""
         async with self.base_factory.get_session() as session:
             # Add domain-specific session configuration here
@@ -315,7 +329,9 @@ class DomainSessionFactory:
         }
 
 
-def create_domain_factory(domain_name: str, database_url: str | None = None) -> DomainSessionFactory:
+def create_domain_factory(
+    domain_name: str, database_url: str | None = None
+) -> DomainSessionFactory:
     """
     Create a domain-specific session factory.
 

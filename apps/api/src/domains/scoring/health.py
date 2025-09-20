@@ -19,13 +19,13 @@ async def scoring_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Health check for the Scoring domain."""
     start_time = time.time()
 
-    health_status = {
+    health_status: dict[str, Any] = {
         "domain": "scoring",
         "status": "healthy",
         "timestamp": int(time.time()),
         "checks": {},
         "config": {},
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
     try:
@@ -37,7 +37,7 @@ async def scoring_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
 
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "response_time_ms": round(db_time * 1000, 2)
+            "response_time_ms": round(db_time * 1000, 2),
         }
 
         # Scoring-specific table check
@@ -48,7 +48,7 @@ async def scoring_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
         health_status["checks"]["scores_table"] = {
             "status": "healthy",
             "response_time_ms": round(table_time * 1000, 2),
-            "score_count": score_count
+            "score_count": score_count,
         }
 
         # Configuration check
@@ -59,16 +59,13 @@ async def scoring_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
             "features": {
                 "fractional_scoring": config.enable_fractional_scoring,
                 "bonus_scoring": config.enable_bonus_scoring,
-                "negative_scoring": config.enable_negative_scoring
-            }
+                "negative_scoring": config.enable_negative_scoring,
+            },
         }
 
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["checks"]["error"] = {
-            "status": "failed",
-            "error": str(e)
-        }
+        health_status["checks"]["error"] = {"status": "failed", "error": str(e)}
 
     # Overall response time
     total_time = time.time() - start_time
@@ -78,45 +75,55 @@ async def scoring_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.get("/health/detailed", status_code=status.HTTP_200_OK)
-async def scoring_detailed_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
+async def scoring_detailed_health_check(
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     """Detailed health check for the Scoring domain."""
     detailed_status = await scoring_health_check(db)
 
     try:
         # Check for recent score updates
-        recent_scores = db.execute(text("""
+        recent_scores = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM scores
             WHERE updated_at > NOW() - INTERVAL '1 hour'
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["recent_score_updates"] = {
             "status": "healthy",
-            "updates_last_hour": recent_scores
+            "updates_last_hour": recent_scores,
         }
 
         # Check for current week scoring
-        current_week_scores = db.execute(text("""
+        current_week_scores = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM scores
             WHERE week = EXTRACT(week FROM NOW())
             AND year = EXTRACT(year FROM NOW())
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["current_week_scoring"] = {
             "status": "healthy",
-            "current_week_scores": current_week_scores
+            "current_week_scores": current_week_scores,
         }
 
         # Check average score calculation time (mock metric)
         detailed_status["checks"]["performance"] = {
             "status": "healthy",
             "avg_calculation_time_ms": 45.2,
-            "cache_hit_rate": 0.87
+            "cache_hit_rate": 0.87,
         }
 
     except Exception as e:
         detailed_status["checks"]["detailed_error"] = {
             "status": "failed",
-            "error": str(e)
+            "error": str(e),
         }
 
     return detailed_status

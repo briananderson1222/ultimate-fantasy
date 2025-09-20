@@ -18,7 +18,9 @@ class UserService(UserServiceInterface):
         # Initialize event publishing
         try:
             dispatcher = get_event_dispatcher()
-            self.event_publisher = DomainEventPublisher(dispatcher, "users")
+            self.event_publisher: DomainEventPublisher | None = DomainEventPublisher(
+                dispatcher, "users"
+            )
         except RuntimeError:
             # Event dispatcher not initialized, disable events
             self.event_publisher = None
@@ -68,18 +70,28 @@ class UserService(UserServiceInterface):
                 if self.event_publisher:
                     try:
                         import asyncio
-                        asyncio.create_task(self.event_publisher.publish_event(
-                            "user_updated",
-                            str(user_id),
-                            {
-                                "user_id": str(user_id),
-                                "email": email,
-                                "display_name": display_name,
-                                "changes": ["email", "display_name"] if changed else [],
-                            }
-                        ))
+
+                        task = asyncio.create_task(
+                            self.event_publisher.publish_event(
+                                "user_updated",
+                                str(user_id),
+                                {
+                                    "user_id": str(user_id),
+                                    "email": email,
+                                    "display_name": display_name,
+                                    "changes": (
+                                        ["email", "display_name"] if changed else []
+                                    ),
+                                },
+                            )
+                        )
+                        task.add_done_callback(lambda t: t.exception())
                     except Exception as e:
-                        pass
+                        import logging
+
+                        logging.getLogger(__name__).debug(
+                            f"Event publishing failed: {e}"
+                        )
 
             return existing
 
@@ -93,30 +105,39 @@ class UserService(UserServiceInterface):
         if self.event_publisher:
             try:
                 import asyncio
-                asyncio.create_task(self.event_publisher.publish_event(
-                    "user_created",
-                    str(user_id),
-                    {
-                        "user_id": str(user_id),
-                        "email": email,
-                        "display_name": display_name,
-                        "cognito_sub": sub,
-                    }
-                ))
+
+                task = asyncio.create_task(
+                    self.event_publisher.publish_event(
+                        "user_created",
+                        str(user_id),
+                        {
+                            "user_id": str(user_id),
+                            "email": email,
+                            "display_name": display_name,
+                            "cognito_sub": sub,
+                        },
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
 
                 # Publish integration event for other domains
-                asyncio.create_task(self.event_publisher.publish_integration_event(
-                    "user_created",
-                    str(user_id),
-                    {
-                        "user_id": str(user_id),
-                        "email": email,
-                        "display_name": display_name,
-                    },
-                    target_domains=["leagues", "lineups", "trading", "waitlist"]
-                ))
+                task = asyncio.create_task(
+                    self.event_publisher.publish_integration_event(
+                        "user_created",
+                        str(user_id),
+                        {
+                            "user_id": str(user_id),
+                            "email": email,
+                            "display_name": display_name,
+                        },
+                        target_domains=["leagues", "lineups", "trading", "waitlist"],
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
             except Exception as e:
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return user
 
@@ -141,12 +162,7 @@ class UserService(UserServiceInterface):
 
         # For now, all active users have read permissions
         # More complex permission logic can be added later
-        if action == "read":
-            return True
-
-        # For write/admin actions, implement more complex logic
-        # This is a placeholder implementation
-        return False
+        return action == "read"
 
     async def get_user_preferences(self, user_id: str) -> User:
         """Get user preferences and settings."""
@@ -162,7 +178,7 @@ class UserService(UserServiceInterface):
     async def is_user_active(self, user_id: str) -> bool:
         """Check if user account is active."""
         try:
-            user = await self.get_user(user_id)
+            await self.get_user(user_id)
             # Assume all users are active for now
             # In the future, add an 'active' field to the User model
             return True

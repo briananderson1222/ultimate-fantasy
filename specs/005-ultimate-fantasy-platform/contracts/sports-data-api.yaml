@@ -1,0 +1,400 @@
+openapi: 3.0.3
+info:
+  title: Ultimate Fantasy - Sports Data API
+  description: API contracts for sports data integration and real-time updates
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Primary API server
+
+paths:
+  /sports/players:
+    get:
+      summary: Search and filter players
+      description: Get players with stats, positions, and injury status
+      tags: [Sports Data]
+      parameters:
+        - name: sport
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [mlb, nfl, wnba]
+        - name: position
+          in: query
+          schema:
+            type: string
+        - name: team
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, injured, inactive]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Player list with metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayersResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sports/players/{playerId}:
+    get:
+      summary: Get player details
+      description: Detailed player information with stats and projections
+      tags: [Sports Data]
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Player details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '404':
+          description: Player not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sports/teams:
+    get:
+      summary: Get sports teams
+      description: List of professional sports teams by sport
+      tags: [Sports Data]
+      parameters:
+        - name: sport
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [mlb, nfl, wnba]
+      responses:
+        '200':
+          description: Teams list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamsResponse'
+
+  /sports/schedule:
+    get:
+      summary: Get game schedule
+      description: Game schedule with dates and matchups
+      tags: [Sports Data]
+      parameters:
+        - name: sport
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [mlb, nfl, wnba]
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: week
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Game schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+
+  /sports/scores:
+    get:
+      summary: Get live scores
+      description: Real-time game scores and player statistics
+      tags: [Sports Data]
+      parameters:
+        - name: sport
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [mlb, nfl, wnba]
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: live_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Game scores and stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoresResponse'
+
+components:
+  schemas:
+    Player:
+      type: object
+      required:
+        - player_id
+        - external_id
+        - name
+        - position
+        - team_id
+        - sport
+        - injury_status
+      properties:
+        player_id:
+          type: string
+          format: uuid
+        external_id:
+          type: string
+          description: Sports API identifier
+        name:
+          type: string
+          maxLength: 100
+        position:
+          type: string
+          description: Player position (sport-specific)
+        team_id:
+          type: string
+          description: Current team identifier
+        sport:
+          type: string
+          enum: [mlb, nfl, wnba]
+        injury_status:
+          type: string
+          enum: [healthy, questionable, doubtful, out]
+        injury_description:
+          type: string
+          nullable: true
+        season_stats:
+          type: object
+          description: Current season statistics
+        game_stats:
+          type: object
+          description: Recent game performance
+        projections:
+          type: object
+          description: Projected fantasy points
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PlayersResponse:
+      type: object
+      required:
+        - items
+        - total
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        total:
+          type: integer
+          description: Total players matching criteria
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    SportsTeam:
+      type: object
+      required:
+        - team_id
+        - name
+        - city
+        - sport
+        - conference
+        - division
+      properties:
+        team_id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        sport:
+          type: string
+          enum: [mlb, nfl, wnba]
+        conference:
+          type: string
+          nullable: true
+        division:
+          type: string
+          nullable: true
+        logo_url:
+          type: string
+          format: uri
+          nullable: true
+
+    TeamsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SportsTeam'
+
+    Game:
+      type: object
+      required:
+        - game_id
+        - sport
+        - home_team
+        - away_team
+        - scheduled_at
+        - status
+      properties:
+        game_id:
+          type: string
+        sport:
+          type: string
+          enum: [mlb, nfl, wnba]
+        home_team:
+          type: string
+        away_team:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [scheduled, in_progress, final, postponed, cancelled]
+        home_score:
+          type: integer
+          nullable: true
+        away_score:
+          type: integer
+          nullable: true
+        inning:
+          type: integer
+          nullable: true
+        quarter:
+          type: integer
+          nullable: true
+        time_remaining:
+          type: string
+          nullable: true
+
+    ScheduleResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+
+    ScoresResponse:
+      type: object
+      required:
+        - games
+        - player_stats
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+        player_stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerGameStats'
+
+    PlayerGameStats:
+      type: object
+      required:
+        - player_id
+        - game_id
+        - stats
+        - fantasy_points
+      properties:
+        player_id:
+          type: string
+          format: uuid
+        game_id:
+          type: string
+        stats:
+          type: object
+          description: Game-specific statistics
+        fantasy_points:
+          type: number
+          format: float
+          description: Calculated fantasy points
+        is_final:
+          type: boolean
+          description: Whether stats are official
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

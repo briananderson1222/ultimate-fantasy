@@ -4,8 +4,9 @@ Abstract Base Class for User Service interface.
 This interface defines the contract for user domain operations
 and enables cross-domain communication without tight coupling.
 """
+
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 
 class UserServiceInterface(ABC):
@@ -89,5 +90,6 @@ class UserServiceInterface(ABC):
 
 
 # Type hints for forward references
-if False:  # TYPE_CHECKING equivalent
-    from backend.src.domains.users.models.user import User, UserPreferences
+if TYPE_CHECKING:
+    from domains.users.models.user import User
+    from domains.users.models.user_preference import UserPreference as UserPreferences

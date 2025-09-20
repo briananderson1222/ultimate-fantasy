@@ -19,13 +19,13 @@ async def lineups_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Health check for the Lineup domain."""
     start_time = time.time()
 
-    health_status = {
+    health_status: dict[str, Any] = {
         "domain": "lineups",
         "status": "healthy",
         "timestamp": int(time.time()),
         "checks": {},
         "config": {},
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
     try:
@@ -37,7 +37,7 @@ async def lineups_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
 
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "response_time_ms": round(db_time * 1000, 2)
+            "response_time_ms": round(db_time * 1000, 2),
         }
 
         # Lineup-specific table check
@@ -48,7 +48,7 @@ async def lineups_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
         health_status["checks"]["lineups_table"] = {
             "status": "healthy",
             "response_time_ms": round(table_time * 1000, 2),
-            "lineup_count": lineup_count
+            "lineup_count": lineup_count,
         }
 
         # Configuration check
@@ -59,16 +59,13 @@ async def lineups_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
             "features": {
                 "bench_players": config.enable_bench_players,
                 "optimizer": config.enable_lineup_optimizer,
-                "injury_notifications": config.enable_injury_notifications
-            }
+                "injury_notifications": config.enable_injury_notifications,
+            },
         }
 
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["checks"]["error"] = {
-            "status": "failed",
-            "error": str(e)
-        }
+        health_status["checks"]["error"] = {"status": "failed", "error": str(e)}
 
     # Overall response time
     total_time = time.time() - start_time
@@ -78,38 +75,48 @@ async def lineups_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.get("/health/detailed", status_code=status.HTTP_200_OK)
-async def lineups_detailed_health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
+async def lineups_detailed_health_check(
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     """Detailed health check for the Lineup domain."""
     detailed_status = await lineups_health_check(db)
 
     try:
         # Check for lineups set for current week
-        current_week_lineups = db.execute(text("""
+        current_week_lineups = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM lineups
             WHERE week = EXTRACT(week FROM NOW())
             AND year = EXTRACT(year FROM NOW())
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["current_week_lineups"] = {
             "status": "healthy",
-            "current_week_count": current_week_lineups
+            "current_week_count": current_week_lineups,
         }
 
         # Check for recent lineup changes
-        recent_changes = db.execute(text("""
+        recent_changes = db.execute(
+            text(
+                """
             SELECT COUNT(*) FROM lineups
             WHERE updated_at > NOW() - INTERVAL '1 hour'
-        """)).scalar()
+        """
+            )
+        ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {
             "status": "healthy",
-            "changes_last_hour": recent_changes
+            "changes_last_hour": recent_changes,
         }
 
     except Exception as e:
         detailed_status["checks"]["detailed_error"] = {
             "status": "failed",
-            "error": str(e)
+            "error": str(e),
         }
 
     return detailed_status

@@ -4,8 +4,9 @@ Abstract Base Class for Scoring Service interface.
 This interface defines the contract for scoring domain operations
 and enables cross-domain communication without tight coupling.
 """
+
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 
 class ScoringServiceInterface(ABC):
@@ -76,7 +77,9 @@ class ScoringServiceInterface(ABC):
         """
 
     @abstractmethod
-    async def get_league_standings(self, league_id: str, period: str) -> list[dict[str, Any]]:
+    async def get_league_standings(
+        self, league_id: str, period: str
+    ) -> list[dict[str, Any]]:
         """
         Get current standings for a league in a specific period.
 
@@ -109,8 +112,8 @@ class ScoringServiceInterface(ABC):
 
 
 # Type hints for forward references
-if False:  # TYPE_CHECKING equivalent
-    from backend.src.domains.scoring.models.player_performance import PlayerPerformance
-    from backend.src.domains.scoring.models.score import Score
-    from backend.src.domains.scoring.models.score_audit import ScoreAudit
-    from backend.src.domains.scoring.models.scoring_rule import ScoringRules
+if TYPE_CHECKING:
+    from domains.scoring.models.player_performance import PlayerPerformance
+    from domains.scoring.models.score import Score
+    from domains.scoring.models.score_audit import ScoreAudit
+    from domains.scoring.models.scoring_rule import ScoringRules

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import uuid as _uuid
 from collections.abc import Iterable
 from datetime import date
@@ -20,7 +21,9 @@ class ScoringService(ScoringServiceInterface):
         # Initialize event publishing
         try:
             dispatcher = get_event_dispatcher()
-            self.event_publisher = DomainEventPublisher(dispatcher, "scoring")
+            self.event_publisher: DomainEventPublisher | None = DomainEventPublisher(
+                dispatcher, "scoring"
+            )
         except RuntimeError:
             # Event dispatcher not initialized, disable events
             self.event_publisher = None
@@ -44,28 +47,37 @@ class ScoringService(ScoringServiceInterface):
         if self.event_publisher:
             try:
                 import asyncio
-                asyncio.create_task(self.event_publisher.publish_event(
-                    "player_stats_ingested",
-                    f"{game_day.isoformat()}_batch",
-                    {
-                        "game_day": game_day.isoformat(),
-                        "player_count": count,
-                        "stats_ingested": True,
-                    }
-                ))
+
+                task = asyncio.create_task(
+                    self.event_publisher.publish_event(
+                        "player_stats_ingested",
+                        f"{game_day.isoformat()}_batch",
+                        {
+                            "game_day": game_day.isoformat(),
+                            "player_count": count,
+                            "stats_ingested": True,
+                        },
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
 
                 # Publish integration event for lineups to recalculate scores
-                asyncio.create_task(self.event_publisher.publish_integration_event(
-                    "stats_available",
-                    f"{game_day.isoformat()}_batch",
-                    {
-                        "game_day": game_day.isoformat(),
-                        "player_count": count,
-                    },
-                    target_domains=["lineups", "leagues"]
-                ))
+                task = asyncio.create_task(
+                    self.event_publisher.publish_integration_event(
+                        "stats_available",
+                        f"{game_day.isoformat()}_batch",
+                        {
+                            "game_day": game_day.isoformat(),
+                            "player_count": count,
+                        },
+                        target_domains=["lineups", "leagues"],
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
             except Exception as e:
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return count
 
@@ -84,9 +96,9 @@ class ScoringService(ScoringServiceInterface):
         """
         import uuid as _uuid
 
-        from domains.scoring.models.lineup import Lineup
+        from domains.leagues.models.team import Team
+        from domains.lineups.models.lineup import Lineup
         from domains.scoring.models.score import Score
-        from domains.scoring.models.team import Team
 
         league_uuid = _uuid.UUID(league_id) if isinstance(league_id, str) else league_id
 
@@ -153,12 +165,16 @@ class ScoringService(ScoringServiceInterface):
         return items
 
     # Interface implementation methods
-    async def calculate_lineup_score(self, lineup_id: str, period: str) -> dict[str, Any]:
+    async def calculate_lineup_score(
+        self, lineup_id: str, period: str
+    ) -> dict[str, Any]:
         """Calculate total score for a lineup in a specific period."""
         from domains.lineups.models.lineup import Lineup
 
         lineup_uuid = _uuid.UUID(lineup_id)
-        lineup = self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        lineup = (
+            self.session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
+        )
         if not lineup:
             raise ValueError(f"Lineup with ID {lineup_id} not found")
 
@@ -184,10 +200,8 @@ class ScoringService(ScoringServiceInterface):
             for score in scores:
                 stats = score.stats or {}
                 points = stats.get("points", 0)
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     total_points += int(points)
-                except (ValueError, TypeError):
-                    pass
 
         return {
             "score_id": str(_uuid.uuid4()),
@@ -244,10 +258,8 @@ class ScoringService(ScoringServiceInterface):
         for score in scores:
             stats = score.stats or {}
             points = stats.get("points", 0)
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 total_points += int(points)
-            except (ValueError, TypeError):
-                pass
 
         return {
             "player_id": player_id,
@@ -257,7 +269,9 @@ class ScoringService(ScoringServiceInterface):
             "average_points": total_points / max(1, game_count),
         }
 
-    async def get_league_standings(self, league_id: str, period: str) -> list[dict[str, Any]]:
+    async def get_league_standings(
+        self, league_id: str, period: str
+    ) -> list[dict[str, Any]]:
         """Get current standings for a league in a specific period."""
         league_uuid = _uuid.UUID(league_id)
 
@@ -280,7 +294,9 @@ class ScoringService(ScoringServiceInterface):
 
         return standings
 
-    async def recalculate_scores(self, league_id: str, period: str) -> list[dict[str, Any]]:
+    async def recalculate_scores(
+        self, league_id: str, period: str
+    ) -> list[dict[str, Any]]:
         """Recalculate all scores for a league in a specific period."""
         from domains.leagues.models.team import Team
         from domains.lineups.models.lineup import Lineup

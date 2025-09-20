@@ -11,9 +11,7 @@ class LineupConfig(BaseSettings):
     # Lineup constraints
     max_players_per_lineup: int = 9
     min_players_per_lineup: int = 7
-    roster_positions: list[str] = [
-        "QB", "RB", "WR", "TE", "FLEX", "K", "DEF"
-    ]
+    roster_positions: list[str] = ["QB", "RB", "WR", "TE", "FLEX", "K", "DEF"]
 
     # Deadline settings
     lineup_lock_hours_before: int = 1

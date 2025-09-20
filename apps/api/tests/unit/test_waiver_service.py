@@ -16,7 +16,21 @@ def backend_src_path() -> Path:
 
 def make_session() -> Session:
     sys.path.insert(0, str(backend_src_path()))
-    Base = importlib.import_module("models.base").Base
+    Base = importlib.import_module("domains.shared.models.base").Base
+
+    # Import all domain models to ensure they're registered with Base.metadata
+    importlib.import_module("domains.users.models.user")
+    importlib.import_module("domains.leagues.models.league")
+    importlib.import_module("domains.leagues.models.team")
+    importlib.import_module("domains.lineups.models.lineup")
+    importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("models.notification")  # Central models still exist
+    importlib.import_module("models.player")
+    importlib.import_module("models.preset")
+    importlib.import_module("models.roster")
+    importlib.import_module("models.rule")
+    importlib.import_module("models.schedule")
+
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         future=True,
@@ -30,7 +44,7 @@ def make_session() -> Session:
 
 
 def seed_user(session: Session, user_id: _uuid.UUID | None = None):
-    User = importlib.import_module("models.user").User
+    User = importlib.import_module("domains.users.models.user").User
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
@@ -59,8 +73,10 @@ def seed_player(session: Session, player_id: _uuid.UUID | None = None):
 
 
 def create_league_with_team(session: Session):
-    LeagueService = importlib.import_module("services.league_service").LeagueService
-    Team = importlib.import_module("models.team").Team
+    LeagueService = importlib.import_module(
+        "domains.leagues.services.league_service"
+    ).LeagueService
+    Team = importlib.import_module("domains.leagues.models.team").Team
 
     commissioner_id = seed_user(session)
     svc = LeagueService(session)
@@ -81,8 +97,10 @@ def create_league_with_team(session: Session):
 
 def test_place_bid_persists_waiver_row():
     sys.path.insert(0, str(backend_src_path()))
-    WaiverService = importlib.import_module("services.waiver_service").WaiverService
-    Waiver = importlib.import_module("models.waiver").Waiver
+    WaiverService = importlib.import_module(
+        "domains.trading.services.waiver_service"
+    ).WaiverService
+    Waiver = importlib.import_module("domains.trading.models.waiver").Waiver
 
     with make_session() as session:
         league, team = create_league_with_team(session)

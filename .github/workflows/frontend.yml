@@ -1,0 +1,193 @@
+name: Frontend (Next.js)
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - ".github/workflows/frontend.yml"
+
+jobs:
+  frontend:
+    name: Frontend (Node 20)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build shared packages
+        run: cd ../.. && npm run build:packages
+
+      - name: ESLint
+        run: npm run lint --silent
+
+      - name: Prettier check
+        run: npm run format:check --silent || true
+
+      - name: Type check
+        run: npm run typecheck --silent || true
+
+      - name: Unit tests (Vitest)
+        run: npm run test:unit --silent || true
+
+  frontend-e2e:
+    name: Frontend E2E (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      AUTH_MODE: dev
+      AUTH_DEV_SECRET: test-e2e-secret
+      E2E_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: apps/web
+        run: |
+          npm install
+          npx playwright install --with-deps
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Setup Python + uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Python 3.11
+        run: uv python install 3.11
+
+      - name: Backend deps
+        working-directory: apps/api
+        run: uv sync --all-extras
+
+      - name: Start backend
+        working-directory: apps/api
+        run: |
+          uv run uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src &
+          for i in `seq 1 30`; do
+            curl -fsS http://127.0.0.1:8000/openapi.json && break || sleep 1;
+          done
+
+      - name: Start frontend
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+        run: |
+          npm run dev -- --port 3000 &
+          for i in `seq 1 60`; do
+            curl -fsS http://127.0.0.1:3000 || sleep 1;
+            if curl -fsS http://127.0.0.1:3000 >/dev/null 2>&1; then break; fi;
+          done
+
+      - name: Run E2E tests
+        working-directory: apps/web
+        run: npm run test:e2e -- --reporter=line
+
+  frontend-visual:
+    name: Frontend Visual Tests (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      AUTH_MODE: dev
+      AUTH_DEV_SECRET: test-visual-secret
+      E2E_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: apps/web
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Setup Python + uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Python 3.11
+        run: uv python install 3.11
+
+      - name: Backend deps
+        working-directory: apps/api
+        run: uv sync --all-extras
+
+      - name: Start backend
+        working-directory: apps/api
+        run: |
+          uv run uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src &
+          for i in `seq 1 30`; do
+            curl -fsS http://127.0.0.1:8000/openapi.json && break || sleep 1;
+          done
+
+      - name: Start frontend
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+        run: |
+          npm run dev -- --port 3000 &
+          for i in `seq 1 60`; do
+            curl -fsS http://127.0.0.1:3000 || sleep 1;
+            if curl -fsS http://127.0.0.1:3000 >/dev/null 2>&1; then break; fi;
+          done
+
+      - name: Run Visual tests
+        working-directory: apps/web
+        run: npm run test:visual -- --reporter=line
+
+  frontend-playground:
+    name: Frontend UI Playground (Ladle)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build shared packages
+        run: cd ../.. && npm run build:packages
+
+      - name: Build Ladle stories
+        run: npm run build:ui

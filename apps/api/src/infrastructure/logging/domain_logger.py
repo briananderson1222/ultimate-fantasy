@@ -2,15 +2,17 @@
 
 import logging
 import logging.handlers
+from collections.abc import MutableMapping
 from contextvars import ContextVar
+from typing import Any
 
 from .log_config import get_domain_log_levels, get_log_config, setup_log_directory
 
 # Context variable for tracking request ID across async calls
-request_id_var: ContextVar[str | None] = ContextVar('request_id', default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 # Context variable for tracking current domain
-current_domain_var: ContextVar[str | None] = ContextVar('current_domain', default=None)
+current_domain_var: ContextVar[str | None] = ContextVar("current_domain", default=None)
 
 # Store configured loggers to avoid reconfiguration
 _configured_loggers: dict[str, logging.Logger] = {}
@@ -23,7 +25,9 @@ class DomainAdapter(logging.LoggerAdapter):
         super().__init__(logger, {"domain": domain})
         self.domain = domain
 
-    def process(self, msg, kwargs):
+    def process(
+        self, msg: Any, kwargs: MutableMapping[str, Any]
+    ) -> tuple[Any, MutableMapping[str, Any]]:
         """Process log record to add domain and request context."""
         extra = kwargs.get("extra", {})
 
@@ -42,15 +46,15 @@ class DomainAdapter(logging.LoggerAdapter):
 class DomainFormatter(logging.Formatter):
     """Custom formatter for domain-specific logging."""
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         """Format log record with domain context."""
         # Ensure domain is set
-        if not hasattr(record, 'domain'):
-            record.domain = getattr(record, 'name', '').split('.')[0] or 'unknown'
+        if not hasattr(record, "domain"):
+            record.domain = getattr(record, "name", "").split(".")[0] or "unknown"
 
         # Add request ID if available
-        if not hasattr(record, 'request_id'):
-            record.request_id = request_id_var.get() or ''
+        if not hasattr(record, "request_id"):
+            record.request_id = request_id_var.get() or ""
 
         return super().format(record)
 
@@ -96,14 +100,14 @@ def setup_domain_logger(logger: logging.Logger, domain: str) -> None:
 
         # Create domain-specific log file if domain separation is enabled
         if config.enable_domain_separation:
-            log_file = config.log_file_path.replace('.log', f'_{domain}.log')
+            log_file = config.log_file_path.replace(".log", f"_{domain}.log")
         else:
             log_file = config.log_file_path
 
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=_parse_size(config.log_rotation_size),
-            backupCount=config.log_backup_count
+            backupCount=config.log_backup_count,
         )
         file_handler.setFormatter(formatter)
         file_handler.setLevel(getattr(logging, domain_level.upper()))
@@ -112,7 +116,15 @@ def setup_domain_logger(logger: logging.Logger, domain: str) -> None:
 
 def setup_domain_logging() -> None:
     """Initialize domain logging for all domains."""
-    domains = ["leagues", "users", "lineups", "trading", "scoring", "waitlist", "shared"]
+    domains = [
+        "leagues",
+        "users",
+        "lineups",
+        "trading",
+        "scoring",
+        "waitlist",
+        "shared",
+    ]
 
     for domain in domains:
         get_domain_logger(domain)
@@ -134,11 +146,11 @@ def _parse_size(size_str: str) -> int:
     """Parse size string (e.g., '10MB') to bytes."""
     size_str = size_str.upper()
 
-    if size_str.endswith('KB'):
+    if size_str.endswith("KB"):
         return int(size_str[:-2]) * 1024
-    elif size_str.endswith('MB'):
+    elif size_str.endswith("MB"):
         return int(size_str[:-2]) * 1024 * 1024
-    elif size_str.endswith('GB'):
+    elif size_str.endswith("GB"):
         return int(size_str[:-2]) * 1024 * 1024 * 1024
     else:
         # Assume bytes

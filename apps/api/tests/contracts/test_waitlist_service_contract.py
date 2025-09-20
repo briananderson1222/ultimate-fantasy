@@ -4,26 +4,23 @@ Contract tests for WaitlistService domain interface.
 These tests define the expected behavior of the WaitlistService interface
 and MUST FAIL initially to follow TDD principles.
 """
+
 import pytest
+
 from domains.shared.interfaces.waitlist_service import WaitlistServiceInterface
 
 
 class TestWaitlistServiceContract:
     """Contract tests for WaitlistService interface."""
 
-    @pytest.fixture
-    def waitlist_service(self) -> WaitlistServiceInterface:
-        """Get WaitlistService implementation."""
-        # This will fail until the interface and implementation are created
-        from domains.waitlist.services.waitlist_service import WaitlistService
-        return WaitlistService()
+    # Use the waitlist_service fixture from conftest.py
 
     @pytest.mark.asyncio
     async def test_add_to_waitlist_contract(self, waitlist_service):
         """Test WaitlistService.add_to_waitlist contract."""
         # Arrange
-        user_id = "test-user-123"
-        league_id = "test-league-456"
+        user_id = "12345678-1234-5678-1234-567812345678"
+        league_id = "12345678-1234-5678-1234-567812345679"
 
         # Act & Assert
         # This will fail until WaitlistEntry model is moved to new structure
@@ -31,9 +28,9 @@ class TestWaitlistServiceContract:
 
         entry = await waitlist_service.add_to_waitlist(user_id, league_id)
         assert isinstance(entry, WaitlistEntry)
-        assert hasattr(entry, 'user_id')
-        assert hasattr(entry, 'league_id')
-        assert hasattr(entry, 'position')
+        assert hasattr(entry, "user_id")
+        assert hasattr(entry, "league_id")
+        assert hasattr(entry, "position")
         assert entry.user_id == user_id
         assert entry.league_id == league_id
 
@@ -45,14 +42,16 @@ class TestWaitlistServiceContract:
     async def test_process_waitlist_invite_contract(self, waitlist_service):
         """Test WaitlistService.process_waitlist_invite contract."""
         # Arrange
-        invite_id = "test-invite-123"
+        invite_id = "12345678-1234-5678-1234-567812345685"
 
         # Act & Assert
         success = await waitlist_service.process_waitlist_invite(invite_id)
         assert isinstance(success, bool)
 
         # Should handle invalid invites gracefully
-        invalid_result = await waitlist_service.process_waitlist_invite("invalid-invite")
+        invalid_result = await waitlist_service.process_waitlist_invite(
+            "invalid-invite"
+        )
         assert isinstance(invalid_result, bool)
         assert invalid_result is False
 
@@ -60,7 +59,7 @@ class TestWaitlistServiceContract:
     async def test_get_waitlist_position_contract(self, waitlist_service):
         """Test WaitlistService.get_waitlist_position contract."""
         # Arrange
-        entry_id = "test-entry-123"
+        entry_id = "12345678-1234-5678-1234-567812345686"
 
         # Act & Assert
         position = await waitlist_service.get_waitlist_position(entry_id)
@@ -78,9 +77,9 @@ class TestWaitlistServiceContract:
 
         # Verify all required methods exist
         required_methods = [
-            'add_to_waitlist',
-            'process_waitlist_invite',
-            'get_waitlist_position'
+            "add_to_waitlist",
+            "process_waitlist_invite",
+            "get_waitlist_position",
         ]
 
         for method_name in required_methods:
@@ -92,9 +91,9 @@ class TestWaitlistServiceContract:
     async def test_waitlist_ordering_contract(self, waitlist_service):
         """Test waitlist position ordering."""
         # Arrange
-        user1_id = "test-user-1"
-        user2_id = "test-user-2"
-        league_id = "test-league-123"
+        user1_id = "12345678-1234-5678-1234-567812345687"
+        user2_id = "12345678-1234-5678-1234-567812345688"
+        league_id = "12345678-1234-5678-1234-567812345680"
 
         # Act - Add users to waitlist in sequence
         entry1 = await waitlist_service.add_to_waitlist(user1_id, league_id)

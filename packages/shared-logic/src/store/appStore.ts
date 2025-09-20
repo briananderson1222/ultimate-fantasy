@@ -1,6 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+function resolveDefaultApiBaseUrl(): string {
+  if (typeof process !== 'undefined' && process?.env) {
+    const env = process.env as Record<string, string | undefined>;
+    const candidates = [
+      env.NEXT_PUBLIC_API_BASE_URL,
+      env.EXPO_PUBLIC_API_BASE_URL,
+      env.API_BASE_URL,
+      env.REACT_NATIVE_API_BASE_URL,
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+  }
+
+  return '/api';
+}
+
 export interface AppSettings {
   apiBaseUrl: string;
   timeout: number;
@@ -67,7 +87,7 @@ interface AppState {
 }
 
 const defaultSettings: AppSettings = {
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
+  apiBaseUrl: resolveDefaultApiBaseUrl(),
   timeout: 30000,
   retryAttempts: 3,
   debugMode: process.env.NODE_ENV === 'development',

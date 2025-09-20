@@ -24,7 +24,22 @@ def backend_src_path() -> Path:
 
 def make_session() -> Session:
     sys.path.insert(0, str(backend_src_path()))
-    Base = importlib.import_module("models.base").Base
+    Base = importlib.import_module("domains.shared.models.base").Base
+
+    # Import all domain models to ensure they're registered with Base.metadata
+    importlib.import_module("domains.users.models.user")
+    importlib.import_module("domains.leagues.models.league")
+    importlib.import_module("domains.leagues.models.team")
+    importlib.import_module("domains.lineups.models.lineup")
+    importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("domains.scoring.models.score")
+    importlib.import_module("models.notification")  # Central models still exist
+    importlib.import_module("models.player")
+    importlib.import_module("models.preset")
+    importlib.import_module("models.roster")
+    importlib.import_module("models.rule")
+    importlib.import_module("models.schedule")
+
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         future=True,
@@ -38,7 +53,7 @@ def make_session() -> Session:
 
 
 def seed_user(session: Session, user_id: _uuid.UUID | None = None) -> _uuid.UUID:
-    User = importlib.import_module("models.user").User
+    User = importlib.import_module("domains.users.models.user").User
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
@@ -69,7 +84,7 @@ def seed_player(session: Session, player_id: _uuid.UUID | None = None) -> _uuid.
 def seed_lineup(
     session: Session, *, team_id: _uuid.UUID, game_day: date, players: list[dict]
 ):
-    Lineup = importlib.import_module("models.lineup").Lineup
+    Lineup = importlib.import_module("domains.lineups.models.lineup").Lineup
     lu = Lineup(team_id=team_id, game_day=game_day, players=players, version=1)
     session.add(lu)
     session.flush()
@@ -77,7 +92,7 @@ def seed_lineup(
 
 
 def seed_score(session: Session, *, player_id: _uuid.UUID, game_day: date, points: int):
-    Score = importlib.import_module("models.score").Score
+    Score = importlib.import_module("domains.scoring.models.score").Score
     sc = Score(player_id=player_id, game_day=game_day, stats={"points": points})
     session.add(sc)
     session.flush()
@@ -85,8 +100,10 @@ def seed_score(session: Session, *, player_id: _uuid.UUID, game_day: date, point
 
 
 def create_league_with_two_teams(session: Session):
-    LeagueService = importlib.import_module("services.league_service").LeagueService
-    Team = importlib.import_module("models.team").Team
+    LeagueService = importlib.import_module(
+        "domains.leagues.services.league_service"
+    ).LeagueService
+    Team = importlib.import_module("domains.leagues.models.team").Team
     commissioner_id = seed_user(session)
     svc = LeagueService(session)
     league = svc.create(
@@ -110,7 +127,9 @@ def create_league_with_two_teams(session: Session):
 
 def test_compute_league_scoreboard_sums_points_and_sorts():
     sys.path.insert(0, str(backend_src_path()))
-    ScoringService = importlib.import_module("services.scoring_service").ScoringService
+    ScoringService = importlib.import_module(
+        "domains.scoring.services.scoring_service"
+    ).ScoringService
 
     with make_session() as session:
         league, team_a, team_b = create_league_with_two_teams(session)

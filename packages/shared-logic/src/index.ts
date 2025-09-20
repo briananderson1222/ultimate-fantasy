@@ -5,17 +5,16 @@ export * from './models/SharedPackage';
 export * from './models/Export';
 export * from './models/SharedHook';
 
-// Stores
-export * from './store/leagueStore';
-export * from './store/userStore';
-export * from './store/appStore';
+// Stores are intentionally NOT re-exported from the root to avoid
+// pulling Zustand into bundles that only need utilities/hooks.
+// Import them via subpaths, e.g. `@ultimate-fantasy/shared-logic/store/userStore`.
 
-// Hooks
-export * from './hooks/useLeagueData';
-export * from './hooks/usePlayerStats';
+// Hooks are not re-exported from the root to keep the root import lightweight.
+// Import hooks via subpaths (e.g., `@ultimate-fantasy/shared-logic/hooks/usePlayerStats`).
 
 // Utilities
 export * from './utils/dashboard';
+export * from './utils/fantasy';
 
 // State Management
 export * from './state/StateManager';
@@ -23,6 +22,7 @@ export * from './state/StateManager';
 // Validation
 export * from './validation/FormValidator';
 export * from './validation/league';
+export * from './validation/fantasy';
 
 // Re-export types for convenience
 export type {
@@ -53,9 +53,18 @@ export type {
 } from './validation/league';
 
 export type {
-  User,
-  UserPreferences
-} from './store/userStore';
+  ValidationResult,
+  PlayerValidation,
+  LineupValidation,
+  TradeValidation
+} from './validation/fantasy';
+
+export type {
+  Player,
+  TeamStats
+} from './utils/fantasy';
+
+// Store types are not re-exported from the root to prevent importing store modules.
 
 export type {
   PlayerStats,

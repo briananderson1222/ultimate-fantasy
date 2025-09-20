@@ -4,12 +4,15 @@ Baseline performance tests for backend modularization.
 These tests establish performance benchmarks before modularization
 to ensure no regression during the restructuring process.
 """
+
 import asyncio
 import time
 from typing import List
+
 import pytest
 import pytest_benchmark
 from fastapi.testclient import TestClient
+
 from main import app
 
 client = TestClient(app)
@@ -20,8 +23,9 @@ class TestAPIPerformanceBaseline:
 
     def test_leagues_list_performance(self, benchmark):
         """Benchmark leagues list endpoint performance."""
+
         def make_request():
-            response = client.get("/api/leagues")
+            response = client.get("/api/me/leagues")
             assert response.status_code in [200, 401]  # May require auth
             return response
 
@@ -31,6 +35,7 @@ class TestAPIPerformanceBaseline:
 
     def test_lineups_get_performance(self, benchmark):
         """Benchmark lineups endpoint performance."""
+
         def make_request():
             response = client.get("/api/lineups")
             assert response.status_code in [200, 401]  # May require auth
@@ -41,9 +46,15 @@ class TestAPIPerformanceBaseline:
 
     def test_scoreboard_performance(self, benchmark):
         """Benchmark scoreboard endpoint performance."""
+
         def make_request():
-            response = client.get("/api/scoreboard")
-            assert response.status_code in [200, 401]  # May require auth
+            # Note: scoreboard needs a league ID, so test with mock ID
+            response = client.get("/api/leagues/test-league/scoreboard")
+            assert response.status_code in [
+                200,
+                401,
+                404,
+            ]  # May require auth or not found
             return response
 
         result = benchmark(make_request)
@@ -51,6 +62,7 @@ class TestAPIPerformanceBaseline:
 
     def test_waivers_performance(self, benchmark):
         """Benchmark waivers endpoint performance."""
+
         def make_request():
             response = client.get("/api/waivers")
             assert response.status_code in [200, 401]  # May require auth
@@ -66,11 +78,15 @@ class TestDatabasePerformanceBaseline:
     @pytest.mark.asyncio
     async def test_database_connection_time(self, benchmark):
         """Benchmark database connection establishment time."""
+
         async def connect_to_db():
             # Import here to avoid import issues during test collection
-            from database import engine
-            conn = engine.connect()
-            conn.close()
+            from infrastructure.database.session_factory import get_session_factory
+
+            session_factory = get_session_factory()
+            if session_factory._engine:
+                conn = session_factory._engine.connect()
+                conn.close()
             return True
 
         result = benchmark(lambda: asyncio.run(connect_to_db()))
@@ -78,11 +94,12 @@ class TestDatabasePerformanceBaseline:
 
     def test_concurrent_request_handling(self, benchmark):
         """Test concurrent request handling capacity."""
+
         def make_concurrent_requests():
             responses = []
             # Simulate 10 concurrent requests
             for _ in range(10):
-                response = client.get("/api/health", timeout=5.0)
+                response = client.get("/health", timeout=5.0)
                 responses.append(response.status_code)
             return responses
 
@@ -96,15 +113,16 @@ class TestMemoryUsageBaseline:
 
     def test_memory_usage_during_startup(self):
         """Test memory usage during application startup."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         memory_before = process.memory_info().rss / 1024 / 1024  # MB
 
         # Create a new test client to simulate startup
         test_client = TestClient(app)
-        response = test_client.get("/api/health")
+        response = test_client.get("/health")
 
         memory_after = process.memory_info().rss / 1024 / 1024  # MB
         memory_increase = memory_after - memory_before
@@ -131,19 +149,17 @@ def benchmark_save_results():
             "leagues_list": {"mean_time": "placeholder"},
             "lineups_get": {"mean_time": "placeholder"},
             "scoreboard": {"mean_time": "placeholder"},
-            "waivers": {"mean_time": "placeholder"}
+            "waivers": {"mean_time": "placeholder"},
         },
         "database": {
             "connection_time": "placeholder",
-            "concurrent_handling": "placeholder"
+            "concurrent_handling": "placeholder",
         },
-        "memory": {
-            "startup_usage": "placeholder"
-        }
+        "memory": {"startup_usage": "placeholder"},
     }
 
     os.makedirs(os.path.dirname(results_file), exist_ok=True)
-    with open(results_file, 'w') as f:
+    with open(results_file, "w") as f:
         json.dump(baseline_data, f, indent=2)
 
 

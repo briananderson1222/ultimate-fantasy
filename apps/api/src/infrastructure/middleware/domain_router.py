@@ -4,11 +4,12 @@ Domain Request Routing Middleware.
 This middleware provides request routing and domain-specific processing
 for the modularized backend architecture.
 """
+
 from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -75,10 +76,14 @@ class DomainRouterMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
 
             # Add domain and performance headers to response
-            response.headers["X-Domain"] = str(domain) if domain is not None else "unknown"
-            response.headers["X-Response-Time"] = f"{(time.time() - start_time) * 1000:.2f}ms"
+            response.headers["X-Domain"] = (
+                str(domain) if domain is not None else "unknown"
+            )
+            response.headers["X-Response-Time"] = (
+                f"{(time.time() - start_time) * 1000:.2f}ms"
+            )
 
-            return response
+            return cast(Response, response)
 
         except Exception as e:
             # Handle errors gracefully
@@ -88,7 +93,7 @@ class DomainRouterMiddleware(BaseHTTPMiddleware):
                 headers={
                     "X-Domain": str(domain) if domain is not None else "unknown",
                     "X-Error": "domain_routing_error",
-                }
+                },
             )
             return response
 
@@ -157,10 +162,12 @@ class DomainMetricsMiddleware(BaseHTTPMiddleware):
             self._update_metrics(domain, method, status_code, duration)
 
             # Add metrics headers
-            response.headers["X-Metrics-Domain"] = str(domain) if domain is not None else "unknown"
+            response.headers["X-Metrics-Domain"] = (
+                str(domain) if domain is not None else "unknown"
+            )
             response.headers["X-Metrics-Duration"] = f"{duration * 1000:.2f}ms"
 
-            return response
+            return cast(Response, response)
 
         except Exception as e:
             duration = time.time() - start_time
@@ -173,7 +180,7 @@ class DomainMetricsMiddleware(BaseHTTPMiddleware):
         method: str,
         status_code: int,
         duration: float,
-        error: str | None = None
+        error: str | None = None,
     ) -> None:
         """Update domain metrics."""
         if domain not in self.metrics:
@@ -197,9 +204,7 @@ class DomainMetricsMiddleware(BaseHTTPMiddleware):
         )
 
         # Track methods
-        domain_metrics["methods"][method] = (
-            domain_metrics["methods"].get(method, 0) + 1
-        )
+        domain_metrics["methods"][method] = domain_metrics["methods"].get(method, 0) + 1
 
         # Track errors
         if error or status_code >= 400:
@@ -274,11 +279,12 @@ class DomainSecurityMiddleware(BaseHTTPMiddleware):
             policy = self.domain_policies[domain]
 
             # Check method restrictions
-            if request.method not in policy["allowed_methods"]:
+            allowed_methods = cast(list[str], policy["allowed_methods"])
+            if request.method not in allowed_methods:
                 return Response(
                     content=f"Method {request.method} not allowed for {domain} domain",
                     status_code=405,
-                    headers={"X-Domain-Policy": "method_not_allowed"}
+                    headers={"X-Domain-Policy": "method_not_allowed"},
                 )
 
             # Add security headers
@@ -286,9 +292,9 @@ class DomainSecurityMiddleware(BaseHTTPMiddleware):
             response.headers["X-Domain-Policy"] = domain
             response.headers["X-Rate-Limit"] = str(policy["rate_limit"])
 
-            return response
+            return cast(Response, response)
 
-        return await call_next(request)
+        return cast(Response, await call_next(request))
 
 
 # Metrics collection instance
@@ -302,7 +308,7 @@ def get_domain_metrics() -> dict[str, dict[str, Any]]:
     Returns:
         Dictionary of domain metrics
     """
-    global _metrics_middleware
+    global _metrics_middleware  # noqa: PLW0602
     if _metrics_middleware:
         return _metrics_middleware.get_metrics()
     return {}
@@ -310,7 +316,7 @@ def get_domain_metrics() -> dict[str, dict[str, Any]]:
 
 def reset_domain_metrics() -> None:
     """Reset domain metrics."""
-    global _metrics_middleware
+    global _metrics_middleware  # noqa: PLW0602
     if _metrics_middleware:
         _metrics_middleware.reset_metrics()
 

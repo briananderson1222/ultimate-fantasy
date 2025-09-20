@@ -9,7 +9,7 @@ class UserConfig(BaseSettings):
     """Configuration for the User domain."""
 
     # Authentication settings
-    jwt_secret_key: str = "dev-secret-key"
+    jwt_secret_key: str = "dev-secret-key"  # noqa: S105
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7

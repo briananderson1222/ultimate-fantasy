@@ -19,7 +19,9 @@ class LeagueService(LeagueServiceInterface):
         # Initialize event publishing
         try:
             dispatcher = get_event_dispatcher()
-            self.event_publisher = DomainEventPublisher(dispatcher, "leagues")
+            self.event_publisher: DomainEventPublisher | None = DomainEventPublisher(
+                dispatcher, "leagues"
+            )
         except RuntimeError:
             # Event dispatcher not initialized, disable events
             self.event_publisher = None
@@ -73,34 +75,43 @@ class LeagueService(LeagueServiceInterface):
         if self.event_publisher:
             try:
                 import asyncio
-                asyncio.create_task(self.event_publisher.publish_event(
-                    "league_created",
-                    str(league.league_id),
-                    {
-                        "league_id": str(league.league_id),
-                        "name": name,
-                        "sport": sport,
-                        "league_type": league_type,
-                        "season": season,
-                        "commissioner_id": str(commissioner_id),
-                        "commissioner_team_id": str(team.team_id),
-                    }
-                ))
+
+                task = asyncio.create_task(
+                    self.event_publisher.publish_event(
+                        "league_created",
+                        str(league.league_id),
+                        {
+                            "league_id": str(league.league_id),
+                            "name": name,
+                            "sport": sport,
+                            "league_type": league_type,
+                            "season": season,
+                            "commissioner_id": str(commissioner_id),
+                            "commissioner_team_id": str(team.team_id),
+                        },
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
 
                 # Also publish integration event for other domains
-                asyncio.create_task(self.event_publisher.publish_integration_event(
-                    "league_created",
-                    str(league.league_id),
-                    {
-                        "league_id": str(league.league_id),
-                        "name": name,
-                        "commissioner_id": str(commissioner_id),
-                    },
-                    target_domains=["users", "scoring", "waitlist"]
-                ))
+                task = asyncio.create_task(
+                    self.event_publisher.publish_integration_event(
+                        "league_created",
+                        str(league.league_id),
+                        {
+                            "league_id": str(league.league_id),
+                            "name": name,
+                            "commissioner_id": str(commissioner_id),
+                        },
+                        target_domains=["users", "scoring", "waitlist"],
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
             except Exception as e:
                 # Don't fail the operation if event publishing fails
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return league
 
@@ -112,9 +123,15 @@ class LeagueService(LeagueServiceInterface):
         team_name: str | None = None,
     ) -> Team:
         # Ensure league exists
-        league = self.session.query(League).filter(League.league_id == league_id).one_or_none()
+        league = (
+            self.session.query(League)
+            .filter(League.league_id == league_id)
+            .one_or_none()
+        )
         if not league:
-            raise ValueError(f"League with ID {league_id} not found.") # Or a more specific exception
+            raise ValueError(
+                f"League with ID {league_id} not found."
+            )  # Or a more specific exception
 
         # Ensure user exists
         user = self.session.query(User).filter(User.user_id == user_id).one_or_none()
@@ -141,30 +158,39 @@ class LeagueService(LeagueServiceInterface):
         if self.event_publisher:
             try:
                 import asyncio
-                asyncio.create_task(self.event_publisher.publish_event(
-                    "user_joined_league",
-                    str(league_id),
-                    {
-                        "league_id": str(league_id),
-                        "user_id": str(user_id),
-                        "team_id": str(team.team_id),
-                        "team_name": team.team_name,
-                    }
-                ))
+
+                task = asyncio.create_task(
+                    self.event_publisher.publish_event(
+                        "user_joined_league",
+                        str(league_id),
+                        {
+                            "league_id": str(league_id),
+                            "user_id": str(user_id),
+                            "team_id": str(team.team_id),
+                            "team_name": team.team_name,
+                        },
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
 
                 # Publish integration event for other domains
-                asyncio.create_task(self.event_publisher.publish_integration_event(
-                    "user_joined_league",
-                    str(league_id),
-                    {
-                        "league_id": str(league_id),
-                        "user_id": str(user_id),
-                        "team_id": str(team.team_id),
-                    },
-                    target_domains=["users", "lineups", "scoring"]
-                ))
+                task = asyncio.create_task(
+                    self.event_publisher.publish_integration_event(
+                        "user_joined_league",
+                        str(league_id),
+                        {
+                            "league_id": str(league_id),
+                            "user_id": str(user_id),
+                            "team_id": str(team.team_id),
+                        },
+                        target_domains=["users", "lineups", "scoring"],
+                    )
+                )
+                task.add_done_callback(lambda t: t.exception())
             except Exception as e:
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return team
 
@@ -227,7 +253,9 @@ class LeagueService(LeagueServiceInterface):
     async def get_league_settings(self, league_id: str) -> League:
         """Get league configuration and settings."""
         league_uuid = _uuid.UUID(league_id)
-        league = self.session.query(League).filter(League.league_id == league_uuid).first()
+        league = (
+            self.session.query(League).filter(League.league_id == league_uuid).first()
+        )
         if not league:
             raise ValueError(f"League with ID {league_id} not found")
         return league
@@ -235,7 +263,9 @@ class LeagueService(LeagueServiceInterface):
     async def get_league_by_id(self, league_id: str) -> League:
         """Get league entity by ID."""
         league_uuid = _uuid.UUID(league_id)
-        league = self.session.query(League).filter(League.league_id == league_uuid).first()
+        league = (
+            self.session.query(League).filter(League.league_id == league_uuid).first()
+        )
         if not league:
             raise ValueError(f"League with ID {league_id} not found")
         return league
@@ -245,7 +275,9 @@ class LeagueService(LeagueServiceInterface):
         league_uuid = _uuid.UUID(league_id)
         user_uuid = _uuid.UUID(user_id)
 
-        league = self.session.query(League).filter(League.league_id == league_uuid).first()
+        league = (
+            self.session.query(League).filter(League.league_id == league_uuid).first()
+        )
         if not league:
             return False
         return league.commissioner_id == user_uuid

@@ -4,25 +4,22 @@ Contract tests for ScoringService domain interface.
 These tests define the expected behavior of the ScoringService interface
 and MUST FAIL initially to follow TDD principles.
 """
+
 import pytest
+
 from domains.shared.interfaces.scoring_service import ScoringServiceInterface
 
 
 class TestScoringServiceContract:
     """Contract tests for ScoringService interface."""
 
-    @pytest.fixture
-    def scoring_service(self) -> ScoringServiceInterface:
-        """Get ScoringService implementation."""
-        # This will fail until the interface and implementation are created
-        from domains.scoring.services.scoring_service import ScoringService
-        return ScoringService()
+    # Use the scoring_service fixture from conftest.py
 
     @pytest.mark.asyncio
     async def test_calculate_lineup_score_contract(self, scoring_service):
         """Test ScoringService.calculate_lineup_score contract."""
         # Arrange
-        lineup_id = "test-lineup-123"
+        lineup_id = "12345678-1234-5678-1234-567812345682"
         period = "week-1"
 
         # Act & Assert
@@ -31,9 +28,9 @@ class TestScoringServiceContract:
 
         score = await scoring_service.calculate_lineup_score(lineup_id, period)
         assert isinstance(score, Score)
-        assert hasattr(score, 'lineup_id')
-        assert hasattr(score, 'total_points')
-        assert hasattr(score, 'period')
+        assert hasattr(score, "lineup_id")
+        assert hasattr(score, "total_points")
+        assert hasattr(score, "period")
         assert score.lineup_id == lineup_id
         assert score.period == period
 
@@ -45,7 +42,7 @@ class TestScoringServiceContract:
     async def test_get_scoring_rules_contract(self, scoring_service):
         """Test ScoringService.get_scoring_rules contract."""
         # Arrange
-        league_id = "test-league-123"
+        league_id = "12345678-1234-5678-1234-567812345680"
 
         # Act & Assert
         # This will fail until ScoringRules model is moved to new structure
@@ -53,8 +50,8 @@ class TestScoringServiceContract:
 
         rules = await scoring_service.get_scoring_rules(league_id)
         assert isinstance(rules, ScoringRules)
-        assert hasattr(rules, 'league_id')
-        assert hasattr(rules, 'point_values')
+        assert hasattr(rules, "league_id")
+        assert hasattr(rules, "point_values")
         assert rules.league_id == league_id
 
         # Should handle non-existent league gracefully
@@ -65,7 +62,7 @@ class TestScoringServiceContract:
     async def test_audit_score_calculation_contract(self, scoring_service):
         """Test ScoringService.audit_score_calculation contract."""
         # Arrange
-        score_id = "test-score-123"
+        score_id = "12345678-1234-5678-1234-567812345683"
 
         # Act & Assert
         # This will fail until ScoreAudit model is moved to new structure
@@ -73,9 +70,9 @@ class TestScoringServiceContract:
 
         audit = await scoring_service.audit_score_calculation(score_id)
         assert isinstance(audit, ScoreAudit)
-        assert hasattr(audit, 'score_id')
-        assert hasattr(audit, 'calculation_details')
-        assert hasattr(audit, 'timestamp')
+        assert hasattr(audit, "score_id")
+        assert hasattr(audit, "calculation_details")
+        assert hasattr(audit, "timestamp")
         assert audit.score_id == score_id
 
         # Should handle non-existent score gracefully
@@ -89,9 +86,9 @@ class TestScoringServiceContract:
 
         # Verify all required methods exist
         required_methods = [
-            'calculate_lineup_score',
-            'get_scoring_rules',
-            'audit_score_calculation'
+            "calculate_lineup_score",
+            "get_scoring_rules",
+            "audit_score_calculation",
         ]
 
         for method_name in required_methods:
@@ -103,7 +100,7 @@ class TestScoringServiceContract:
     async def test_score_calculation_consistency_contract(self, scoring_service):
         """Test that score calculations are consistent."""
         # Arrange
-        lineup_id = "test-lineup-123"
+        lineup_id = "12345678-1234-5678-1234-567812345682"
         period = "week-1"
 
         # Act - Calculate score twice

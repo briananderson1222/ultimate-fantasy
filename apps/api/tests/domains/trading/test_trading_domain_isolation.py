@@ -1,5 +1,7 @@
 """Domain isolation tests for Trading domain."""
+
 import pytest
+
 
 class TestTradingDomainIsolation:
     def test_trading_domain_imports(self):

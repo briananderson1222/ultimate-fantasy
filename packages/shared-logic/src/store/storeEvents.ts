@@ -40,5 +40,14 @@ export const storeEvents = new StoreEventEmitter();
 export const STORE_EVENTS = {
   USER_LOGIN: 'user:login',
   USER_LOGOUT: 'user:logout',
+  LEAGUE_SELECTED: 'league:selected',
   LEAGUE_REFRESH_NEEDED: 'league:refresh_needed',
+  LINEUP_SAVED: 'lineup:saved',
+  DRAFT_PICK_MADE: 'draft:pick:made',
+  TRADE_PROPOSED: 'trade:proposed',
+  TRADE_ACCEPTED: 'trade:accepted',
+  TRADE_REJECTED: 'trade:rejected',
+  TRADE_CANCELLED: 'trade:cancelled',
+  TRADE_EVALUATED: 'trade:evaluated',
+  WAIVER_CLAIMED: 'waiver:claimed'
 } as const;

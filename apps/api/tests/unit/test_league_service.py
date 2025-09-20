@@ -16,7 +16,21 @@ def backend_src_path() -> Path:
 
 def make_session() -> Session:
     sys.path.insert(0, str(backend_src_path()))
-    models_base = importlib.import_module("models.base")
+    models_base = importlib.import_module("domains.shared.models.base")
+
+    # Import all domain models to ensure they're registered with Base.metadata
+    importlib.import_module("domains.users.models.user")
+    importlib.import_module("domains.leagues.models.league")
+    importlib.import_module("domains.leagues.models.team")
+    importlib.import_module("domains.lineups.models.lineup")
+    importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("models.notification")  # Central models still exist
+    importlib.import_module("models.player")
+    importlib.import_module("models.preset")
+    importlib.import_module("models.roster")
+    importlib.import_module("models.rule")
+    importlib.import_module("models.schedule")
+
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         future=True,
@@ -30,7 +44,7 @@ def make_session() -> Session:
 
 
 def create_user(session: Session, user_id: _uuid.UUID | None = None) -> object:
-    User = importlib.import_module("models.user").User
+    User = importlib.import_module("domains.users.models.user").User
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
@@ -45,8 +59,8 @@ def create_user(session: Session, user_id: _uuid.UUID | None = None) -> object:
 
 def test_create_league_adds_commissioner_team():
     sys.path.insert(0, str(backend_src_path()))
-    services = importlib.import_module("services.league_service")
-    Team = importlib.import_module("models.team").Team
+    services = importlib.import_module("domains.leagues.services.league_service")
+    Team = importlib.import_module("domains.leagues.models.team").Team
 
     with make_session() as session:
         commissioner_id = _uuid.uuid4()
@@ -73,8 +87,8 @@ def test_create_league_adds_commissioner_team():
 
 def test_join_creates_team_for_user():
     sys.path.insert(0, str(backend_src_path()))
-    services = importlib.import_module("services.league_service")
-    Team = importlib.import_module("models.team").Team
+    services = importlib.import_module("domains.leagues.services.league_service")
+    Team = importlib.import_module("domains.leagues.models.team").Team
 
     with make_session() as session:
         # Seed commissioner and league
