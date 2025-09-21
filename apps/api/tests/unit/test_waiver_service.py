@@ -24,8 +24,10 @@ def make_session() -> Session:
     importlib.import_module("domains.leagues.models.team")
     importlib.import_module("domains.lineups.models.lineup")
     importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("domains.scoring.models.score")
+    importlib.import_module("domains.shared.models.achievement")
+    importlib.import_module("domains.sports.models.player")
     importlib.import_module("models.notification")  # Central models still exist
-    importlib.import_module("models.player")
     importlib.import_module("models.preset")
     importlib.import_module("models.roster")
     importlib.import_module("models.rule")
@@ -48,7 +50,9 @@ def seed_user(session: Session, user_id: _uuid.UUID | None = None):
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
+        username=f"testuser_{str(uid)[:8]}",  # Required field
         email=f"{uid}@ultimatefantasy.app",
+        password_hash="$2b$12$test_hash_for_testing_purposes",  # Required field
         display_name="User",
         cognito_sub=str(uid),
     )
@@ -58,14 +62,14 @@ def seed_user(session: Session, user_id: _uuid.UUID | None = None):
 
 
 def seed_player(session: Session, player_id: _uuid.UUID | None = None):
-    Player = importlib.import_module("models.player").Player
+    Player = importlib.import_module("domains.sports.models.player").Player
     pid = player_id or _uuid.uuid4()
     player = Player(
         player_id=pid,
         external_id=str(pid)[:12],
-        full_name="Unit Test",
-        sport="basketball",
-        position="G",
+        name="Unit Test",
+        sport="wnba",
+        position="PG",
     )
     session.add(player)
     session.flush()
@@ -83,7 +87,7 @@ def create_league_with_team(session: Session):
     league = svc.create(
         commissioner_id=commissioner_id,
         name="Waiver League",
-        sport="basketball",
+        sport="wnba",
         league_type="head_to_head",
         season="2025",
     )

@@ -33,8 +33,9 @@ def make_session() -> Session:
     importlib.import_module("domains.lineups.models.lineup")
     importlib.import_module("domains.trading.models.waiver")
     importlib.import_module("domains.scoring.models.score")
+    importlib.import_module("domains.shared.models.achievement")
+    importlib.import_module("domains.sports.models.player")
     importlib.import_module("models.notification")  # Central models still exist
-    importlib.import_module("models.player")
     importlib.import_module("models.preset")
     importlib.import_module("models.roster")
     importlib.import_module("models.rule")
@@ -57,7 +58,9 @@ def seed_user(session: Session, user_id: _uuid.UUID | None = None) -> _uuid.UUID
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
+        username=f"testuser_{str(uid)[:8]}",  # Required field
         email=f"{uid}@ultimatefantasy.app",
+        password_hash="$2b$12$test_hash_for_testing_purposes",  # Required field
         display_name="User",
         cognito_sub=str(uid),
     )
@@ -67,14 +70,14 @@ def seed_user(session: Session, user_id: _uuid.UUID | None = None) -> _uuid.UUID
 
 
 def seed_player(session: Session, player_id: _uuid.UUID | None = None) -> _uuid.UUID:
-    Player = importlib.import_module("models.player").Player
+    Player = importlib.import_module("domains.sports.models.player").Player
     pid = player_id or _uuid.uuid4()
     player = Player(
         player_id=pid,
         external_id=str(pid)[:12],
-        full_name="Unit Test",
-        sport="basketball",
-        position="G",
+        name="Unit Test",
+        sport="wnba",
+        position="PG",
     )
     session.add(player)
     session.flush()
@@ -93,7 +96,7 @@ def seed_lineup(
 
 def seed_score(session: Session, *, player_id: _uuid.UUID, game_day: date, points: int):
     Score = importlib.import_module("domains.scoring.models.score").Score
-    sc = Score(player_id=player_id, game_day=game_day, stats={"points": points})
+    sc = Score(player_id=player_id, game_day=game_day, stat_values={"points": points}, fantasy_points=float(points))
     session.add(sc)
     session.flush()
     return sc
@@ -109,7 +112,7 @@ def create_league_with_two_teams(session: Session):
     league = svc.create(
         commissioner_id=commissioner_id,
         name="Aggregate League",
-        sport="basketball",
+        sport="wnba",
         league_type="head_to_head",
         season="2025",
     )
@@ -143,8 +146,8 @@ def test_compute_league_scoreboard_sums_points_and_sorts():
             team_id=team_a.team_id,
             game_day=day,
             players=[
-                {"player_id": str(p1), "position": "G"},
-                {"player_id": str(p2), "position": "F"},
+                {"player_id": str(p1), "position": "PG"},
+                {"player_id": str(p2), "position": "PF"},
             ],
         )
         seed_lineup(
@@ -152,8 +155,8 @@ def test_compute_league_scoreboard_sums_points_and_sorts():
             team_id=team_b.team_id,
             game_day=day,
             players=[
-                {"player_id": str(p3), "position": "G"},
-                {"player_id": str(p4), "position": "F"},
+                {"player_id": str(p3), "position": "PG"},
+                {"player_id": str(p4), "position": "PF"},
             ],
         )
 

@@ -75,6 +75,13 @@ def get_domain_logger(domain: str) -> DomainAdapter:
     return DomainAdapter(logger, domain)
 
 
+def get_logger(name: str) -> DomainAdapter:
+    """Backwards-compatible helper returning a domain logger for the given name."""
+
+    domain = name.split(".")[0] if name else "shared"
+    return get_domain_logger(domain)
+
+
 def setup_domain_logger(logger: logging.Logger, domain: str) -> None:
     """Set up a domain-specific logger with appropriate handlers."""
     config = get_log_config()

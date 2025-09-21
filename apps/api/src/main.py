@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from api.middleware.auth import AuthContextMiddleware
 from api.middleware.logging import RequestLoggingMiddleware
 from api.security import configure_security
+from api.routes.sports import router as sports_router
 
 # Domain API routers
 from domains.leagues.api.leagues_branding import router as leagues_branding_router
@@ -98,6 +99,7 @@ app.include_router(scoreboard_router, prefix="/api", tags=["scoring"])
 app.include_router(waivers_router, prefix="/api", tags=["trading"])
 app.include_router(waitlist_router, prefix="/api", tags=["waitlist"])
 app.include_router(me_preferences_router, prefix="/api", tags=["users"])
+app.include_router(sports_router, prefix="/api", tags=["sports"])
 
 # Legacy routes without prefix for backward compatibility
 app.include_router(lineups_router, tags=["lineups-legacy"])
@@ -105,6 +107,7 @@ app.include_router(scoreboard_router, tags=["scoring-legacy"])
 app.include_router(waivers_router, tags=["trading-legacy"])
 app.include_router(waitlist_router, tags=["waitlist-legacy"])
 app.include_router(me_preferences_router, tags=["users-legacy"])
+app.include_router(sports_router, tags=["sports-legacy"])
 
 # Domain health check endpoints
 app.include_router(

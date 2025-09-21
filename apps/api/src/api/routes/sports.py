@@ -249,7 +249,7 @@ def _parse_uuid(value: str) -> Optional[_uuid.UUID]:
 # Player Data Endpoints
 @router.get("/players")
 async def list_players(
-    sport: str = Query(..., description="Sport type"),
+    sport: Optional[str] = Query(None, description="Sport type (optional, returns all sports if not specified)"),
     position: Optional[str] = Query(None, description="Filter by position"),
     team: Optional[str] = Query(None, description="Filter by team"),
     search: Optional[str] = Query(None, description="Search query"),
@@ -259,37 +259,56 @@ async def list_players(
 ):
     """Return players matching the provided filters."""
 
-    sport_normalized = sport.lower()
-    if sport_normalized not in SUPPORTED_SPORTS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported sport",
-        )
+    # Handle optional sport parameter
+    if sport:
+        sport_normalized = sport.lower()
+        if sport_normalized not in SUPPORTED_SPORTS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported sport",
+            )
+        provider_sport = sport_normalized.upper()
+        sports_list = [provider_sport]
+    else:
+        # If no sport specified, return players from all supported sports
+        sports_list = [s.upper() for s in SUPPORTED_SPORTS]
 
-    provider_sport = sport_normalized.upper()
     provider_position = position.upper() if position else None
 
-    raw_players = await sports_data_service.get_players(
-        sport=provider_sport,
-        position=provider_position,
-        team=team,
-        active_only=True,
-    )
+    # Aggregate players from all requested sports
+    all_players = []
+    for provider_sport in sports_list:
+        raw_players = await sports_data_service.get_players(
+            sport=provider_sport,
+            position=provider_position,
+            team=team,
+            active_only=True,
+        )
+        all_players.extend(raw_players)
 
     if search:
         query_text = search.lower()
-        raw_players = [
+        all_players = [
             player
-            for player in raw_players
+            for player in all_players
             if query_text in (player.get("name", "").lower())
         ]
 
-    paginated = raw_players[offset : offset + limit]
+    paginated = all_players[offset : offset + limit]
 
-    return [
-        _player_payload(player, include_stats=False, include_projections=False, default_sport=sport_normalized)
-        for player in paginated
-    ]
+    # For response structure, match contract expectations
+    return {
+        "players": [
+            _player_payload(player, include_stats=False, include_projections=False, default_sport=sport)
+            for player in paginated
+        ],
+        "pagination": {
+            "offset": offset,
+            "limit": limit,
+            "total": len(all_players)
+        },
+        "total": len(all_players)
+    }
 
 
 @router.get("/players/{player_id}")

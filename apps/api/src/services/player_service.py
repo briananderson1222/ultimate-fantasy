@@ -9,12 +9,12 @@ from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
 
-from ..domains.sports.models.player import Player
-from ..domains.scoring.models.score import Score
-from ..domains.leagues.models.league import League
-from ..services.sports_data_service import SportsDataService, SportType, PlayerData
-from ..infrastructure.database.session_factory import get_db_session
-from ..infrastructure.logging.domain_logger import get_logger
+from domains.sports.models.player import Player
+from domains.scoring.models.score import Score
+from domains.leagues.models.league import League
+from services.sports_data_service import SportsDataService, SportType, PlayerData
+from infrastructure.database.session_factory import get_db_session
+from infrastructure.logging.domain_logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -236,6 +236,43 @@ class PlayerService:
 
     # Player Statistics Methods
 
+    def get_player_rankings(
+        self,
+        sport: str,
+        position: Optional[str] = None,
+        timeframe: str = "season",
+        limit: int = 50,
+        db: Optional[Session] = None,
+    ) -> List[Player]:
+        """Return players ordered by average fantasy points for the timeframe."""
+
+        with get_db_session() if db is None else db as session:
+            query = session.query(Player, func.avg(Score.fantasy_points).label("avg_points"))
+            query = query.join(Score, Score.player_id == Player.player_id)
+
+            query = query.filter(
+                Player.sport == sport,
+                Score.is_final == True,
+            )
+
+            if position:
+                query = query.filter(Player.position == position)
+
+            if timeframe == "weekly":
+                cutoff = date.today() - timedelta(days=7)
+                query = query.filter(Score.game_day >= cutoff)
+
+            # "ros" currently mirrors season averages until projections are wired.
+
+            results = (
+                query.group_by(Player.player_id)
+                .order_by(desc("avg_points"))
+                .limit(limit)
+                .all()
+            )
+
+            return [player for player, _ in results]
+
     def get_player_stats(
         self,
         player_id: str,
@@ -296,6 +333,72 @@ class PlayerService:
                 return player.season_stats
 
         return None
+
+    def get_player_game_logs(
+        self,
+        player_id: str,
+        season: Optional[str] = None,
+        week: Optional[int] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        db: Optional[Session] = None,
+    ) -> List[Score]:
+        """Return raw score entries for a player with optional filters."""
+
+        with get_db_session() if db is None else db as session:
+            query = session.query(Score).filter(Score.player_id == player_id)
+
+            if season:
+                query = query.filter(Score.season == season)
+
+            if week is not None:
+                query = query.filter(Score.week == week)
+
+            if start_date:
+                query = query.filter(Score.game_day >= start_date)
+
+            if end_date:
+                query = query.filter(Score.game_day <= end_date)
+
+            return query.order_by(desc(Score.game_day)).all()
+
+    def get_player_news(
+        self,
+        player_id: str,
+        days_back: int = 7,
+        limit: int = 20,
+        db: Optional[Session] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return recent news entries for a player (stub implementation)."""
+
+        # TODO: Integrate with sports data providers once available.
+        return []
+
+    def get_injury_report(
+        self,
+        sport: str,
+        team: Optional[str] = None,
+        position: Optional[str] = None,
+        status: Optional[str] = None,
+        db: Optional[Session] = None,
+    ) -> List[Player]:
+        """Return injured players filtered by sport/team/position/status."""
+
+        with get_db_session() if db is None else db as session:
+            query = session.query(Player).filter(Player.sport == sport)
+
+            if team:
+                query = query.filter(Player.team_id == team)
+
+            if position:
+                query = query.filter(Player.position == position)
+
+            if status:
+                query = query.filter(Player.injury_status == status)
+            else:
+                query = query.filter(Player.injury_status != "healthy")
+
+            return query.order_by(Player.name).all()
 
     def get_player_projections(
         self,

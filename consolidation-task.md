@@ -58,6 +58,7 @@
 - [ ] Replace global service singletons in `api/routes/**` with FastAPI dependencies that construct domain services.
 - [ ] Update route schemas to reference domain models (Pydantic `from_attributes=True` adjustments).
 - [ ] Ensure websocket/background flows (draft timers, scoring updates) use consolidated services.
+- [ ] **API Contract Alignment**: Fix API endpoint implementations to match defined contract specifications (71 contract tests currently failing due to interface mismatches - endpoints require parameters that contracts expect to be optional, missing response structure fields, etc.).
 
 ## Workstream F — Testing & Validation
 - [ ] Update pytest fixtures to source sessions and services from the new dependency layer.

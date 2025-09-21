@@ -98,6 +98,10 @@ class InvalidRosterError(DomainError):
     """Roster violates configuration."""
 
 
+class LineupLockedError(DomainError):
+    """Lineup is locked."""
+
+
 # Player / Sports
 class PlayerNotFoundError(DomainError):
     """Player not found."""
@@ -116,12 +120,28 @@ class TradeNotFoundError(DomainError):
     """Trade not found."""
 
 
+class InvalidTradeError(DomainError):
+    """Trade request is invalid."""
+
+
+class TradeExpiredError(DomainError):
+    """Trade can no longer be acted on due to expiration."""
+
+
+class TradeAlreadyProcessedError(DomainError):
+    """Trade has already been processed."""
+
+
 class WaiverNotFoundError(DomainError):
     """Waiver not found."""
 
 
 class InvalidWaiverError(DomainError):
     """Invalid waiver request."""
+
+
+class RateLimitExceededError(DomainError):
+    """Operation exceeds configured rate limit."""
 
 
 __all__ = [
@@ -152,6 +172,10 @@ __all__ = [
     "ProviderError",
     "ValidationError",
     "TradeNotFoundError",
+    "InvalidTradeError",
+    "TradeExpiredError",
+    "TradeAlreadyProcessedError",
     "WaiverNotFoundError",
     "InvalidWaiverError",
+    "RateLimitExceededError",
 ]

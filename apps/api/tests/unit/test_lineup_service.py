@@ -25,8 +25,10 @@ def make_session() -> Session:
     importlib.import_module("domains.leagues.models.team")
     importlib.import_module("domains.lineups.models.lineup")
     importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("domains.scoring.models.score")
+    importlib.import_module("domains.shared.models.achievement")
+    importlib.import_module("domains.sports.models.player")
     importlib.import_module("models.notification")  # Central models still exist
-    importlib.import_module("models.player")
     importlib.import_module("models.preset")
     importlib.import_module("models.roster")
     importlib.import_module("models.rule")
@@ -49,7 +51,9 @@ def create_user(session: Session, user_id: _uuid.UUID | None = None):
     uid = user_id or _uuid.uuid4()
     user = User(
         user_id=uid,
+        username=f"testuser_{str(uid)[:8]}",  # Required field
         email=f"{uid}@ultimatefantasy.app",
+        password_hash="$2b$12$test_hash_for_testing_purposes",  # Required field
         display_name="User",
         cognito_sub=str(uid),
     )
@@ -69,7 +73,7 @@ def create_league_and_team(session: Session):
     league = svc.create(
         commissioner_id=commissioner_id,
         name="Lineup League",
-        sport="basketball",
+        sport="wnba",
         league_type="head_to_head",
         season="2025",
     )
@@ -93,10 +97,35 @@ def test_set_lineup_persists_players_and_version():
     with make_session() as session:
         league, team = create_league_and_team(session)
 
+        # Create players for complete WNBA lineup
+        Player = importlib.import_module("domains.sports.models.player").Player
+        player_ids = []
+        players = []
+        positions = ["PG", "SG", "SF", "PF", "C", "FLEX", "FLEX"]
+
+        for i, pos in enumerate(positions):
+            pid = _uuid.uuid4()
+            player_ids.append(pid)
+            player = Player(
+                player_id=pid,
+                external_id=str(pid)[:12],
+                name=f"Test Player {i+1}",
+                sport="wnba",
+                position=pos if pos != "FLEX" else "PG",  # FLEX can be any position
+            )
+            players.append(player)
+            session.add(player)
+
+        session.flush()
+
+        # Add players to team roster
+        team.roster = [str(pid) for pid in player_ids]
+        session.flush()
+
         svc = LineupService(session)
         payload_players = [
-            {"player_id": str(_uuid.uuid4()), "position": "G"},
-            {"player_id": str(_uuid.uuid4()), "position": "F"},
+            {"player_id": str(pid), "position": pos}
+            for pid, pos in zip(player_ids, positions)
         ]
         lineup = svc.set_lineup(
             team_id=str(team.team_id), game_day=date.today(), players=payload_players
@@ -106,7 +135,7 @@ def test_set_lineup_persists_players_and_version():
         assert lineup.team_id == team.team_id
         assert lineup.version == 1
         assert isinstance(lineup.players, list)
-        assert len(lineup.players) == 2
+        assert len(lineup.players) == 7
 
         # Ensure persisted
         fetched = session.get(Lineup, lineup.lineup_id)

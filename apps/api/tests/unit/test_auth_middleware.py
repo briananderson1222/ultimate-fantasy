@@ -29,6 +29,22 @@ def make_app() -> TestClient:
     importlib.import_module("domains.users.models.user")
     database_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///test.db")
     os.environ["DATABASE_URL"] = database_url
+
+    # Import all domain models to ensure they're registered with Base.metadata
+    importlib.import_module("domains.users.models.user")
+    importlib.import_module("domains.leagues.models.league")
+    importlib.import_module("domains.leagues.models.team")
+    importlib.import_module("domains.lineups.models.lineup")
+    importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("domains.scoring.models.score")
+    importlib.import_module("domains.shared.models.achievement")
+    importlib.import_module("domains.sports.models.player")
+    importlib.import_module("models.notification")  # Central models still exist
+    importlib.import_module("models.preset")
+    importlib.import_module("models.roster")
+    importlib.import_module("models.rule")
+    importlib.import_module("models.schedule")
+
     reset_session_factory = importlib.import_module(
         "infrastructure.database.session_factory"
     ).reset_session_factory

@@ -455,8 +455,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             "/api/v1/draft",
             "/api/v1/trades",
             "/api/v1/lineups",
-            "/api/v1/waivers",
-            "/api/v1/sports"
+            "/api/v1/waivers"
         }
 
         # Rate limit configuration per endpoint

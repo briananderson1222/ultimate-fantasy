@@ -22,12 +22,10 @@ from ...domains.shared.exceptions import (
 from ..middleware.auth import get_current_user
 from ..models.response import APIResponse, ErrorResponse
 from ...models.trade import WaiverClaim, WaiverStatus, WaiverType
+from ..deps import get_trading_service, get_league_service
 
 
 router = APIRouter(prefix="/api/v1/waivers", tags=["waivers"])
-
-trading_service = TradingService()
-league_service = LeagueService()
 
 
 # Pydantic Models for Request/Response
@@ -146,7 +144,9 @@ class WaiverReportResponse(BaseModel):
 async def submit_waiver_claim(
     request: WaiverClaimRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Submit a waiver claim for a player"""
     try:
@@ -213,7 +213,9 @@ async def submit_waiver_claim(
 async def submit_bulk_waiver_claims(
     request: BulkWaiverRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Submit multiple waiver claims at once"""
     try:
@@ -256,7 +258,9 @@ async def submit_bulk_waiver_claims(
 async def get_waiver_claim(
     claim_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get waiver claim details by ID"""
     try:
@@ -289,7 +293,9 @@ async def update_waiver_claim(
     claim_id: str,
     request: UpdateWaiverRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Update a pending waiver claim"""
     try:
@@ -333,7 +339,9 @@ async def update_waiver_claim(
 async def cancel_waiver_claim(
     claim_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Cancel a pending waiver claim"""
     try:
@@ -377,7 +385,9 @@ async def get_available_players(
     limit: int = Query(default=50, le=200, description="Maximum number of results"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get available players on the waiver wire"""
     try:
@@ -420,7 +430,9 @@ async def get_league_waiver_claims(
     limit: int = Query(default=50, le=200, description="Maximum number of results"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get waiver claims for a league"""
     try:
@@ -461,7 +473,8 @@ async def get_user_waiver_claims(
     limit: int = Query(default=50, le=200, description="Maximum number of results"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
 ):
     """Get all waiver claims for the current user"""
     try:
@@ -492,7 +505,9 @@ async def get_user_waiver_claims(
 async def get_waiver_priority_order(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get waiver priority order for the league"""
     try:
@@ -522,7 +537,9 @@ async def get_waiver_priority_order(
 async def get_waiver_period_info(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get current waiver period information"""
     try:
@@ -555,7 +572,9 @@ async def process_waivers(
     week: Optional[int] = Query(None, description="Week to process (defaults to current)"),
     force: bool = Query(default=False, description="Force process outside normal schedule"),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Process pending waiver claims (commissioner only)"""
     try:
@@ -602,7 +621,9 @@ async def reset_waiver_priority(
     method: str = Query(..., description="reset method: reverse_standings, random, manual"),
     manual_order: Optional[List[str]] = Query(None, description="Manual team order for manual method"),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Reset waiver priority order (commissioner only)"""
     try:
@@ -644,7 +665,9 @@ async def get_waiver_reports(
     start_week: Optional[int] = Query(None, description="Start week for reports"),
     end_week: Optional[int] = Query(None, description="End week for reports"),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    trading_service: TradingService = Depends(get_trading_service),
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get waiver activity reports (commissioner only)"""
     try:

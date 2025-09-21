@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import aiohttp
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover - optional dependency not always installed
+    aiohttp = None  # type: ignore[assignment]
 import uuid as _uuid
 from datetime import datetime, date, timedelta
 from typing import Optional, Dict, Any, List, Union
@@ -12,10 +15,10 @@ import json
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
-from ..models.player import Player
-from ..models.score import Score
-from ..infrastructure.database.session_factory import get_db_session
-from ..infrastructure.logging.domain_logger import get_logger
+from models.player import Player
+from models.score import Score
+from infrastructure.database.session_factory import get_db_session
+from infrastructure.logging.domain_logger import get_logger
 
 logger = get_logger(__name__)
 
