@@ -9,9 +9,9 @@ from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
 
-from ..models.player import Player
-from ..models.score import Score
-from ..models.league import League
+from ..domains.sports.models.player import Player
+from ..domains.scoring.models.score import Score
+from ..domains.leagues.models.league import League
 from ..services.sports_data_service import SportsDataService, SportType, PlayerData
 from ..infrastructure.database.session_factory import get_db_session
 from ..infrastructure.logging.domain_logger import get_logger

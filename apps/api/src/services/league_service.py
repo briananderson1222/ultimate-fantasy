@@ -9,10 +9,10 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
-from ..models.league import League
-from ..models.team import Team
-from ..models.user import User
-from ..models.achievement import Achievement
+from ..domains.leagues.models.league import League
+from ..domains.leagues.models.team import Team
+from ..domains.users.models.user import User
+from ..domains.shared.models.achievement import Achievement
 from ..infrastructure.database.session_factory import get_db_session
 from ..infrastructure.logging.domain_logger import get_logger
 
