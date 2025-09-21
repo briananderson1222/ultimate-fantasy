@@ -18,16 +18,14 @@ from ...domains.shared.exceptions import (
     UsernameAlreadyExistsError, InvalidTokenError, TokenExpiredError,
     WeakPasswordError, AccountDisabledError, TooManyAttemptsError
 )
+from ...api.deps import get_user_service
 from ..middleware.auth import get_current_user, get_optional_current_user
 from ..models.response import APIResponse, ErrorResponse
-from ...models.user import User
+from ...domains.users.models.user import User
 
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 security = HTTPBearer(auto_error=False)
-
-user_service = UserService()
-
 
 # Pydantic Models for Request/Response
 class RegisterRequest(BaseModel):
@@ -157,7 +155,8 @@ class LoginActivityResponse(BaseModel):
 async def register(
     request: RegisterRequest,
     client_request: Request,
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Register a new user account"""
     try:
@@ -173,8 +172,8 @@ async def register(
         )
 
         # Generate tokens
-        access_token = user_service.create_access_token(user.user_id)
-        refresh_token = user_service.create_refresh_token(user.user_id)
+        access_token = user_service.create_access_token(str(user.user_id))
+        refresh_token = user_service.create_refresh_token(str(user.user_id))
 
         # Log the registration
         user_service.log_user_activity(
@@ -219,7 +218,8 @@ async def register(
 async def login(
     request: LoginRequest,
     client_request: Request,
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Login with username/email and password"""
     try:
@@ -276,7 +276,8 @@ async def login(
 @router.post("/refresh", response_model=APIResponse[TokenResponse])
 async def refresh_token(
     request: RefreshTokenRequest,
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Refresh access token using refresh token"""
     try:
@@ -304,7 +305,8 @@ async def refresh_token(
 async def logout(
     current_user: dict = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Logout and invalidate current session"""
     try:
@@ -338,7 +340,8 @@ async def logout(
 @router.post("/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Request password reset email"""
     try:
@@ -363,7 +366,8 @@ async def forgot_password(
 @router.post("/reset-password")
 async def reset_password(
     request: ResetPasswordRequest,
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Reset password using token from email"""
     try:
@@ -400,7 +404,8 @@ async def reset_password(
 async def change_password(
     request: ChangePasswordRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Change password for authenticated user"""
     try:
@@ -433,11 +438,12 @@ async def change_password(
 @router.get("/profile", response_model=APIResponse[UserResponse])
 async def get_profile(
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Get current user profile"""
     try:
-        user = user_service.get_user(current_user["user_id"], db)
+        user = user_service.get_user_sync(current_user["user_id"], db)
 
         return APIResponse(
             success=True,
@@ -456,14 +462,15 @@ async def get_profile(
 async def update_profile(
     request: UpdateProfileRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Update user profile"""
     try:
         update_data = request.dict(exclude_unset=True)
         user = user_service.update_user_profile(
             user_id=current_user["user_id"],
-            update_data=update_data,
+            updates=update_data,
             db=db
         )
 
@@ -489,7 +496,8 @@ async def update_profile(
 async def delete_account(
     password: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Delete user account (requires password confirmation)"""
     try:
@@ -521,7 +529,8 @@ async def delete_account(
 @router.post("/resend-verification")
 async def resend_verification_email(
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Resend email verification"""
     try:
@@ -543,7 +552,8 @@ async def resend_verification_email(
 @router.post("/verify-email")
 async def verify_email(
     token: str,
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Verify email address using token"""
     try:
@@ -571,7 +581,8 @@ async def verify_email(
 @router.get("/sessions", response_model=APIResponse[List[LoginActivityResponse]])
 async def get_active_sessions(
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Get all active sessions for the user"""
     try:
@@ -579,7 +590,7 @@ async def get_active_sessions(
 
         return APIResponse(
             success=True,
-            data=[LoginActivityResponse.from_orm(session) for session in sessions],
+            data=[LoginActivityResponse(**session) for session in sessions],
             message="Active sessions retrieved successfully"
         )
 
@@ -594,7 +605,8 @@ async def get_active_sessions(
 async def revoke_session(
     session_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Revoke a specific session"""
     try:
@@ -620,7 +632,8 @@ async def revoke_session(
 @router.delete("/sessions")
 async def revoke_all_sessions(
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """Revoke all sessions except current"""
     try:

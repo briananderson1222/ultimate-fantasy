@@ -564,7 +564,7 @@ async def sync_sport_data(
     """Trigger data sync for a sport (admin only)"""
     try:
         # Check if user has admin permissions
-        user = user_service.get_user(current_user["user_id"], db)
+        user = user_service.get_user_sync(current_user["user_id"], db)
         if not user.is_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

@@ -35,7 +35,7 @@
 
 ## Workstream D — Service Consolidation (per Domain)
 1. Users
-   - [ ] Fold registration, authentication, JWT helpers from `services/user_service.py` into `domains/users/services/user_service.py` while keeping event publishing.
+   - [X] Fold registration, authentication, JWT helpers from `services/user_service.py` into `domains/users/services/user_service.py` while keeping event publishing.
 2. Leagues
    - [ ] Merge configuration, invite code logic, commissioner checks, auto team creation, achievements, and errors into domain service.
 3. Drafts

@@ -183,7 +183,7 @@ class ConnectionManager:
 
             # Validate user and league
             with get_db_session() as db:
-                user = self.user_service.get_user(user_id, db)
+                user = self.user_service.get_user_sync(user_id, db)
                 if not user or not user.is_active:
                     await websocket.close(code=1008, reason="User not found or inactive")
                     raise AuthenticationError("Invalid user")

@@ -718,7 +718,7 @@ async def get_current_user(
 
         # Get user from database
         user_service = UserService()
-        user = user_service.get_user(token_payload["sub"], db)
+        user = user_service.get_user_sync(token_payload["sub"], db)
 
         if not user or not user.is_active:
             raise HTTPException(
