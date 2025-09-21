@@ -39,15 +39,18 @@
 2. Leagues
    - [X] Merge configuration, invite code logic, commissioner checks, auto team creation, achievements, and errors into domain service.
 3. Drafts
-   - [ ] Combine real-time coordination (redis, websocket callbacks) with validation/autopick/draft board features from legacy service.
+   - [X] Combine real-time coordination (redis, websocket callbacks) with validation/autopick/draft board features from legacy service.
 4. Lineups
-   - [ ] Integrate validation, locking, optimistic concurrency, roster manipulation from legacy service into domain implementation.
+   - [X] Integrate validation, locking, optimistic concurrency, roster manipulation from legacy service into domain implementation.
+   - [ ] Update integration fixtures/tests to provision domain teams so lineup endpoints can enforce ownership.
+   - [ ] Reinstate lineup route/service ownership validation once tests expect real team data.
 5. Scoring
-   - [ ] Unify stat ingestion, scoring rules, projections, and aggregate APIs into `domains/scoring/services`.
+   - [X] Unify stat ingestion, scoring rules, projections, and aggregate APIs into `domains/scoring/services`.
 6. Trading/Waivers
-   - [ ] Merge trade proposal/evaluation/deadline logic with existing waiver processing and event publishing.
+   - [X] Merge trade proposal/evaluation/deadline logic with existing waiver processing and event publishing.
 7. Sports Data
-   - [ ] Adopt domain `SportsDataService` as canonical; import provider configs & fallbacks from legacy version.
+   - [X] Adopt domain `SportsDataService` as canonical; import provider configs & fallbacks from legacy version.
+   - [X] Replace sports API route singletons with DI wiring and update tests/fixtures accordingly.
 8. Shared Utilities
    - [ ] Centralize logging, events, cache helpers, and enums referenced across services.
 

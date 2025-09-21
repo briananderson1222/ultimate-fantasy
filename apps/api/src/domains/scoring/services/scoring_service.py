@@ -3,20 +3,92 @@ from __future__ import annotations
 import contextlib
 import uuid as _uuid
 from collections.abc import Iterable
-from datetime import date
-from typing import Any
+from datetime import date, datetime, timedelta
+from typing import Any, Optional, Dict, List, Tuple
+from dataclasses import dataclass
+from enum import Enum
 
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, desc, func, text
 
 from domains.scoring.models.score import Score
+from domains.leagues.models.league import League
+from domains.leagues.models.team import Team
+from domains.sports.models.player import Player
+from domains.lineups.models.lineup import Lineup
 from domains.shared.events.publisher import DomainEventPublisher
 from domains.shared.interfaces.scoring_service import ScoringServiceInterface
 from infrastructure.events.dispatcher import get_event_dispatcher
 
+try:
+    from infrastructure.database.session_factory import get_db_session
+except ImportError:
+    get_db_session = None  # type: ignore[misc,assignment]
+
+try:
+    from infrastructure.logging.domain_logger import get_logger
+except ImportError:
+    import logging
+    get_logger = logging.getLogger  # type: ignore[assignment]
+
+# Try to import consolidated sports data service
+try:
+    from domains.sports.services.sports_data_service import SportsDataService, SportType
+except ImportError:
+    SportsDataService = None  # type: ignore[misc,assignment]
+    SportType = None  # type: ignore[misc,assignment]
+
+
+logger = get_logger(__name__)
+
+
+class ScoringType(Enum):
+    """Scoring calculation types"""
+    GAME = "game"
+    WEEKLY = "weekly"
+    SEASON = "season"
+
+
+@dataclass
+class ScoringResult:
+    """Result of scoring calculation"""
+    player_id: str
+    total_points: float
+    breakdown: Dict[str, float]
+    bonus_points: float
+    stat_values: Dict[str, Any]
+
+
+@dataclass
+class TeamScoring:
+    """Team's total scoring for a period"""
+    team_id: str
+    total_points: float
+    starting_points: float
+    bench_points: float
+    player_scores: List[ScoringResult]
+
+
+@dataclass
+class MatchupResult:
+    """Head-to-head matchup result"""
+    home_team: TeamScoring
+    away_team: TeamScoring
+    winner: Optional[str]  # team_id of winner, None for tie
+    margin: float
+
+
+class ScoringServiceError(Exception):
+    """Base exception for scoring service errors"""
+    pass
+
 
 class ScoringService(ScoringServiceInterface):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, sports_data_service: Optional[Any] = None) -> None:
         self.session = session
+        self.sports_data_service = sports_data_service
+        self.scoring_cache_duration_minutes = 5
+        self.real_time_update_interval_seconds = 30
 
         # Initialize event publishing
         try:
@@ -88,6 +160,339 @@ class ScoringService(ScoringServiceInterface):
                 logging.getLogger(__name__).debug(f"Event publishing failed: {e}")
 
         return count
+
+    # Core Fantasy Scoring Methods (from legacy service)
+
+    def calculate_player_score(
+        self,
+        player_id: str,
+        league_id: str,
+        game_date: date,
+        stat_values: Dict[str, Any],
+        is_final: bool = False
+    ) -> ScoringResult:
+        """
+        Calculate fantasy points for a player's performance
+
+        Args:
+            player_id: Player ID
+            league_id: League ID for scoring rules
+            game_date: Date of the game
+            stat_values: Player's statistical performance
+            is_final: Whether this is final scoring or projected
+
+        Returns:
+            ScoringResult with point breakdown
+        """
+        # Get player and league
+        player = self.session.query(Player).filter(Player.player_id == player_id).first()
+        league = self.session.query(League).filter(League.league_id == league_id).first()
+
+        if not player or not league:
+            raise ScoringServiceError("Player or league not found")
+
+        # Get scoring rules for the league
+        scoring_rules = league.scoring_rules or {}
+
+        # Calculate points breakdown
+        breakdown = {}
+
+        # Apply scoring rules based on sport
+        if player.sport == "mlb":
+            breakdown = self._calculate_mlb_scoring(stat_values, scoring_rules)
+        elif player.sport == "nfl":
+            breakdown = self._calculate_nfl_scoring(stat_values, scoring_rules)
+        elif player.sport == "wnba":
+            breakdown = self._calculate_wnba_scoring(stat_values, scoring_rules)
+        else:
+            breakdown = {"unknown_sport": 0.0}
+
+        total_points = sum(breakdown.values())
+
+        # Calculate bonus points (achievements, milestones, etc.)
+        bonus_points = self._calculate_bonus_points(stat_values, scoring_rules, player.sport)
+
+        return ScoringResult(
+            player_id=player_id,
+            total_points=total_points,
+            breakdown=breakdown,
+            bonus_points=bonus_points,
+            stat_values=stat_values
+        )
+
+    def update_player_score(
+        self,
+        player_id: str,
+        league_id: str,
+        game_date: date,
+        week: int,
+        stat_values: Dict[str, Any],
+        is_final: bool = False,
+        game_id: Optional[str] = None,
+        opponent_team: Optional[str] = None
+    ) -> Score:
+        """
+        Update or create a player's score record
+
+        Args:
+            player_id: Player ID
+            league_id: League ID
+            game_date: Game date
+            week: Week number
+            stat_values: Statistical values
+            is_final: Whether this is final scoring
+            game_id: Optional game identifier
+            opponent_team: Optional opponent team
+
+        Returns:
+            Updated Score record
+        """
+        # Calculate fantasy points
+        scoring_result = self.calculate_player_score(
+            player_id, league_id, game_date, stat_values, is_final
+        )
+
+        # Find existing score or create new one
+        score = self.session.query(Score).filter(
+            and_(
+                Score.player_id == player_id,
+                Score.game_day == game_date
+            )
+        ).first()
+
+        if score:
+            # Update existing score
+            score.stat_values = stat_values
+            # Add calculated fantasy points to existing stats
+            if not score.stat_values:
+                score.stat_values = {}
+            score.stat_values.update({
+                "fantasy_points": scoring_result.total_points,
+                "bonus_points": scoring_result.bonus_points,
+                "points_breakdown": scoring_result.breakdown
+            })
+        else:
+            # Create new score with fantasy points included
+            enhanced_stats = stat_values.copy()
+            enhanced_stats.update({
+                "fantasy_points": scoring_result.total_points,
+                "bonus_points": scoring_result.bonus_points,
+                "points_breakdown": scoring_result.breakdown,
+                "points": scoring_result.total_points  # For compatibility
+            })
+
+            score = Score(
+                player_id=_uuid.UUID(player_id),
+                game_day=game_date,
+                stat_values=enhanced_stats
+            )
+            self.session.add(score)
+
+        self.session.flush()
+
+        logger.info(f"Score updated for player {player_id}: {scoring_result.total_points} points")
+        return score
+
+    def calculate_team_score(
+        self,
+        team_id: str,
+        week: int,
+        game_day: Optional[date] = None
+    ) -> TeamScoring:
+        """
+        Calculate total team score for a week/day
+
+        Args:
+            team_id: Team ID
+            week: Week number
+            game_day: Optional specific game day
+
+        Returns:
+            TeamScoring with breakdown
+        """
+        team_uuid = _uuid.UUID(team_id)
+
+        # Get lineups for the team
+        lineup_query = self.session.query(Lineup).filter(Lineup.team_id == team_uuid)
+        if game_day:
+            lineup_query = lineup_query.filter(Lineup.game_day == game_day)
+
+        lineups = lineup_query.all()
+
+        total_points = 0.0
+        starting_points = 0.0
+        bench_points = 0.0
+        player_scores = []
+
+        for lineup in lineups:
+            if not lineup.players:
+                continue
+
+            for player_data in lineup.players:
+                player_id = player_data.get("player_id")
+                is_starter = player_data.get("is_starter", True)
+
+                if not player_id:
+                    continue
+
+                # Get score for this player on this game day
+                score = self.session.query(Score).filter(
+                    and_(
+                        Score.player_id == _uuid.UUID(player_id),
+                        Score.game_day == lineup.game_day
+                    )
+                ).first()
+
+                if score and score.stat_values:
+                    points = score.stat_values.get("fantasy_points", 0) or score.stat_values.get("points", 0)
+                    try:
+                        points = float(points)
+                    except (ValueError, TypeError):
+                        points = 0.0
+
+                    # Create scoring result for this player
+                    player_scoring = ScoringResult(
+                        player_id=player_id,
+                        total_points=points,
+                        breakdown=score.stat_values.get("points_breakdown", {}),
+                        bonus_points=score.stat_values.get("bonus_points", 0),
+                        stat_values=score.stat_values
+                    )
+                    player_scores.append(player_scoring)
+
+                    total_points += points
+                    if is_starter:
+                        starting_points += points
+                    else:
+                        bench_points += points
+
+        return TeamScoring(
+            team_id=team_id,
+            total_points=total_points,
+            starting_points=starting_points,
+            bench_points=bench_points,
+            player_scores=player_scores
+        )
+
+    # Sport-specific scoring methods
+
+    def _calculate_mlb_scoring(
+        self,
+        stat_values: Dict[str, Any],
+        scoring_rules: Dict[str, Any]
+    ) -> Dict[str, float]:
+        """Calculate MLB fantasy points"""
+        hitting_rules = scoring_rules.get("hitting", {})
+        pitching_rules = scoring_rules.get("pitching", {})
+        breakdown = {}
+
+        # Hitting stats
+        for stat, multiplier in hitting_rules.items():
+            if stat in stat_values:
+                points = float(stat_values[stat]) * float(multiplier)
+                breakdown[f"hitting_{stat}"] = round(points, 2)
+
+        # Pitching stats
+        for stat, multiplier in pitching_rules.items():
+            if stat in stat_values:
+                points = float(stat_values[stat]) * float(multiplier)
+                breakdown[f"pitching_{stat}"] = round(points, 2)
+
+        return breakdown
+
+    def _calculate_nfl_scoring(
+        self,
+        stat_values: Dict[str, Any],
+        scoring_rules: Dict[str, Any]
+    ) -> Dict[str, float]:
+        """Calculate NFL fantasy points"""
+        breakdown = {}
+
+        # Process each category
+        for category, rules in scoring_rules.items():
+            if isinstance(rules, dict):
+                for stat, multiplier in rules.items():
+                    if stat in stat_values:
+                        points = float(stat_values[stat]) * float(multiplier)
+                        breakdown[f"{category}_{stat}"] = round(points, 2)
+
+        return breakdown
+
+    def _calculate_wnba_scoring(
+        self,
+        stat_values: Dict[str, Any],
+        scoring_rules: Dict[str, Any]
+    ) -> Dict[str, float]:
+        """Calculate WNBA fantasy points"""
+        breakdown = {}
+
+        # Process each category
+        for category, rules in scoring_rules.items():
+            if isinstance(rules, dict):
+                for stat, multiplier in rules.items():
+                    if stat in stat_values:
+                        points = float(stat_values[stat]) * float(multiplier)
+                        breakdown[f"{category}_{stat}"] = round(points, 2)
+
+        return breakdown
+
+    def _calculate_bonus_points(
+        self,
+        stat_values: Dict[str, Any],
+        scoring_rules: Dict[str, Any],
+        sport: str
+    ) -> float:
+        """Calculate bonus points for achievements"""
+        bonus_points = 0.0
+
+        # Sport-specific bonus calculations
+        if sport == "nfl":
+            # Example: 300+ yard passing game bonus
+            if stat_values.get("passing_yards", 0) >= 300:
+                bonus_points += scoring_rules.get("bonus_300_pass_yards", 2.0)
+
+            # Example: 100+ yard rushing game bonus
+            if stat_values.get("rushing_yards", 0) >= 100:
+                bonus_points += scoring_rules.get("bonus_100_rush_yards", 2.0)
+
+        elif sport == "mlb":
+            # Example: Cycle bonus
+            hits = stat_values.get("hits", 0)
+            doubles = stat_values.get("doubles", 0)
+            triples = stat_values.get("triples", 0)
+            home_runs = stat_values.get("home_runs", 0)
+
+            if hits >= 4 and doubles >= 1 and triples >= 1 and home_runs >= 1:
+                bonus_points += scoring_rules.get("bonus_cycle", 10.0)
+
+        elif sport == "wnba":
+            # Example: Triple-double bonus
+            points = stat_values.get("points", 0)
+            rebounds = stat_values.get("rebounds", 0)
+            assists = stat_values.get("assists", 0)
+
+            double_digits = sum([points >= 10, rebounds >= 10, assists >= 10])
+            if double_digits >= 3:
+                bonus_points += scoring_rules.get("bonus_triple_double", 5.0)
+
+        return bonus_points
+
+    # Helper Methods
+
+    def _get_current_season(self) -> str:
+        """Get current season identifier"""
+        return str(datetime.now().year)
+
+    def _get_week_date_range(self, week: int) -> Tuple[date, date]:
+        """Get date range for a specific week"""
+        # TODO: Implement proper week calculation based on sport schedule
+        # For now, use simple weekly ranges
+        today = date.today()
+        start_of_week = today - timedelta(days=today.weekday())
+        week_start = start_of_week + timedelta(weeks=week - 1)
+        week_end = week_start + timedelta(days=6)
+
+        return week_start, week_end
 
     def compute_league_scoreboard(
         self, *, league_id: _uuid.UUID | str, game_day: date | None
