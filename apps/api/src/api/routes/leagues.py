@@ -144,7 +144,7 @@ async def create_league(
             season=request.season,
             max_teams=request.max_teams,
             custom_settings=request.custom_settings,
-            db=db
+            db=db,
         )
 
         return APIResponse(
@@ -177,7 +177,9 @@ async def get_league(
         league = league_service.get_league(league_id, db)
 
         # Check if user is a member or if league is public
-        if not league_service.is_user_in_league(league_id, current_user["user_id"], db):
+        if not league_service.is_user_in_league(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             if league.status != LeagueStatus.RECRUITING:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -208,14 +210,21 @@ async def update_league(
     """Update league settings (commissioner only)"""
     try:
         # Verify commissioner permissions
-        if not league_service.is_commissioner(league_id, current_user["user_id"], db):
+        if not league_service.is_commissioner(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only commissioners can update league settings"
             )
 
         update_data = request.dict(exclude_unset=True)
-        league = league_service.update_league_settings(league_id, update_data, db)
+        league = league_service.update_league_settings(
+            league_id=league_id,
+            user_id=current_user["user_id"],
+            updates=update_data,
+            db=db,
+        )
 
         return APIResponse(
             success=True,
@@ -249,13 +258,17 @@ async def delete_league(
 ):
     """Delete a league (commissioner only, before draft)"""
     try:
-        if not league_service.is_commissioner(league_id, current_user["user_id"], db):
+        if not league_service.is_commissioner(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only commissioners can delete leagues"
             )
 
-        league_service.delete_league(league_id, db)
+        league_service.delete_league(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        )
 
         return APIResponse(
             success=True,
@@ -291,7 +304,7 @@ async def join_league(
             user_id=current_user["user_id"],
             invite_code=request.invite_code,
             team_name=request.team_name,
-            db=db
+            db=db,
         )
 
         return APIResponse(
@@ -331,7 +344,9 @@ async def leave_league(
 ):
     """Leave a league (not allowed after draft starts)"""
     try:
-        league_service.leave_league(league_id, current_user["user_id"], db)
+        league_service.leave_league(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        )
 
         return APIResponse(
             success=True,
@@ -361,13 +376,15 @@ async def get_league_members(
     """Get all league members and their teams"""
     try:
         # Verify user is in league
-        if not league_service.is_user_in_league(league_id, current_user["user_id"], db):
+        if not league_service.is_user_in_league(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied - not a league member"
             )
 
-        members = league_service.get_league_members(league_id, db)
+        members = league_service.get_league_members(league_id=league_id, db=db)
 
         return APIResponse(
             success=True,
@@ -392,13 +409,20 @@ async def remove_member(
 ):
     """Remove a member from league (commissioner only, before draft)"""
     try:
-        if not league_service.is_commissioner(league_id, current_user["user_id"], db):
+        if not league_service.is_commissioner(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only commissioners can remove members"
             )
 
-        league_service.remove_member(league_id, user_id, db)
+        league_service.remove_member(
+            league_id=league_id,
+            requester_id=current_user["user_id"],
+            user_id=user_id,
+            db=db,
+        )
 
         return APIResponse(
             success=True,
@@ -434,10 +458,14 @@ async def update_team(
 ):
     """Update user's team in the league"""
     try:
-        team = league_service.get_user_team_in_league(league_id, current_user["user_id"], db)
+        team = league_service.get_user_team_in_league(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        )
 
         update_data = request.dict(exclude_unset=True)
-        updated_team = league_service.update_team(str(team.team_id), update_data, db)
+        updated_team = league_service.update_team(
+            team_id=str(team.team_id), updates=update_data, db=db
+        )
 
         return APIResponse(
             success=True,
@@ -467,13 +495,15 @@ async def get_league_standings(
     """Get league standings and season statistics"""
     try:
         # Verify user is in league
-        if not league_service.is_user_in_league(league_id, current_user["user_id"], db):
+        if not league_service.is_user_in_league(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied - not a league member"
             )
 
-        standings = league_service.get_league_standings(league_id, db)
+        standings = league_service.get_league_standings(league_id=league_id, db=db)
 
         return APIResponse(
             success=True,
@@ -499,17 +529,19 @@ async def transfer_commissioner(
 ):
     """Transfer commissioner role to another league member"""
     try:
-        if not league_service.is_commissioner(league_id, current_user["user_id"], db):
+        if not league_service.is_commissioner(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only commissioners can transfer commissioner role"
             )
 
         league_service.transfer_commissioner(
-            league_id,
-            current_user["user_id"],
-            request.new_commissioner_user_id,
-            db
+            league_id=league_id,
+            current_commissioner_id=current_user["user_id"],
+            new_commissioner_user_id=request.new_commissioner_user_id,
+            db=db,
         )
 
         return APIResponse(
@@ -544,13 +576,17 @@ async def regenerate_invite_code(
 ):
     """Regenerate league invite code (commissioner only)"""
     try:
-        if not league_service.is_commissioner(league_id, current_user["user_id"], db):
+        if not league_service.is_commissioner(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only commissioners can regenerate invite codes"
             )
 
-        new_code = league_service.regenerate_invite_code(league_id, db)
+        new_code = league_service.regenerate_invite_code(
+            league_id=league_id, user_id=current_user["user_id"], db=db
+        )
 
         return APIResponse(
             success=True,
@@ -582,10 +618,10 @@ async def get_user_leagues(
     """Get all leagues the current user is a member of"""
     try:
         leagues = league_service.get_user_leagues(
-            current_user["user_id"],
+            user_id=current_user["user_id"],
             sport=sport,
             status=status,
-            db=db
+            db=db,
         )
 
         return APIResponse(
@@ -617,7 +653,7 @@ async def get_public_leagues(
             league_type=league_type,
             limit=limit,
             offset=offset,
-            db=db
+            db=db,
         )
 
         return APIResponse(

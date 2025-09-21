@@ -37,7 +37,7 @@
 1. Users
    - [X] Fold registration, authentication, JWT helpers from `services/user_service.py` into `domains/users/services/user_service.py` while keeping event publishing.
 2. Leagues
-   - [ ] Merge configuration, invite code logic, commissioner checks, auto team creation, achievements, and errors into domain service.
+   - [X] Merge configuration, invite code logic, commissioner checks, auto team creation, achievements, and errors into domain service.
 3. Drafts
    - [ ] Combine real-time coordination (redis, websocket callbacks) with validation/autopick/draft board features from legacy service.
 4. Lineups
