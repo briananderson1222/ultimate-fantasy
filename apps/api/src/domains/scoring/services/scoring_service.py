@@ -36,8 +36,16 @@ class ScoringService(ScoringServiceInterface):
         """
         count = 0
         for it in items:
+            player_identifier = it.get("player_id")
+            try:
+                player_uuid = _uuid.UUID(str(player_identifier))
+            except Exception:
+                continue
+
             score = Score(
-                player_id=it["player_id"], game_day=game_day, stats=it["stats"]
+                player_id=player_uuid,
+                game_day=game_day,
+                stat_values=it.get("stats") or {},
             )
             self.session.add(score)
             count += 1
@@ -143,7 +151,7 @@ class ScoringService(ScoringServiceInterface):
                     .all()
                 )
                 for s in scores:
-                    stats = s.stats or {}
+                    stats = s.stat_values or {}
                     pts = stats.get("points", 0)
                     try:
                         pts_val = int(pts)
@@ -198,7 +206,7 @@ class ScoringService(ScoringServiceInterface):
                 .all()
             )
             for score in scores:
-                stats = score.stats or {}
+                stats = score.stat_values or {}
                 points = stats.get("points", 0)
                 with contextlib.suppress(ValueError, TypeError):
                     total_points += int(points)
@@ -256,7 +264,7 @@ class ScoringService(ScoringServiceInterface):
         total_points = 0
         game_count = len(scores)
         for score in scores:
-            stats = score.stats or {}
+            stats = score.stat_values or {}
             points = stats.get("points", 0)
             with contextlib.suppress(ValueError, TypeError):
                 total_points += int(points)

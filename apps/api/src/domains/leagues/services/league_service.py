@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import uuid as _uuid
 
+import secrets
+import string
+
 from sqlalchemy.orm import Session
 
 from domains.leagues.models.league import League
@@ -34,6 +37,7 @@ class LeagueService(LeagueServiceInterface):
         sport: str,
         league_type: str,
         season: str,
+        max_teams: int = 12,
     ) -> League:
         # Ensure user exists
         user = (
@@ -42,14 +46,19 @@ class LeagueService(LeagueServiceInterface):
             .one_or_none()
         )
         if not user:
+            default_username = f"user_{str(commissioner_id)[:8]}"
             user = User(
                 user_id=commissioner_id,
+                username=default_username,
                 email=f"{commissioner_id}@ultimatefantasy.app",
                 display_name=f"User {str(commissioner_id)[:8]}",
                 cognito_sub=str(commissioner_id),
+                password_hash="",
             )
             self.session.add(user)
             self.session.flush()
+
+        invite_code = self._generate_invite_code()
 
         league = League(
             name=name,
@@ -57,7 +66,15 @@ class LeagueService(LeagueServiceInterface):
             league_type=league_type,
             season=season,
             commissioner_id=commissioner_id,
+            max_teams=max_teams,
+            invite_code=invite_code,
         )
+        league.scoring_rules = league.get_default_scoring_rules()
+        league.roster_settings = league.get_default_roster_settings()
+        league.draft_settings = league.get_default_draft_settings()
+        league.trade_settings = league.get_default_trade_settings()
+        league.waiver_settings = {"type": "rolling", "reset_interval": "weekly"}
+        league.playoff_settings = {"teams": min(6, max_teams)}
         self.session.add(league)
         self.session.flush()
 
@@ -65,7 +82,7 @@ class LeagueService(LeagueServiceInterface):
         team = Team(
             league_id=league.league_id,
             user_id=commissioner_id,
-            team_name=f"{name} - {commissioner_id}",
+            team_name=f"{name} - {str(commissioner_id)[:8]}",
         )
         self.session.add(team)
         self.session.flush()
@@ -115,6 +132,20 @@ class LeagueService(LeagueServiceInterface):
 
         return league
 
+    def _generate_invite_code(self) -> str:
+        while True:
+            code = "".join(
+                secrets.choice(string.ascii_uppercase + string.digits)
+                for _ in range(8)
+            )
+            exists = (
+                self.session.query(League)
+                .filter(League.invite_code == code)
+                .one_or_none()
+            )
+            if not exists:
+                return code
+
     def join(
         self,
         *,
@@ -136,11 +167,14 @@ class LeagueService(LeagueServiceInterface):
         # Ensure user exists
         user = self.session.query(User).filter(User.user_id == user_id).one_or_none()
         if not user:
+            default_username = f"user_{str(user_id)[:8]}"
             user = User(
                 user_id=user_id,
+                username=default_username,
                 email=f"{user_id}@ultimatefantasy.app",
                 display_name=f"User {str(user_id)[:8]}",
                 cognito_sub=str(user_id),
+                password_hash="",
             )
             self.session.add(user)
             self.session.flush()

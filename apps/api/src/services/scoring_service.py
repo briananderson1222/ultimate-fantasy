@@ -508,7 +508,7 @@ class ScoringService:
                     team_scoring = self.calculate_team_score(team.team_id, week, db=session)
                     team_scores.append({
                         "team_id": str(team.team_id),
-                        "team_name": team.name,
+                        "team_name": getattr(team, "team_name", getattr(team, "name", "")),
                         "week": week,
                         "total_points": team_scoring.total_points,
                         "starting_points": team_scoring.starting_points
@@ -520,7 +520,7 @@ class ScoringService:
                 # Season leaders
                 team_totals = session.query(
                     Team.team_id,
-                    Team.name,
+                    Team.team_name,
                     func.coalesce(Team.points_for, 0).label("total_points")
                 ).filter(Team.league_id == league_id).order_by(
                     desc(text("total_points"))

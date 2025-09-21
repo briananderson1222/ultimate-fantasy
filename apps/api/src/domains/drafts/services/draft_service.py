@@ -19,9 +19,9 @@ from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
-from models.draft import Draft
-from models.team import Team
-from models.player import Player
+from domains.drafts.models.draft import Draft
+from domains.leagues.models.team import Team
+from domains.sports.models.player import Player
 from infrastructure.cache.redis_pool import FantasyRedisPool, get_redis_pool
 from infrastructure.observability.tracing import get_tracer, trace_draft_operation
 

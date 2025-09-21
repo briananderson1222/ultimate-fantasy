@@ -11,27 +11,27 @@
 - [ ] Update architecture notes (docs/readme) to reflect modular domain layout once implemented.
 
 ## Workstream B — Database & Dependency Layer
-- [ ] Promote `infrastructure/database/session_factory` as the sole sync/async session provider.
-- [ ] Refactor FastAPI dependencies (`api/deps.py`, route modules) to use the session factory; remove `services/db.py` usage.
-- [ ] Provide DI helpers that construct domain services per-request with injected Session, redis, event dispatcher, etc.
+- [X] Promote `infrastructure/database/session_factory` as the sole sync/async session provider.
+- [X] Refactor FastAPI dependencies (`api/deps.py`, route modules) to use the session factory; remove `services/db.py` usage.
+- [X] Provide DI helpers that construct domain services per-request with injected Session, redis, event dispatcher, etc.
 
 ## Workstream C — Model Consolidation (per Domain)
 1. Users
-   - [ ] Merge authentication/profile fields & helpers from `models/user.py` into `domains/users/models/user.py`.
-   - [ ] Preserve JSON preference/settings defaults and validation constraints.
+   - [X] Merge authentication/profile fields & helpers from `models/user.py` into `domains/users/models/user.py`.
+   - [X] Preserve JSON preference/settings defaults and validation constraints.
 2. Leagues & Teams
-   - [ ] Extend `domains/leagues/models` with configuration JSON, status enums, invite codes, and roster/budget stats from legacy models.
-   - [ ] Ensure relationships/constraints (unique team per league/user) are ported.
+   - [X] Extend `domains/leagues/models` with configuration JSON, status enums, invite codes, and roster/budget stats from legacy models.
+   - [X] Ensure relationships/constraints (unique team per league/user) are ported.
 3. Drafts
-   - [ ] Create `domains/drafts/models` reflecting legacy draft schema (statuses, picks, timers).
+   - [X] Create `domains/drafts/models` reflecting legacy draft schema (statuses, picks, timers).
 4. Lineups
-   - [ ] Enrich `domains/lineups/models/lineup.py` with weekly/game_day fields, locking/versioning, indexes.
+   - [X] Enrich `domains/lineups/models/lineup.py` with weekly/game_day fields, locking/versioning, indexes.
 5. Scoring
-   - [ ] Port `models/score.py` and related enums into `domains/scoring/models`.
+   - [X] Port `models/score.py` and related enums into `domains/scoring/models`.
 6. Trading/Waivers
-   - [ ] Add trade model alongside existing waiver/transaction domain models with full workflow fields.
+   - [X] Add trade model alongside existing waiver/transaction domain models with full workflow fields.
 7. Sports/Shared
-   - [ ] Move shared models (notification, achievement, presets) into `domains/shared/models` as needed; delete legacy duplicates.
+   - [X] Move shared models (notification, achievement, presets) into `domains/shared/models` as needed; delete legacy duplicates.
 
 ## Workstream D — Service Consolidation (per Domain)
 1. Users

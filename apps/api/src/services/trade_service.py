@@ -176,7 +176,7 @@ class TradeService:
                 team_id=str(receiving_team.team_id),
                 trade_id=str(trade.trade_id),
                 notification_type="trade_proposal",
-                other_team_name=offering_team.name
+                other_team_name=getattr(offering_team, "team_name", getattr(offering_team, "name", ""))
             )
             session.add(notification)
 
@@ -262,7 +262,7 @@ class TradeService:
                     team_id=str(trade.offering_team_id),
                     trade_id=str(trade.trade_id),
                     notification_type="trade_accepted",
-                    other_team_name=receiving_team.name
+                    other_team_name=getattr(receiving_team, "team_name", getattr(receiving_team, "name", ""))
                 )
                 session.add(notification)
 
@@ -279,7 +279,7 @@ class TradeService:
                     team_id=str(trade.offering_team_id),
                     trade_id=str(trade.trade_id),
                     notification_type="trade_rejected",
-                    other_team_name=receiving_team.name
+                    other_team_name=getattr(receiving_team, "team_name", getattr(receiving_team, "name", ""))
                 )
                 session.add(notification)
 

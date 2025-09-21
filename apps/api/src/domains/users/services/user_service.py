@@ -43,12 +43,10 @@ class UserService(UserServiceInterface):
             raise ValueError(f"sub must be a valid UUID, got: {sub}")
 
         email = str(claims.get("email") or "").strip() or f"{sub}@example.dev"
-        display_name = str(
-            claims.get("name")
-            or claims.get("preferred_username")
-            or email
-            or f"User-{sub[:8]}"
-        )
+        preferred_username = claims.get("preferred_username") or claims.get("nickname")
+        display_name = str(preferred_username or claims.get("name") or email or f"User-{sub[:8]}")
+        username = str(preferred_username or display_name or f"user_{sub[:8]}").strip() or f"user_{sub[:8]}"
+        username = username.replace(" ", "_")[:50]
 
         existing = (
             self.session.query(User).filter(User.user_id == user_id).one_or_none()
@@ -56,6 +54,9 @@ class UserService(UserServiceInterface):
         if existing:
             # Update basic fields if changed
             changed = False
+            if not existing.username:
+                existing.username = username
+                changed = True
             if existing.email != email:
                 existing.email = email
                 changed = True
@@ -96,7 +97,12 @@ class UserService(UserServiceInterface):
             return existing
 
         user = User(
-            user_id=user_id, email=email, display_name=display_name, cognito_sub=sub
+            user_id=user_id,
+            username=username,
+            email=email,
+            display_name=display_name,
+            cognito_sub=sub,
+            password_hash="",  # placeholder until legacy auth merged
         )
         self.session.add(user)
         self.session.flush()

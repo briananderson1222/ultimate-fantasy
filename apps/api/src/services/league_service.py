@@ -132,7 +132,7 @@ class LeagueService:
             commissioner_team = Team(
                 league_id=league.league_id,
                 user_id=commissioner_id,
-                name=f"{commissioner.display_name or commissioner.username}'s Team",
+                team_name=f"{commissioner.display_name or commissioner.username}'s Team",
                 wins=0,
                 losses=0,
                 ties=0,
@@ -351,7 +351,7 @@ class LeagueService:
 
             # Check for duplicate team names in league
             existing_name = session.query(Team).filter(
-                and_(Team.league_id == league.league_id, Team.name == team_name)
+                and_(Team.league_id == league.league_id, Team.team_name == team_name)
             ).first()
 
             if existing_name:
@@ -366,7 +366,7 @@ class LeagueService:
             team = Team(
                 league_id=league.league_id,
                 user_id=user_id,
-                name=team_name,
+                team_name=team_name,
                 wins=0,
                 losses=0,
                 ties=0,

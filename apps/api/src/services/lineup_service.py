@@ -137,7 +137,7 @@ class LineupService:
             session.add(lineup)
             session.commit()
 
-            logger.info(f"Lineup created for team {team.name}, week {week}")
+            logger.info(f"Lineup created for team {getattr(team, 'team_name', getattr(team, 'name', ''))}, week {week}")
             return lineup
 
     def get_lineup(
@@ -224,7 +224,11 @@ class LineupService:
 
             try:
                 session.commit()
-                logger.info(f"Lineup updated for team {team.name}, week {lineup.week}")
+                logger.info(
+                    "Lineup updated for team %s, week %s",
+                    getattr(team, "team_name", getattr(team, "name", "")),
+                    lineup.week,
+                )
                 return lineup
             except IntegrityError:
                 session.rollback()
@@ -598,7 +602,7 @@ class LineupService:
 
             return {
                 "lineup_id": str(lineup.lineup_id),
-                "team_name": team.name,
+                "team_name": getattr(team, "team_name", getattr(team, "name", "")),
                 "week": lineup.week,
                 "is_locked": lineup.is_locked,
                 "version": lineup.version,
