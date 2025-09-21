@@ -4,10 +4,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 import json
 
-from ...models.draft import Draft
-from ...models.league import League
-from ...models.team import Team
-from ...models.player import Player
+from ...domains.drafts.models.draft import Draft
+from ...domains.leagues.models.league import League
+from ...domains.leagues.models.team import Team
+from ...domains.sports.models.player import Player
 from ...services.draft_service import DraftService, DraftServiceError, DraftNotFoundError, InvalidDraftStateError, OptimisticLockError
 from ...services.league_service import LeagueService
 from ...infrastructure.database.session_factory import get_db_session

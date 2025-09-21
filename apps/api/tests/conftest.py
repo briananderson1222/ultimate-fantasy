@@ -62,7 +62,28 @@ def test_session_factory(test_engine):
 @pytest.fixture(scope="function")
 def test_session(test_engine, test_session_factory):
     """Create a test database session with tables."""
-    # Import base to ensure all models are registered
+    # Import models package to register metadata before creation
+    import importlib
+
+    required_models = [
+        "domains.users.models.user",
+        "domains.users.models.user_preference",
+        "domains.sports.models.player",
+        "domains.scoring.models.score",
+        "domains.drafts.models.draft",
+        "domains.leagues.models.league",
+        "domains.leagues.models.league_branding",
+        "domains.leagues.models.team",
+        "domains.lineups.models.lineup",
+        "domains.trading.models.trade",
+        "domains.trading.models.waiver",
+        "domains.trading.models.transaction",
+        "domains.shared.models.achievement",
+        "domains.waitlist.models.waitlist",
+    ]
+
+    for module in required_models:
+        importlib.import_module(module)
     from domains.shared.models.base import Base
 
     # Create all tables

@@ -10,7 +10,7 @@ from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, func
 
-from ..models.draft import Draft
+from ..domains.drafts.models.draft import Draft
 from ..models.league import League
 from ..models.team import Team
 from ..models.player import Player
