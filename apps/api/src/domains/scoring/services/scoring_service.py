@@ -6,7 +6,6 @@ from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 from typing import Any, Optional, Dict, List, Tuple
 from dataclasses import dataclass
-from enum import Enum
 
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, func, text
@@ -16,6 +15,7 @@ from domains.leagues.models.league import League
 from domains.leagues.models.team import Team
 from domains.sports.models.player import Player
 from domains.lineups.models.lineup import Lineup
+from domains.shared.enums import ScoringType
 from domains.shared.events.publisher import DomainEventPublisher
 from domains.shared.interfaces.scoring_service import ScoringServiceInterface
 from infrastructure.events.dispatcher import get_event_dispatcher
@@ -40,13 +40,6 @@ except ImportError:
 
 
 logger = get_logger(__name__)
-
-
-class ScoringType(Enum):
-    """Scoring calculation types"""
-    GAME = "game"
-    WEEKLY = "weekly"
-    SEASON = "season"
 
 
 @dataclass

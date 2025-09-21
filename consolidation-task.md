@@ -52,7 +52,7 @@
    - [X] Adopt domain `SportsDataService` as canonical; import provider configs & fallbacks from legacy version.
    - [X] Replace sports API route singletons with DI wiring and update tests/fixtures accordingly.
 8. Shared Utilities
-   - [ ] Centralize logging, events, cache helpers, and enums referenced across services.
+   - [X] Centralize logging, events, cache helpers, and enums referenced across services.
 
 ## Workstream E — API Layer Integration
 - [ ] Replace global service singletons in `api/routes/**` with FastAPI dependencies that construct domain services.

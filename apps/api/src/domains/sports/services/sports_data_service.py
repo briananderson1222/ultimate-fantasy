@@ -22,7 +22,6 @@ from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional, Any, Protocol, Union
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from enum import Enum
 import json
 
 try:
@@ -34,6 +33,7 @@ from sqlalchemy import and_, or_
 
 from domains.sports.models.player import Player
 from domains.scoring.models.score import Score
+from domains.shared.enums import DataProvider, SportType
 try:
     from infrastructure.cache.redis_pool import FantasyRedisPool, get_redis_pool
 except ImportError:
@@ -77,20 +77,6 @@ except ImportError:
 
 logger = get_logger(__name__)
 tracer = get_tracer()
-
-
-class DataProvider(Enum):
-    """Supported sports data providers"""
-    ESPN = "espn"
-    THE_ATHLETIC = "the_athletic"
-    MOCK = "mock"  # For testing
-
-
-class SportType(Enum):
-    """Supported sports"""
-    MLB = "mlb"
-    NFL = "nfl"
-    WNBA = "wnba"
 
 
 @dataclass
