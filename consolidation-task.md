@@ -42,8 +42,8 @@
    - [X] Combine real-time coordination (redis, websocket callbacks) with validation/autopick/draft board features from legacy service.
 4. Lineups
    - [X] Integrate validation, locking, optimistic concurrency, roster manipulation from legacy service into domain implementation.
-   - [ ] Update integration fixtures/tests to provision domain teams so lineup endpoints can enforce ownership.
-   - [ ] Reinstate lineup route/service ownership validation once tests expect real team data.
+   - [X] Update integration fixtures/tests to provision domain teams so lineup endpoints can enforce ownership.
+   - [X] Reinstate lineup route/service ownership validation once tests expect real team data.
 5. Scoring
    - [X] Unify stat ingestion, scoring rules, projections, and aggregate APIs into `domains/scoring/services`.
 6. Trading/Waivers

@@ -164,6 +164,117 @@ def waitlist_service(test_session):
     return WaitlistService(db_session=test_session)
 
 
+# Data provisioning fixtures for lineup ownership tests
+@pytest.fixture
+def test_user_data(test_session):
+    """Create test user data for lineup ownership tests."""
+    import uuid
+    from domains.users.models.user import User
+
+    user_id = uuid.uuid4()
+    user = User(
+        user_id=user_id,
+        username="testuser",
+        email="testuser@example.com",
+        cognito_sub=str(user_id),
+        password_hash="$2b$12$test_hash_for_testing_purposes",  # Required field
+        display_name="Test User",
+        is_active=True
+    )
+    test_session.add(user)
+    test_session.commit()
+
+    return {
+        "user_id": user_id,
+        "user": user
+    }
+
+
+@pytest.fixture
+def test_league_data(test_session, test_user_data):
+    """Create test league data for lineup ownership tests."""
+    import uuid
+    from domains.leagues.models.league import League
+
+    league_id = uuid.uuid4()
+    league = League(
+        league_id=league_id,
+        name="Test League",
+        commissioner_id=test_user_data["user_id"],
+        sport="nfl",
+        league_type="head_to_head",  # Required field - must be 'head_to_head' or 'rotisserie'
+        season="2024",  # Required field
+        max_teams=10,
+        status="active",
+        invite_code="TEST123"  # Required field
+    )
+    test_session.add(league)
+    test_session.commit()
+
+    return {
+        "league_id": league_id,
+        "league": league,
+        "commissioner_id": test_user_data["user_id"]
+    }
+
+
+@pytest.fixture
+def test_team_data(test_session, test_user_data, test_league_data):
+    """Create test team data for lineup ownership tests."""
+    import uuid
+    from domains.leagues.models.team import Team
+
+    team_id = uuid.uuid4()
+    team = Team(
+        team_id=team_id,
+        league_id=test_league_data["league_id"],
+        user_id=test_user_data["user_id"],
+        team_name="Test Team",
+        waiver_priority=1  # Use waiver_priority instead of draft_position
+    )
+    test_session.add(team)
+    test_session.commit()
+
+    return {
+        "team_id": team_id,
+        "team": team,
+        "league_id": test_league_data["league_id"],
+        "user_id": test_user_data["user_id"]
+    }
+
+
+@pytest.fixture
+def test_lineup_data(test_session, test_team_data):
+    """Create test lineup data for ownership tests."""
+    import uuid
+    from datetime import date
+    from domains.lineups.models.lineup import Lineup
+
+    lineup_id = uuid.uuid4()
+    lineup = Lineup(
+        lineup_id=lineup_id,
+        team_id=test_team_data["team_id"],
+        week=1,
+        game_day=date.today(),
+        players=[
+            {"player_id": str(uuid.uuid4()), "position": "QB"},
+            {"player_id": str(uuid.uuid4()), "position": "RB"}
+        ],
+        version=1,
+        is_locked=False,
+        points_scored=0.0
+    )
+    test_session.add(lineup)
+    test_session.commit()
+
+    return {
+        "lineup_id": lineup_id,
+        "lineup": lineup,
+        "team_id": test_team_data["team_id"],
+        "user_id": test_team_data["user_id"]
+    }
+
+
 # Mock the container for tests that need it
 @pytest.fixture
 def mock_container(test_session):
