@@ -9,6 +9,7 @@ from pathlib import Path
 
 import jwt
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
 
 
 def backend_src_path() -> Path:
@@ -21,10 +22,24 @@ def app_client() -> TestClient:
     os.environ["AUTH_DEV_SECRET"] = "test-secret"
 
     # Ensure tables exist for in-memory sqlite
-    Base = importlib.import_module("models.base").Base
-    get_engine = importlib.import_module("services.db").get_engine
-    engine = get_engine()
+    Base = importlib.import_module("domains.shared.models.base").Base
+    importlib.import_module("domains.users.models.user")
+    importlib.import_module("domains.leagues.models.league")
+    importlib.import_module("domains.leagues.models.team")
+    importlib.import_module("domains.lineups.models.lineup")
+    importlib.import_module("domains.sports.models.player")
+    importlib.import_module("domains.trading.models.waiver")
+    importlib.import_module("domains.trading.models.transaction")
+    database_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///test.db")
+    os.environ["DATABASE_URL"] = database_url
+    reset_session_factory = importlib.import_module(
+        "infrastructure.database.session_factory"
+    ).reset_session_factory
+    connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+    engine = create_engine(database_url, future=True, connect_args=connect_args)
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    reset_session_factory()
 
     app_module = importlib.import_module("main")
     return TestClient(app_module.app)

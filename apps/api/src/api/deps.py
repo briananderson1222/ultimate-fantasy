@@ -4,31 +4,93 @@ import os
 import uuid as _uuid
 from collections.abc import Generator
 
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from services.db import SessionLocal
+from domains.leagues.services.league_service import LeagueService
+from domains.lineups.services.lineup_service import LineupService
+from domains.scoring.services.scoring_service import ScoringService
+from domains.trading.services.trading_service import TradingService
+from domains.users.services.user_service import UserService
+from domains.waitlist.services.waitlist_service import WaitlistService
+from domains.shared.models.base import Base as DomainBase
+from infrastructure.database.session_factory import get_session_factory
+from models.base import Base as LegacyBase
+
+
+def _ensure_sqlite_schema() -> None:
+    """Create tables automatically when running against SQLite.
+
+    This mirrors the legacy behaviour that kept ad-hoc dev/test runs working
+    without migrations while the new infrastructure manager is still being
+    wired in.
+    """
+
+    url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    if not url.startswith("sqlite"):
+        return
+
+    # The infrastructure database manager is responsible for metadata, but
+    # the declarative base still needs to be registered once for SQLite.
+    factory = get_session_factory()
+    session = factory.get_sync_session()
+    try:
+        engine = session.get_bind()
+        DomainBase.metadata.create_all(bind=engine)
+        LegacyBase.metadata.create_all(bind=engine)
+    finally:
+        session.close()
 
 
 def get_db() -> Generator[Session, None, None]:
-    # Ensure tables exist for SQLite (test environments)
-    url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
-    if url.startswith("sqlite"):
-        from models.base import Base
-        from services.db import get_engine
+    _ensure_sqlite_schema()
 
-        engine = get_engine()
-        Base.metadata.create_all(bind=engine)
-
-    db = SessionLocal()
+    factory = get_session_factory()
+    session = factory.get_sync_session()
     try:
-        yield db
-        db.commit()
+        yield session
+        session.commit()
     except Exception:
-        db.rollback()
+        session.rollback()
         raise
     finally:
-        db.close()
+        session.close()
+
+
+def get_league_service(db: Session = Depends(get_db)) -> LeagueService:
+    """FastAPI dependency that returns a per-request league service."""
+
+    return LeagueService(db)
+
+
+def get_user_service(db: Session = Depends(get_db)) -> UserService:
+    """FastAPI dependency that returns a per-request user service."""
+
+    return UserService(db)
+
+
+def get_lineup_service(db: Session = Depends(get_db)) -> LineupService:
+    """FastAPI dependency that returns a per-request lineup service."""
+
+    return LineupService(db)
+
+
+def get_trading_service(db: Session = Depends(get_db)) -> TradingService:
+    """FastAPI dependency that returns a per-request trading service."""
+
+    return TradingService(db)
+
+
+def get_scoring_service(db: Session = Depends(get_db)) -> ScoringService:
+    """FastAPI dependency that returns a per-request scoring service."""
+
+    return ScoringService(db)
+
+
+def get_waitlist_service(db: Session = Depends(get_db)) -> WaitlistService:
+    """FastAPI dependency that returns a per-request waitlist service."""
+
+    return WaitlistService(db)
 
 
 def get_current_user_id(request: Request) -> _uuid.UUID:

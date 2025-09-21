@@ -44,17 +44,17 @@ fi
 if [[ "$DATABASE_URL" == postgresql* ]]; then
     echo "🔍 Testing PostgreSQL connection..."
     if ! uv run python -c "
-import sys
-sys.path.insert(0, 'src')
+import os
+from sqlalchemy import create_engine, text
+
+database_url = os.getenv('DATABASE_URL')
+engine = create_engine(database_url, future=True)
 try:
-    from services.db import get_engine
-    engine = get_engine()
     with engine.connect() as conn:
-        pass
+        conn.execute(text('SELECT 1'))
     print('✅ PostgreSQL connection successful')
 except Exception as e:
     print(f'⚠️  PostgreSQL connection failed: {e}')
-    print('🔄 Switching to SQLite fallback...')
     raise SystemExit(1)
 " 2>/dev/null; then
         echo "🔄 Switching to SQLite fallback..."

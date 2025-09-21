@@ -8,9 +8,10 @@ import time
 import logging
 import os
 import uuid as _uuid
+from collections import defaultdict
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Any, Callable
-from collections import defaultdict
 
 import jwt
 from jwt import PyJWKClient
@@ -27,16 +28,32 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import redis.asyncio as redis
 from sqlalchemy.orm import Session
 
-from ...infrastructure.database import get_db_session
-from ...infrastructure.config import settings
-from ...domains.users.services.user_service import UserService
-from ...domains.shared.exceptions import (
-    AuthenticationError,
-    AuthorizationError,
-    RateLimitExceededError,
-    TokenExpiredError,
-    InvalidTokenError
+from infrastructure.database.session_factory import (
+    get_db_session as get_async_db_session,
+    get_session_factory,
 )
+from infrastructure.config import settings
+from domains.users.services.user_service import UserService
+
+
+class AuthenticationError(Exception):
+    """Raised when authentication fails or credentials are invalid."""
+
+
+class AuthorizationError(Exception):
+    """Raised when a user is not permitted to perform an action."""
+
+
+class RateLimitExceededError(Exception):
+    """Raised when client exceeds configured rate limits."""
+
+
+class TokenExpiredError(Exception):
+    """Raised when JWT token has expired."""
+
+
+class InvalidTokenError(Exception):
+    """Raised for malformed or unrecognized JWT tokens."""
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +61,22 @@ logger = logging.getLogger(__name__)
 
 # Security scheme for FastAPI
 security = HTTPBearer(auto_error=False)
+
+
+@contextmanager
+def sync_db_session():
+    """Provide a synchronous database session scope."""
+
+    factory = get_session_factory()
+    session = factory.get_sync_session()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 class TokenManager:
@@ -522,15 +555,12 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 # Persist/update user from claims when available
                 if request.state.user_claims and sub:
                     try:
-                        # Updated import paths
-                        from ...domains.users.services.user_service import UserService
-                        from ...infrastructure.database import get_db_session
-
-                        with get_db_session() as sess:
-                            user_service = UserService()
-                            user = user_service.get_user(str(sub), sess)
-                            if user:
-                                request.state.user_id = user.user_id
+                        with sync_db_session() as sess:
+                            user_service = UserService(sess)
+                            user = user_service.ensure_user_from_claims(
+                                request.state.user_claims
+                            )
+                            request.state.user_id = user.user_id
                     except Exception:
                         # fallback: set UUID from sub if valid, otherwise None
                         try:
@@ -664,7 +694,7 @@ token_manager = TokenManager()
 # Dependency functions for FastAPI
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_async_db_session)
 ) -> Dict[str, Any]:
     """
     FastAPI dependency to get current authenticated user
@@ -716,7 +746,7 @@ async def get_current_user(
 
 async def get_optional_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_async_db_session)
 ) -> Optional[Dict[str, Any]]:
     """
     FastAPI dependency to optionally get current authenticated user
