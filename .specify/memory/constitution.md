@@ -1,50 +1,54 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: template → 1.0.0
+- Modified principles: All sections initialized from template
+- Added sections: Package-First, API-First, Test-First, Platform-First, Observability
+- Removed sections: N/A (initial constitution)
+- Templates requiring updates: ✅ all validated
+- Follow-up TODOs: None
+-->
+
+# Ultimate Fantasy Platform Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Package-First
+Every feature MUST start as a standalone package. Packages MUST be self-contained, independently testable, and documented. Clear business purpose required - no organizational-only packages. All packages MUST support both web and mobile platforms through unified interfaces.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+**Rationale**: Ensures reusability across web and mobile applications while maintaining clear architectural boundaries and enabling parallel development.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. API-First
+Every service MUST expose functionality via well-defined APIs. REST endpoints MUST follow OpenAPI specifications. All contract changes MUST be backward compatible or versioned. Real-time features MUST use WebSocket protocols with fallback mechanisms.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Enables independent development of frontend applications, supports multiple client platforms, and ensures consistent integration patterns.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Test-First (NON-NEGOTIABLE)
+TDD mandatory: Tests written → User approved → Tests fail → Then implement. Red-Green-Refactor cycle strictly enforced. Contract tests MUST validate API specifications. Performance tests MUST verify <200ms p95 response times.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: Ensures code quality, prevents regressions, validates requirements early, and maintains performance standards under load.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Platform-First
+All shared code MUST work on web and mobile platforms. UI components MUST support responsive design and native mobile interfaces. API clients MUST handle network failures and offline scenarios gracefully.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Maximizes code reuse across platforms while providing optimal user experience on each target platform.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Observability
+Structured logging required using JSON format. All services MUST implement health checks and metrics collection. Performance monitoring MUST track key business metrics. Distributed tracing MUST be enabled for debugging complex flows.
+
+**Rationale**: Enables proactive issue detection, supports data-driven optimization decisions, and facilitates rapid debugging in production environments.
+
+## Technology Standards
+
+TypeScript MUST be used for all frontend code with strict mode enabled. Python 3.11+ MUST be used for backend services with type hints required. Database schema changes MUST use migrations with rollback procedures. All code MUST pass linting (ESLint/ruff) and formatting (Prettier/black) checks.
+
+## Quality Gates
+
+Code review required for all changes with automated CI/CD checks. Test coverage MUST maintain >90% for critical business logic. Performance regression tests MUST pass before deployment. Security scans MUST clear before production release.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices. Amendments require documentation of impact, stakeholder approval, and migration plan for existing code. All implementation plans and code reviews MUST verify constitutional compliance.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Complexity deviations from these principles MUST be explicitly justified in writing with simpler alternatives documented and rejected rationale provided. Use `.specify/templates/` for development guidance aligned with these principles.
+
+**Version**: 1.0.0 | **Ratified**: 2025-09-20 | **Last Amended**: 2025-09-20

@@ -47,7 +47,30 @@
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Package-First Compliance
+- [ ] Feature starts as standalone package with clear business purpose
+- [ ] Package is self-contained and independently testable
+- [ ] Package supports both web and mobile platforms
+
+### API-First Compliance
+- [ ] Service exposes well-defined APIs with OpenAPI specifications
+- [ ] Contract changes are backward compatible or properly versioned
+- [ ] Real-time features use WebSocket protocols with fallbacks
+
+### Test-First Compliance (NON-NEGOTIABLE)
+- [ ] TDD approach: Tests written before implementation
+- [ ] Contract tests validate API specifications
+- [ ] Performance tests verify <200ms p95 response times
+
+### Platform-First Compliance
+- [ ] Shared code works on web and mobile platforms
+- [ ] UI components support responsive design and native interfaces
+- [ ] API clients handle network failures and offline scenarios
+
+### Observability Compliance
+- [ ] Structured logging using JSON format implemented
+- [ ] Health checks and metrics collection included
+- [ ] Performance monitoring tracks key business metrics
 
 ## Project Structure
 
@@ -208,4 +231,4 @@ ios/ or android/
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*
