@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ...infrastructure.database.session_factory import get_db_session
 from ...domains.leagues.services.league_service import LeagueService
-from ...domains.users.services.user_service import UserService
+from ...api.deps import get_league_service
 from ...domains.shared.exceptions import (
     LeagueNotFoundError, UserNotFoundError, LeagueFullError,
     InvalidInviteCodeError, AlreadyInLeagueError, InsufficientPermissionsError,
@@ -24,10 +24,6 @@ from ...models.league import League, Team, LeagueStatus, SportType
 
 
 router = APIRouter(prefix="/api/v1/leagues", tags=["leagues"])
-
-league_service = LeagueService()
-user_service = UserService()
-
 
 # Pydantic Models for Request/Response
 class CreateLeagueRequest(BaseModel):
@@ -135,7 +131,8 @@ class LeagueMemberResponse(BaseModel):
 async def create_league(
     request: CreateLeagueRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Create a new fantasy league with the current user as commissioner"""
     try:
@@ -172,7 +169,8 @@ async def create_league(
 async def get_league(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Get league details by ID"""
     try:
@@ -204,7 +202,8 @@ async def update_league(
     league_id: str,
     request: UpdateLeagueRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Update league settings (commissioner only)"""
     try:
@@ -245,7 +244,8 @@ async def update_league(
 async def delete_league(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Delete a league (commissioner only, before draft)"""
     try:
@@ -281,7 +281,8 @@ async def join_league(
     league_id: str,
     request: JoinLeagueRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Join a league using invite code"""
     try:
@@ -325,7 +326,8 @@ async def join_league(
 async def leave_league(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Leave a league (not allowed after draft starts)"""
     try:
@@ -353,7 +355,8 @@ async def leave_league(
 async def get_league_members(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Get all league members and their teams"""
     try:
@@ -384,7 +387,8 @@ async def remove_member(
     league_id: str,
     user_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Remove a member from league (commissioner only, before draft)"""
     try:
@@ -425,7 +429,8 @@ async def update_team(
     league_id: str,
     request: UpdateTeamRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Update user's team in the league"""
     try:
@@ -456,7 +461,8 @@ async def update_team(
 async def get_league_standings(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Get league standings and season statistics"""
     try:
@@ -488,7 +494,8 @@ async def transfer_commissioner(
     league_id: str,
     request: TransferCommissionerRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Transfer commissioner role to another league member"""
     try:
@@ -532,7 +539,8 @@ async def transfer_commissioner(
 async def regenerate_invite_code(
     league_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Regenerate league invite code (commissioner only)"""
     try:
@@ -568,7 +576,8 @@ async def get_user_leagues(
     current_user: dict = Depends(get_current_user),
     sport: Optional[str] = Query(None, description="Filter by sport"),
     status: Optional[str] = Query(None, description="Filter by league status"),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Get all leagues the current user is a member of"""
     try:
@@ -598,7 +607,8 @@ async def get_public_leagues(
     league_type: Optional[str] = Query(None, description="Filter by league type"),
     limit: int = Query(default=20, le=100, description="Maximum number of results"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
-    db: Session = Depends(get_db_session)
+    db: Session = Depends(get_db_session),
+    league_service: LeagueService = Depends(get_league_service)
 ):
     """Get public leagues available for joining"""
     try:
