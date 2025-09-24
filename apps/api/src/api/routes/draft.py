@@ -1,17 +1,22 @@
 import json
-from datetime import datetime, date
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import BaseModel, Field
 
 from api.deps import get_draft_service, get_league_service
 from domains.drafts.services.draft_service import (
     DraftService,
     DraftServiceError,
-    DraftNotFoundError,
     DraftSettings,
-    InvalidDraftStateError,
 )
 from domains.leagues.services.league_service import LeagueService
 from domains.shared.exceptions import LeagueNotFoundError, UserNotFoundError
@@ -25,13 +30,23 @@ router = APIRouter(prefix="/api/v1/draft", tags=["draft"])
 
 # Pydantic models for request/response
 class DraftCreateRequest(BaseModel):
-    draft_type: str = Field(default="snake", description="Type of draft (snake, auction, linear)")
-    pick_timer_seconds: int = Field(default=90, ge=30, le=300, description="Time limit per pick in seconds")
-    auto_draft_enabled: bool = Field(default=True, description="Enable auto-draft for inactive users")
-    rounds: Optional[int] = Field(default=None, ge=1, description="Override number of draft rounds")
+    draft_type: str = Field(
+        default="snake", description="Type of draft (snake, auction, linear)"
+    )
+    pick_timer_seconds: int = Field(
+        default=90, ge=30, le=300, description="Time limit per pick in seconds"
+    )
+    auto_draft_enabled: bool = Field(
+        default=True, description="Enable auto-draft for inactive users"
+    )
+    rounds: int | None = Field(
+        default=None, ge=1, description="Override number of draft rounds"
+    )
+
 
 class DraftPickRequest(BaseModel):
     player_id: str = Field(description="ID of player to draft")
+
 
 class DraftResponse(BaseModel):
     draft_id: str
@@ -42,23 +57,26 @@ class DraftResponse(BaseModel):
     pick_timer_seconds: int
     current_pick: int
     total_picks: int
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    started_at: datetime | None
+    completed_at: datetime | None
+
 
 class DraftBoardResponse(BaseModel):
     draft: DraftResponse
-    teams: List[Dict[str, Any]]
-    picks: List[Dict[str, Any]]
-    current_pick: Optional[Dict[str, Any]]
-    draft_order: List[str]
+    teams: list[dict[str, Any]]
+    picks: list[dict[str, Any]]
+    current_pick: dict[str, Any] | None
+    draft_order: list[str]
+
 
 class AvailablePlayersResponse(BaseModel):
-    players: List[Dict[str, Any]]
+    players: list[dict[str, Any]]
     total_count: int
     has_more: bool
 
 
 # Draft Management Endpoints
+
 
 @router.get("/{league_id}", response_model=DraftBoardResponse)
 async def get_draft_status(
@@ -81,7 +99,9 @@ async def get_draft_status(
         # Get draft by league
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         # Verify user is in the league
         try:
@@ -89,7 +109,9 @@ async def get_draft_status(
                 league_id=league_id, user_id=current_user["user_id"]
             )
         except UserNotFoundError:
-            raise HTTPException(status_code=403, detail="User is not in this league") from None
+            raise HTTPException(
+                status_code=403, detail="User is not in this league"
+            ) from None
 
         # Get complete draft board
         draft_board = draft_service.get_draft_board(str(draft.draft_id))
@@ -104,7 +126,9 @@ async def get_draft_status(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/{league_id}", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{league_id}", response_model=DraftResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_draft(
     league_id: str,
     request: DraftCreateRequest,
@@ -128,7 +152,9 @@ async def create_draft(
             raise HTTPException(status_code=404, detail="League not found") from None
 
         if str(league.commissioner_id) != current_user["user_id"]:
-            raise HTTPException(status_code=403, detail="Only league commissioner can create draft")
+            raise HTTPException(
+                status_code=403, detail="Only league commissioner can create draft"
+            )
 
         # Create draft settings
         draft_settings = DraftSettings(
@@ -155,7 +181,7 @@ async def create_draft(
             current_pick=draft.current_pick,
             total_picks=len(draft.draft_order or []) * draft.rounds,
             started_at=draft.started_at,
-            completed_at=draft.completed_at
+            completed_at=draft.completed_at,
         )
 
     except DraftServiceError as e:
@@ -183,7 +209,9 @@ async def start_draft(
         # Get draft
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         # Start the draft
         updated_draft = draft_service.start_draft(
@@ -195,7 +223,7 @@ async def start_draft(
             "message": "Draft started successfully",
             "draft_id": str(updated_draft.draft_id),
             "status": updated_draft.status,
-            "current_pick": updated_draft.current_pick
+            "current_pick": updated_draft.current_pick,
         }
 
     except DraftServiceError as e:
@@ -220,7 +248,9 @@ async def pause_draft(
     try:
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         updated_draft = draft_service.pause_draft(
             str(draft.draft_id),
@@ -230,7 +260,7 @@ async def pause_draft(
         return {
             "message": "Draft paused successfully",
             "draft_id": str(updated_draft.draft_id),
-            "status": updated_draft.status
+            "status": updated_draft.status,
         }
 
     except DraftServiceError as e:
@@ -255,7 +285,9 @@ async def resume_draft(
     try:
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         updated_draft = draft_service.resume_draft(
             str(draft.draft_id),
@@ -265,7 +297,7 @@ async def resume_draft(
         return {
             "message": "Draft resumed successfully",
             "draft_id": str(updated_draft.draft_id),
-            "status": updated_draft.status
+            "status": updated_draft.status,
         }
 
     except DraftServiceError as e:
@@ -277,6 +309,7 @@ async def resume_draft(
 
 
 # Draft Pick Endpoints
+
 
 @router.post("/{league_id}/pick")
 async def make_draft_pick(
@@ -296,7 +329,9 @@ async def make_draft_pick(
         # Get draft
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         # Get user's team in this league
         try:
@@ -304,7 +339,9 @@ async def make_draft_pick(
                 league_id=league_id, user_id=current_user["user_id"]
             )
         except UserNotFoundError:
-            raise HTTPException(status_code=403, detail="User is not in this league") from None
+            raise HTTPException(
+                status_code=403, detail="User is not in this league"
+            ) from None
 
         # Make the pick
         pick = draft_service.make_pick(
@@ -321,7 +358,7 @@ async def make_draft_pick(
             "round_number": pick.round_number,
             "player_id": pick.player_id,
             "team_id": pick.team_id,
-            "pick_time": pick.pick_time.isoformat() if pick.pick_time else None
+            "pick_time": pick.pick_time.isoformat() if pick.pick_time else None,
         }
 
     except DraftServiceError as e:
@@ -335,8 +372,8 @@ async def make_draft_pick(
 @router.get("/{league_id}/available-players", response_model=AvailablePlayersResponse)
 async def get_available_players(
     league_id: str,
-    position: Optional[str] = None,
-    search: Optional[str] = None,
+    position: str | None = None,
+    search: str | None = None,
     limit: int = 50,
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
@@ -356,12 +393,16 @@ async def get_available_players(
                 league_id=league_id, user_id=current_user["user_id"]
             )
         except UserNotFoundError:
-            raise HTTPException(status_code=403, detail="User is not in this league") from None
+            raise HTTPException(
+                status_code=403, detail="User is not in this league"
+            ) from None
 
         # Get draft
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         # Get available players
         available_players = draft_service.get_available_players(
@@ -375,8 +416,7 @@ async def get_available_players(
         if search:
             search_lower = search.lower()
             available_players = [
-                p for p in available_players
-                if search_lower in p["name"].lower()
+                p for p in available_players if search_lower in p["name"].lower()
             ]
 
         has_more = len(available_players) > limit
@@ -386,7 +426,7 @@ async def get_available_players(
         return AvailablePlayersResponse(
             players=available_players,
             total_count=len(available_players),
-            has_more=has_more
+            has_more=has_more,
         )
 
     except DraftServiceError as e:
@@ -417,12 +457,16 @@ async def enable_autopick(
                 league_id=league_id, user_id=current_user["user_id"]
             )
         except UserNotFoundError:
-            raise HTTPException(status_code=403, detail="User is not in this league") from None
+            raise HTTPException(
+                status_code=403, detail="User is not in this league"
+            ) from None
 
         # Get draft
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         # Enable auto-draft
         draft_service.enable_autodraft_for_team(
@@ -442,6 +486,7 @@ async def enable_autopick(
 
 
 # Draft Statistics and Analysis
+
 
 @router.get("/{league_id}/summary")
 async def get_draft_summary(
@@ -465,12 +510,16 @@ async def get_draft_summary(
                 league_id=league_id, user_id=current_user["user_id"]
             )
         except UserNotFoundError:
-            raise HTTPException(status_code=403, detail="User is not in this league") from None
+            raise HTTPException(
+                status_code=403, detail="User is not in this league"
+            ) from None
 
         # Get draft
         draft = draft_service.get_draft_by_league(league_id)
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found for this league")
+            raise HTTPException(
+                status_code=404, detail="Draft not found for this league"
+            )
 
         # Get summary
         summary = draft_service.get_draft_summary(str(draft.draft_id))
@@ -487,9 +536,10 @@ async def get_draft_summary(
 
 # WebSocket for Real-time Draft Updates
 
+
 class DraftConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
+        self.active_connections: dict[str, list[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, draft_id: str):
         await websocket.accept()
@@ -515,8 +565,10 @@ class DraftConnectionManager:
             for conn in disconnected:
                 self.active_connections[draft_id].remove(conn)
 
+
 # Global connection manager
 connection_manager = DraftConnectionManager()
+
 
 @router.websocket("/{league_id}/ws")
 async def draft_websocket_endpoint(
@@ -552,18 +604,20 @@ async def draft_websocket_endpoint(
         try:
             # Send initial draft state
             draft_board = draft_service.get_draft_board(draft_id)
-            await websocket.send_text(json.dumps({
-                "type": "draft_state",
-                "data": draft_board
-            }))
+            await websocket.send_text(
+                json.dumps({"type": "draft_state", "data": draft_board})
+            )
 
             # Register timer callback for this draft
             def timer_callback(time_remaining: int):
                 import asyncio
-                asyncio.create_task(connection_manager.broadcast_to_draft(draft_id, {
-                    "type": "timer_update",
-                    "time_remaining": time_remaining
-                }))
+
+                asyncio.create_task(
+                    connection_manager.broadcast_to_draft(
+                        draft_id,
+                        {"type": "timer_update", "time_remaining": time_remaining},
+                    )
+                )
 
             draft_service.register_timer_callback(draft_id, timer_callback)
 
@@ -578,10 +632,9 @@ async def draft_websocket_endpoint(
                 elif message.get("type") == "request_draft_state":
                     # Send updated draft state
                     draft_board = draft_service.get_draft_board(draft_id)
-                    await websocket.send_text(json.dumps({
-                        "type": "draft_state",
-                        "data": draft_board
-                    }))
+                    await websocket.send_text(
+                        json.dumps({"type": "draft_state", "data": draft_board})
+                    )
 
         except WebSocketDisconnect:
             connection_manager.disconnect(websocket, draft_id)
@@ -601,6 +654,6 @@ async def broadcast_draft_update(draft_id: str, update_type: str, data: dict):
     message = {
         "type": update_type,
         "data": data,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
     await connection_manager.broadcast_to_draft(draft_id, message)

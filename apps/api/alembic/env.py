@@ -26,8 +26,8 @@ if config.config_file_name is not None:
 def get_url() -> str:
     url = os.getenv("DATABASE_URL")
     if not url:
-        # Default to a local development PostgreSQL URL
-        url = "postgresql+psycopg://postgres:postgres@localhost:5432/ultimate_fantasy"
+        # Default to SQLite for local development
+        url = "sqlite:///./ultimate_fantasy.db"
     return url
 
 

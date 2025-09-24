@@ -9,13 +9,16 @@ import importlib
 import os
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 from typing import AsyncGenerator
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+import jwt
 
 
 def backend_src_path() -> Path:
@@ -34,8 +37,23 @@ def setup_import_path():
 @pytest.fixture(scope="session")
 def test_database_url():
     """Create a temporary database for testing."""
-    # Use in-memory SQLite for tests
-    return "sqlite:///:memory:"
+    import tempfile
+    import os
+
+    # Create a temporary database file that both test and app can access
+    db_fd, db_path = tempfile.mkstemp(suffix='.db')
+    os.close(db_fd)  # Close the file descriptor, but keep the file
+
+    # Set environment variable so the app uses the same database
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+
+    yield f"sqlite:///{db_path}"
+
+    # Cleanup
+    try:
+        os.unlink(db_path)
+    except:
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -110,6 +128,104 @@ def app():
 
 
 @pytest.fixture
+def test_user(test_session):
+    """Create a test user in the database using user service."""
+    from domains.users.services.user_service import UserService
+
+    user_service = UserService(test_session)
+
+    # Create JWT claims that will be used to create the user
+    test_claims = {
+        "sub": str(uuid.uuid4()),
+        "username": "test_user",
+        "email": "test@example.com",
+        "name": "Test User",
+        "given_name": "Test",
+        "family_name": "User"
+    }
+
+    # Use the ensure_user_from_claims method (the lazy-loaded method you mentioned)
+    test_user = user_service.ensure_user_from_claims(test_claims)
+    test_session.commit()
+    test_session.refresh(test_user)
+
+    return test_user
+
+
+@pytest.fixture
+def test_jwt_token(test_user):
+    """Generate a valid JWT token for the test user."""
+    # Use same secret as the app (this should match your settings)
+    secret_key = os.getenv("JWT_SECRET_KEY", "your-secret-key-here")
+    algorithm = "HS256"
+
+    # Create test user payload
+    payload = {
+        "sub": str(test_user.user_id),
+        "username": test_user.username,
+        "email": test_user.email,
+        "roles": ["user"],
+        "permissions": [],
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow() + timedelta(hours=24),  # Valid for 24 hours
+        "type": "access"  # Required by auth middleware
+    }
+
+    # Generate token
+    token = jwt.encode(payload, secret_key, algorithm=algorithm)
+    return token
+
+
+@pytest.fixture
+def invalid_jwt_token():
+    """Generate an invalid JWT token for testing auth failures."""
+    return "invalid.jwt.token"
+
+
+@pytest.fixture
+def expired_jwt_token(test_user):
+    """Generate an expired JWT token for testing."""
+    secret_key = os.getenv("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
+    algorithm = "HS256"
+
+    # Create expired token
+    payload = {
+        "sub": str(test_user.user_id),
+        "username": test_user.username,
+        "email": test_user.email,
+        "roles": ["user"],
+        "permissions": [],
+        "iat": datetime.utcnow() - timedelta(hours=25),
+        "exp": datetime.utcnow() - timedelta(hours=1)  # Expired 1 hour ago
+    }
+
+    token = jwt.encode(payload, secret_key, algorithm=algorithm)
+    return token
+
+
+@pytest.fixture
+def authenticated_client(app, test_jwt_token):
+    """Create FastAPI test client with valid authentication headers."""
+    client = TestClient(app)
+    client.headers.update({"Authorization": f"Bearer {test_jwt_token}"})
+    return client
+
+
+@pytest.fixture
+def unauthenticated_client(app):
+    """Create FastAPI test client without authentication headers."""
+    return TestClient(app)
+
+
+@pytest.fixture
+def invalid_auth_client(app, invalid_jwt_token):
+    """Create FastAPI test client with invalid authentication headers."""
+    client = TestClient(app)
+    client.headers.update({"Authorization": f"Bearer {invalid_jwt_token}"})
+    return client
+
+
+@pytest.fixture
 def client(app):
     """Create FastAPI test client."""
     return TestClient(app)
@@ -179,15 +295,12 @@ def test_user_data(test_session):
         cognito_sub=str(user_id),
         password_hash="$2b$12$test_hash_for_testing_purposes",  # Required field
         display_name="Test User",
-        is_active=True
+        is_active=True,
     )
     test_session.add(user)
     test_session.commit()
 
-    return {
-        "user_id": user_id,
-        "user": user
-    }
+    return {"user_id": user_id, "user": user}
 
 
 @pytest.fixture
@@ -206,7 +319,7 @@ def test_league_data(test_session, test_user_data):
         season="2024",  # Required field
         max_teams=10,
         status="active",
-        invite_code="TEST123"  # Required field
+        invite_code="TEST123",  # Required field
     )
     test_session.add(league)
     test_session.commit()
@@ -214,7 +327,7 @@ def test_league_data(test_session, test_user_data):
     return {
         "league_id": league_id,
         "league": league,
-        "commissioner_id": test_user_data["user_id"]
+        "commissioner_id": test_user_data["user_id"],
     }
 
 
@@ -230,7 +343,7 @@ def test_team_data(test_session, test_user_data, test_league_data):
         league_id=test_league_data["league_id"],
         user_id=test_user_data["user_id"],
         team_name="Test Team",
-        waiver_priority=1  # Use waiver_priority instead of draft_position
+        waiver_priority=1,  # Use waiver_priority instead of draft_position
     )
     test_session.add(team)
     test_session.commit()
@@ -239,7 +352,7 @@ def test_team_data(test_session, test_user_data, test_league_data):
         "team_id": team_id,
         "team": team,
         "league_id": test_league_data["league_id"],
-        "user_id": test_user_data["user_id"]
+        "user_id": test_user_data["user_id"],
     }
 
 
@@ -258,11 +371,11 @@ def test_lineup_data(test_session, test_team_data):
         game_day=date.today(),
         players=[
             {"player_id": str(uuid.uuid4()), "position": "QB"},
-            {"player_id": str(uuid.uuid4()), "position": "RB"}
+            {"player_id": str(uuid.uuid4()), "position": "RB"},
         ],
         version=1,
         is_locked=False,
-        points_scored=0.0
+        points_scored=0.0,
     )
     test_session.add(lineup)
     test_session.commit()
@@ -271,7 +384,7 @@ def test_lineup_data(test_session, test_team_data):
         "lineup_id": lineup_id,
         "lineup": lineup,
         "team_id": test_team_data["team_id"],
-        "user_id": test_team_data["user_id"]
+        "user_id": test_team_data["user_id"],
     }
 
 

@@ -39,16 +39,18 @@ def make_app() -> TestClient:
     importlib.import_module("domains.scoring.models.score")
     importlib.import_module("domains.shared.models.achievement")
     importlib.import_module("domains.sports.models.player")
-    importlib.import_module("models.notification")  # Central models still exist
-    importlib.import_module("models.preset")
-    importlib.import_module("models.roster")
-    importlib.import_module("models.rule")
-    importlib.import_module("models.schedule")
+    importlib.import_module("domains.shared.models.notification")  # Central models still exist
+    importlib.import_module("domains.shared.models.preset")
+    importlib.import_module("domains.shared.models.roster")
+    importlib.import_module("domains.shared.models.rule")
+    importlib.import_module("domains.shared.models.schedule")
 
     reset_session_factory = importlib.import_module(
         "infrastructure.database.session_factory"
     ).reset_session_factory
-    connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+    connect_args = (
+        {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+    )
     engine = create_engine(database_url, future=True, connect_args=connect_args)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

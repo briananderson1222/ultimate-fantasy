@@ -4,26 +4,31 @@ Provides REST API for league CRUD operations, membership management, and setting
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, validator
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from ...infrastructure.database.session_factory import get_db_session
-from ...domains.leagues.services.league_service import LeagueService
-from ...api.deps import get_league_service
-from ...domains.shared.exceptions import (
-    LeagueNotFoundError, UserNotFoundError, LeagueFullError,
-    InvalidInviteCodeError, AlreadyInLeagueError, InsufficientPermissionsError,
-    LeagueValidationError, CommissionerOnlyError
+from api.deps import get_league_service
+from api.middleware.auth import get_current_user
+from api.models.response import APIResponse
+from domains.leagues.services.league_service import LeagueService
+from domains.shared.enums import LeagueStatus
+from domains.shared.exceptions import (
+    AlreadyInLeagueError,
+    CommissionerOnlyError,
+    InvalidInviteCodeError,
+    LeagueFullError,
+    LeagueNotFoundError,
+    LeagueValidationError,
+    UserNotFoundError,
 )
-from ..middleware.auth import get_current_user
-from ..models.response import APIResponse, ErrorResponse
-from ...models.league import League, Team, LeagueStatus, SportType
-
+from infrastructure.database.session_factory import get_db_session
 
 router = APIRouter(prefix="/api/v1/leagues", tags=["leagues"])
+
 
 # Pydantic Models for Request/Response
 class CreateLeagueRequest(BaseModel):
@@ -32,44 +37,50 @@ class CreateLeagueRequest(BaseModel):
     league_type: str = Field(..., description="League type (standard, keeper, dynasty)")
     season: str = Field(..., description="Season year (e.g., '2024')")
     max_teams: int = Field(default=12, ge=4, le=20, description="Maximum teams allowed")
-    custom_settings: Optional[Dict[str, Any]] = Field(default=None, description="Custom league settings")
+    custom_settings: dict[str, Any] | None = Field(
+        default=None, description="Custom league settings"
+    )
 
-    @validator('sport')
+    @validator("sport")
     def validate_sport(cls, v):
-        valid_sports = ['mlb', 'nfl', 'nba', 'nhl']
+        valid_sports = ["mlb", "nfl", "nba", "nhl"]
         if v.lower() not in valid_sports:
             raise ValueError(f"Sport must be one of: {valid_sports}")
         return v.lower()
 
-    @validator('league_type')
+    @validator("league_type")
     def validate_league_type(cls, v):
-        valid_types = ['standard', 'keeper', 'dynasty']
+        valid_types = ["standard", "keeper", "dynasty"]
         if v.lower() not in valid_types:
             raise ValueError(f"League type must be one of: {valid_types}")
         return v.lower()
 
 
 class UpdateLeagueRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    max_teams: Optional[int] = Field(None, ge=4, le=20)
-    custom_settings: Optional[Dict[str, Any]] = None
-    scoring_rules: Optional[Dict[str, Any]] = None
-    roster_settings: Optional[Dict[str, Any]] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    max_teams: int | None = Field(None, ge=4, le=20)
+    custom_settings: dict[str, Any] | None = None
+    scoring_rules: dict[str, Any] | None = None
+    roster_settings: dict[str, Any] | None = None
 
 
 class JoinLeagueRequest(BaseModel):
-    invite_code: str = Field(..., min_length=8, max_length=8, description="8-character invite code")
+    invite_code: str = Field(
+        ..., min_length=8, max_length=8, description="8-character invite code"
+    )
     team_name: str = Field(..., min_length=1, max_length=50, description="Team name")
 
 
 class UpdateTeamRequest(BaseModel):
-    team_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    team_logo_url: Optional[str] = None
-    team_motto: Optional[str] = Field(None, max_length=200)
+    team_name: str | None = Field(None, min_length=1, max_length=50)
+    team_logo_url: str | None = None
+    team_motto: str | None = Field(None, max_length=200)
 
 
 class TransferCommissionerRequest(BaseModel):
-    new_commissioner_user_id: str = Field(..., description="User ID of new commissioner")
+    new_commissioner_user_id: str = Field(
+        ..., description="User ID of new commissioner"
+    )
 
 
 class LeagueResponse(BaseModel):
@@ -84,11 +95,11 @@ class LeagueResponse(BaseModel):
     current_teams: int
     invite_code: str
     created_at: datetime
-    draft_date: Optional[datetime]
-    season_start_date: Optional[datetime]
-    season_end_date: Optional[datetime]
-    scoring_rules: Dict[str, Any]
-    roster_settings: Dict[str, Any]
+    draft_date: datetime | None
+    season_start_date: datetime | None
+    season_end_date: datetime | None
+    scoring_rules: dict[str, Any]
+    roster_settings: dict[str, Any]
 
     class Config:
         from_attributes = True
@@ -99,14 +110,14 @@ class TeamResponse(BaseModel):
     league_id: str
     user_id: str
     team_name: str
-    team_logo_url: Optional[str]
-    team_motto: Optional[str]
+    team_logo_url: str | None
+    team_motto: str | None
     wins: int
     losses: int
     ties: int
     points_for: float
     points_against: float
-    draft_position: Optional[int]
+    draft_position: int | None
     joined_at: datetime
 
     class Config:
@@ -114,8 +125,8 @@ class TeamResponse(BaseModel):
 
 
 class LeagueStandingsResponse(BaseModel):
-    teams: List[TeamResponse]
-    season_stats: Dict[str, Any]
+    teams: list[TeamResponse]
+    season_stats: dict[str, Any]
 
 
 class LeagueMemberResponse(BaseModel):
@@ -132,7 +143,7 @@ async def create_league(
     request: CreateLeagueRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Create a new fantasy league with the current user as commissioner"""
     try:
@@ -150,18 +161,15 @@ async def create_league(
         return APIResponse(
             success=True,
             data=LeagueResponse.from_orm(league),
-            message="League created successfully"
+            message="League created successfully",
         )
 
     except LeagueValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except SQLAlchemyError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error occurred"
+            detail="Database error occurred",
         )
 
 
@@ -170,7 +178,7 @@ async def get_league(
     league_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get league details by ID"""
     try:
@@ -183,19 +191,18 @@ async def get_league(
             if league.status != LeagueStatus.RECRUITING:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied to private league"
+                    detail="Access denied to private league",
                 )
 
         return APIResponse(
             success=True,
             data=LeagueResponse.from_orm(league),
-            message="League retrieved successfully"
+            message="League retrieved successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
 
 
@@ -205,7 +212,7 @@ async def update_league(
     request: UpdateLeagueRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Update league settings (commissioner only)"""
     try:
@@ -215,7 +222,7 @@ async def update_league(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only commissioners can update league settings"
+                detail="Only commissioners can update league settings",
             )
 
         update_data = request.dict(exclude_unset=True)
@@ -229,24 +236,20 @@ async def update_league(
         return APIResponse(
             success=True,
             data=LeagueResponse.from_orm(league),
-            message="League updated successfully"
+            message="League updated successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except CommissionerOnlyError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only commissioners can perform this action"
+            detail="Only commissioners can perform this action",
         )
     except LeagueValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.delete("/{league_id}")
@@ -254,7 +257,7 @@ async def delete_league(
     league_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Delete a league (commissioner only, before draft)"""
     try:
@@ -263,7 +266,7 @@ async def delete_league(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only commissioners can delete leagues"
+                detail="Only commissioners can delete leagues",
             )
 
         league_service.delete_league(
@@ -271,20 +274,17 @@ async def delete_league(
         )
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="League deleted successfully"
+            success=True, data=None, message="League deleted successfully"
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except CommissionerOnlyError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot delete league after draft has started"
+            detail="Cannot delete league after draft has started",
         )
 
 
@@ -295,7 +295,7 @@ async def join_league(
     request: JoinLeagueRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Join a league using invite code"""
     try:
@@ -310,28 +310,25 @@ async def join_league(
         return APIResponse(
             success=True,
             data=TeamResponse.from_orm(team),
-            message="Successfully joined league"
+            message="Successfully joined league",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except InvalidInviteCodeError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid invite code"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite code"
         )
     except LeagueFullError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="League is full"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="League is full"
         )
     except AlreadyInLeagueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Already a member of this league"
+            detail="Already a member of this league",
         )
 
 
@@ -340,7 +337,7 @@ async def leave_league(
     league_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Leave a league (not allowed after draft starts)"""
     try:
@@ -348,30 +345,27 @@ async def leave_league(
             league_id=league_id, user_id=current_user["user_id"], db=db
         )
 
-        return APIResponse(
-            success=True,
-            data=None,
-            message="Successfully left league"
-        )
+        return APIResponse(success=True, data=None, message="Successfully left league")
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except CommissionerOnlyError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot leave league after draft has started"
+            detail="Cannot leave league after draft has started",
         )
 
 
-@router.get("/{league_id}/members", response_model=APIResponse[List[LeagueMemberResponse]])
+@router.get(
+    "/{league_id}/members", response_model=APIResponse[list[LeagueMemberResponse]]
+)
 async def get_league_members(
     league_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get all league members and their teams"""
     try:
@@ -381,7 +375,7 @@ async def get_league_members(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied - not a league member"
+                detail="Access denied - not a league member",
             )
 
         members = league_service.get_league_members(league_id=league_id, db=db)
@@ -389,13 +383,12 @@ async def get_league_members(
         return APIResponse(
             success=True,
             data=[LeagueMemberResponse.from_orm(member) for member in members],
-            message="League members retrieved successfully"
+            message="League members retrieved successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
 
 
@@ -405,7 +398,7 @@ async def remove_member(
     user_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Remove a member from league (commissioner only, before draft)"""
     try:
@@ -414,7 +407,7 @@ async def remove_member(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only commissioners can remove members"
+                detail="Only commissioners can remove members",
             )
 
         league_service.remove_member(
@@ -425,25 +418,21 @@ async def remove_member(
         )
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="Member removed successfully"
+            success=True, data=None, message="Member removed successfully"
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in league"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found in league"
         )
     except CommissionerOnlyError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot remove members after draft has started"
+            detail="Cannot remove members after draft has started",
         )
 
 
@@ -454,7 +443,7 @@ async def update_team(
     request: UpdateTeamRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Update user's team in the league"""
     try:
@@ -470,27 +459,27 @@ async def update_team(
         return APIResponse(
             success=True,
             data=TeamResponse.from_orm(updated_team),
-            message="Team updated successfully"
+            message="Team updated successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Team not found in league"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Team not found in league"
         )
 
 
-@router.get("/{league_id}/standings", response_model=APIResponse[LeagueStandingsResponse])
+@router.get(
+    "/{league_id}/standings", response_model=APIResponse[LeagueStandingsResponse]
+)
 async def get_league_standings(
     league_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get league standings and season statistics"""
     try:
@@ -500,7 +489,7 @@ async def get_league_standings(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied - not a league member"
+                detail="Access denied - not a league member",
             )
 
         standings = league_service.get_league_standings(league_id=league_id, db=db)
@@ -508,13 +497,12 @@ async def get_league_standings(
         return APIResponse(
             success=True,
             data=standings,
-            message="League standings retrieved successfully"
+            message="League standings retrieved successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
 
 
@@ -525,7 +513,7 @@ async def transfer_commissioner(
     request: TransferCommissionerRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Transfer commissioner role to another league member"""
     try:
@@ -534,7 +522,7 @@ async def transfer_commissioner(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only commissioners can transfer commissioner role"
+                detail="Only commissioners can transfer commissioner role",
             )
 
         league_service.transfer_commissioner(
@@ -547,23 +535,22 @@ async def transfer_commissioner(
         return APIResponse(
             success=True,
             data=None,
-            message="Commissioner role transferred successfully"
+            message="Commissioner role transferred successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except UserNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="New commissioner not found in league"
+            detail="New commissioner not found in league",
         )
     except CommissionerOnlyError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only commissioners can perform this action"
+            detail="Only commissioners can perform this action",
         )
 
 
@@ -572,7 +559,7 @@ async def regenerate_invite_code(
     league_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Regenerate league invite code (commissioner only)"""
     try:
@@ -581,7 +568,7 @@ async def regenerate_invite_code(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only commissioners can regenerate invite codes"
+                detail="Only commissioners can regenerate invite codes",
             )
 
         new_code = league_service.regenerate_invite_code(
@@ -591,29 +578,28 @@ async def regenerate_invite_code(
         return APIResponse(
             success=True,
             data={"invite_code": new_code},
-            message="Invite code regenerated successfully"
+            message="Invite code regenerated successfully",
         )
 
     except LeagueNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="League not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="League not found"
         )
     except CommissionerOnlyError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only commissioners can perform this action"
+            detail="Only commissioners can perform this action",
         )
 
 
 # League Discovery
-@router.get("/", response_model=APIResponse[List[LeagueResponse]])
+@router.get("/", response_model=APIResponse[list[LeagueResponse]])
 async def get_user_leagues(
     current_user: dict = Depends(get_current_user),
-    sport: Optional[str] = Query(None, description="Filter by sport"),
-    status: Optional[str] = Query(None, description="Filter by league status"),
+    sport: str | None = Query(None, description="Filter by sport"),
+    status: str | None = Query(None, description="Filter by league status"),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get all leagues the current user is a member of"""
     try:
@@ -627,24 +613,24 @@ async def get_user_leagues(
         return APIResponse(
             success=True,
             data=[LeagueResponse.from_orm(league) for league in leagues],
-            message="User leagues retrieved successfully"
+            message="User leagues retrieved successfully",
         )
 
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error occurred"
+            detail="Database error occurred",
         )
 
 
-@router.get("/public", response_model=APIResponse[List[LeagueResponse]])
+@router.get("/public", response_model=APIResponse[list[LeagueResponse]])
 async def get_public_leagues(
-    sport: Optional[str] = Query(None, description="Filter by sport"),
-    league_type: Optional[str] = Query(None, description="Filter by league type"),
+    sport: str | None = Query(None, description="Filter by sport"),
+    league_type: str | None = Query(None, description="Filter by league type"),
     limit: int = Query(default=20, le=100, description="Maximum number of results"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db_session),
-    league_service: LeagueService = Depends(get_league_service)
+    league_service: LeagueService = Depends(get_league_service),
 ):
     """Get public leagues available for joining"""
     try:
@@ -659,11 +645,11 @@ async def get_public_leagues(
         return APIResponse(
             success=True,
             data=[LeagueResponse.from_orm(league) for league in leagues],
-            message="Public leagues retrieved successfully"
+            message="Public leagues retrieved successfully",
         )
 
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error occurred"
+            detail="Database error occurred",
         )

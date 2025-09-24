@@ -4,7 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -21,11 +21,11 @@ from domains.shared.exceptions import (
     TradeNotFoundError,
 )
 from domains.shared.interfaces.trading_service import TradingServiceInterface
+from domains.shared.models.notification import Notification
 from domains.sports.models.player import Player
 from domains.trading.models.trade import Trade
 from domains.trading.models.waiver import Waiver
 from infrastructure.events.dispatcher import get_event_dispatcher
-from models.notification import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ class TradeEvaluation:
     offering_team_value: float
     receiving_team_value: float
     value_difference: float
-    position_analysis: Dict[str, Any]
-    injury_risk_analysis: Dict[str, Any]
+    position_analysis: dict[str, Any]
+    injury_risk_analysis: dict[str, Any]
     recommendation: str
 
 
@@ -69,11 +69,11 @@ class TradingService(TradingServiceInterface):
         league_id: str,
         from_team_id: str,
         to_team_id: str,
-        offered_players: List[str],
-        requested_players: List[str],
+        offered_players: list[str],
+        requested_players: list[str],
         proposing_user_id: str,
-        message: Optional[str] = None,
-        expiration_hours: Optional[int] = None,
+        message: str | None = None,
+        expiration_hours: int | None = None,
     ) -> Trade:
         """Create a new trade proposal between two teams."""
 
@@ -81,7 +81,10 @@ class TradingService(TradingServiceInterface):
         offering_team = self._get_team(from_team_id)
         receiving_team = self._get_team(to_team_id)
 
-        if offering_team.league_id != league.league_id or receiving_team.league_id != league.league_id:
+        if (
+            offering_team.league_id != league.league_id
+            or receiving_team.league_id != league.league_id
+        ):
             raise InvalidTradeError("Both teams must belong to the specified league")
         if offering_team.team_id == receiving_team.team_id:
             raise InvalidTradeError("Cannot trade with the same team")
@@ -93,7 +96,9 @@ class TradingService(TradingServiceInterface):
         self._validate_trade_players(normalized_offered, offering_team)
         self._validate_trade_players(normalized_requested, receiving_team)
 
-        expires_at = self._calculate_expiration(expiration_hours or self.default_expiration_hours)
+        expires_at = self._calculate_expiration(
+            expiration_hours or self.default_expiration_hours
+        )
 
         trade = Trade(
             league_id=league.league_id,
@@ -128,7 +133,7 @@ class TradingService(TradingServiceInterface):
         trade_id: str,
         responding_user_id: str,
         action: str,
-        rejection_reason: Optional[str] = None,
+        rejection_reason: str | None = None,
     ) -> Trade:
         """Accept or reject a pending trade."""
 
@@ -201,11 +206,11 @@ class TradingService(TradingServiceInterface):
         self,
         *,
         league_id: str,
-        team_id: Optional[str] = None,
-        status: Optional[str] = None,
+        team_id: str | None = None,
+        status: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Trade]:
+    ) -> list[Trade]:
         league_uuid = uuid.UUID(str(league_id))
         query = self.session.query(Trade).filter(Trade.league_id == league_uuid)
         if team_id:
@@ -232,11 +237,15 @@ class TradingService(TradingServiceInterface):
         receiving_value = self._calculate_players_value(requested_players)
         total = offering_value + receiving_value
         value_difference = abs(offering_value - receiving_value)
-        fairness_score = 1.0 if total == 0 else max(0.0, 1.0 - (value_difference / total))
+        fairness_score = (
+            1.0 if total == 0 else max(0.0, 1.0 - (value_difference / total))
+        )
 
         position_analysis = self._position_breakdown(offered_players, requested_players)
         injury_analysis = self._injury_breakdown(offered_players, requested_players)
-        recommendation = self._recommendation_from_score(fairness_score, injury_analysis)
+        recommendation = self._recommendation_from_score(
+            fairness_score, injury_analysis
+        )
 
         return TradeEvaluation(
             fairness_score=fairness_score,
@@ -263,9 +272,11 @@ class TradingService(TradingServiceInterface):
         return team is not None
 
     async def process_waiver_claim(self, waiver_id: str, user_id: str) -> dict:
-        waiver = self.session.query(Waiver).filter(
-            Waiver.waiver_id == uuid.UUID(waiver_id)
-        ).first()
+        waiver = (
+            self.session.query(Waiver)
+            .filter(Waiver.waiver_id == uuid.UUID(waiver_id))
+            .first()
+        )
         if not waiver:
             raise ValueError(f"Waiver with ID {waiver_id} not found")
 
@@ -291,7 +302,7 @@ class TradingService(TradingServiceInterface):
         )
         return transaction
 
-    async def get_active_waivers(self, league_id: str) -> List[Waiver]:
+    async def get_active_waivers(self, league_id: str) -> list[Waiver]:
         return (
             self.session.query(Waiver)
             .filter(Waiver.league_id == uuid.UUID(league_id))
@@ -299,7 +310,7 @@ class TradingService(TradingServiceInterface):
             .all()
         )
 
-    async def get_user_transactions(self, user_id: str, league_id: str) -> List[dict]:
+    async def get_user_transactions(self, user_id: str, league_id: str) -> list[dict]:
         team = (
             self.session.query(Team)
             .filter(
@@ -324,9 +335,9 @@ class TradingService(TradingServiceInterface):
                 "player_id": str(waiver.player_id),
                 "bid": waiver.bid,
                 "status": waiver.status,
-                "created_at": waiver.created_at.isoformat()
-                if waiver.created_at
-                else None,
+                "created_at": (
+                    waiver.created_at.isoformat() if waiver.created_at else None
+                ),
             }
             for waiver in waivers
         ]
@@ -389,17 +400,15 @@ class TradingService(TradingServiceInterface):
         clamped = max(self.min_expiration_hours, min(self.max_expiration_hours, hours))
         return datetime.utcnow() + timedelta(hours=clamped)
 
-    def _validate_trade_players(self, player_ids: List[str], team: Team) -> None:
+    def _validate_trade_players(self, player_ids: list[str], team: Team) -> None:
         roster = {str(pid) for pid in team.roster or []}
         missing = [pid for pid in player_ids if pid not in roster]
         if missing:
-            raise InvalidTradeError(
-                f"Players not on team roster: {', '.join(missing)}"
-            )
+            raise InvalidTradeError(f"Players not on team roster: {', '.join(missing)}")
         if len(player_ids) != len(set(player_ids)):
             raise InvalidTradeError("Duplicate players in trade payload")
 
-    def _fetch_players(self, player_ids: List[str]) -> List[Player]:
+    def _fetch_players(self, player_ids: list[str]) -> list[Player]:
         if not player_ids:
             return []
         players = (
@@ -410,13 +419,11 @@ class TradingService(TradingServiceInterface):
         found_ids = {str(player.player_id) for player in players}
         missing = [pid for pid in player_ids if pid not in found_ids]
         if missing:
-            raise PlayerNotFoundError(
-                f"Unknown players in trade: {', '.join(missing)}"
-            )
+            raise PlayerNotFoundError(f"Unknown players in trade: {', '.join(missing)}")
         return players
 
     @staticmethod
-    def _calculate_players_value(players: List[Player]) -> float:
+    def _calculate_players_value(players: list[Player]) -> float:
         value = 0.0
         for player in players:
             projections = player.projections or {}
@@ -425,10 +432,10 @@ class TradingService(TradingServiceInterface):
 
     @staticmethod
     def _position_breakdown(
-        offered_players: List[Player], requested_players: List[Player]
-    ) -> Dict[str, Any]:
-        def _counts(players: List[Player]) -> Dict[str, int]:
-            counts: Dict[str, int] = {}
+        offered_players: list[Player], requested_players: list[Player]
+    ) -> dict[str, Any]:
+        def _counts(players: list[Player]) -> dict[str, int]:
+            counts: dict[str, int] = {}
             for player in players:
                 counts[player.position] = counts.get(player.position, 0) + 1
             return counts
@@ -440,13 +447,17 @@ class TradingService(TradingServiceInterface):
 
     @staticmethod
     def _injury_breakdown(
-        offered_players: List[Player], requested_players: List[Player]
-    ) -> Dict[str, Any]:
+        offered_players: list[Player], requested_players: list[Player]
+    ) -> dict[str, Any]:
         offered_injured = sum(
-            1 for player in offered_players if (player.injury_status or "").lower() not in {"", "healthy"}
+            1
+            for player in offered_players
+            if (player.injury_status or "").lower() not in {"", "healthy"}
         )
         requested_injured = sum(
-            1 for player in requested_players if (player.injury_status or "").lower() not in {"", "healthy"}
+            1
+            for player in requested_players
+            if (player.injury_status or "").lower() not in {"", "healthy"}
         )
         total = offered_injured + requested_injured
         return {
@@ -457,7 +468,7 @@ class TradingService(TradingServiceInterface):
 
     @staticmethod
     def _recommendation_from_score(
-        fairness_score: float, injury_analysis: Dict[str, Any]
+        fairness_score: float, injury_analysis: dict[str, Any]
     ) -> str:
         if fairness_score >= 0.8 and not injury_analysis.get("high_risk", False):
             return "accept"
@@ -484,7 +495,9 @@ class TradingService(TradingServiceInterface):
         except Exception:  # pragma: no cover - notifications are best effort
             logger.debug("Failed to enqueue trade notification", exc_info=True)
 
-    def _publish_event(self, event: str, entity_id: str, payload: Dict[str, Any]) -> None:
+    def _publish_event(
+        self, event: str, entity_id: str, payload: dict[str, Any]
+    ) -> None:
         if not self.event_publisher:
             return
         try:

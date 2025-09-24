@@ -3,7 +3,6 @@ Configuration settings for Ultimate Fantasy Platform API
 """
 
 import os
-from typing import Optional
 
 
 class Settings:
@@ -12,7 +11,7 @@ class Settings:
     # Database configuration
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://ultimate_fantasy:password@localhost:5432/ultimate_fantasy"
+        "postgresql://ultimate_fantasy:password@localhost:5432/ultimate_fantasy",
     )
 
     # Debug mode
@@ -42,11 +41,13 @@ class Settings:
     API_PREFIX: str = f"/api/{API_VERSION}"
 
     # CORS settings
-    CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+    CORS_ORIGINS: list = os.getenv(
+        "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"
+    ).split(",")
 
     # Sports data API settings
-    ESPN_API_KEY: Optional[str] = os.getenv("ESPN_API_KEY")
-    THE_ATHLETIC_API_KEY: Optional[str] = os.getenv("THE_ATHLETIC_API_KEY")
+    ESPN_API_KEY: str | None = os.getenv("ESPN_API_KEY")
+    THE_ATHLETIC_API_KEY: str | None = os.getenv("THE_ATHLETIC_API_KEY")
 
     # Rate limiting
     RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))

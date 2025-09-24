@@ -5,35 +5,34 @@ Provides REST API for player data, stats, news, schedules, and projections
 
 import asyncio
 import uuid as _uuid
-from datetime import datetime, date
-from typing import List, Optional, Dict, Any, Union
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, validator
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from datetime import date, datetime
+from typing import Any
 
-from src.infrastructure.database.session_factory import get_db_session
-from src.domains.users.services.user_service import UserService
-from src.domains.sports.services.sports_data_service import (
-    SportsDataService,
-    SportType,
-    DataProvider,
-    PlayerData,
-    GameData
-)
-from src.services.player_service import PlayerService
-from src.domains.shared.exceptions import (
-    PlayerNotFoundError, ProviderError, ValidationError,
-    InsufficientPermissionsError, RateLimitExceededError
-)
-from src.api.deps import (
-    get_player_service,
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from api.deps import (
     get_sports_data_service,
     get_user_service,
 )
-from src.api.middleware.auth import get_current_user
-from src.api.models.response import APIResponse
+from api.middleware.auth import get_current_user
+from api.models.response import APIResponse
 
+# Removed legacy PlayerService import
+from domains.shared.exceptions import (
+    InsufficientPermissionsError,
+    PlayerNotFoundError,
+    ProviderError,
+    RateLimitExceededError,
+    ValidationError,
+)
+from domains.sports.services.sports_data_service import (
+    SportsDataService,
+)
+from domains.users.services.user_service import UserService
+from infrastructure.database.session_factory import get_db_session
 
 SUPPORTED_SPORTS = {"mlb", "nfl", "wnba"}
 
@@ -46,16 +45,16 @@ class PlayerResponse(BaseModel):
     player_id: str
     external_id: str
     name: str
-    team_id: Optional[str]
+    team_id: str | None
     position: str
     sport: str
-    injury_status: Optional[str]
-    injury_description: Optional[str]
-    season_stats: Optional[Dict[str, Any]]
-    game_stats: Optional[Dict[str, Any]]
-    projections: Optional[Dict[str, Any]]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    injury_status: str | None
+    injury_description: str | None
+    season_stats: dict[str, Any] | None
+    game_stats: dict[str, Any] | None
+    projections: dict[str, Any] | None
+    created_at: datetime | None
+    updated_at: datetime | None
 
     class Config:
         from_attributes = True
@@ -64,11 +63,11 @@ class PlayerResponse(BaseModel):
 class PlayerStatsResponse(BaseModel):
     player_id: str
     season: str
-    week: Optional[int]
+    week: int | None
     game_day: date
-    opponent_team: Optional[str]
-    is_home_game: Optional[bool]
-    stat_values: Dict[str, Union[int, float]]
+    opponent_team: str | None
+    is_home_game: bool | None
+    stat_values: dict[str, int | float]
     fantasy_points: float
     is_final: bool
     updated_at: datetime
@@ -82,12 +81,12 @@ class PlayerNewsResponse(BaseModel):
     player_id: str
     headline: str
     summary: str
-    content: Optional[str]
+    content: str | None
     source: str
-    author: Optional[str]
+    author: str | None
     published_at: datetime
-    impact_rating: Optional[int]
-    tags: List[str]
+    impact_rating: int | None
+    tags: list[str]
 
     class Config:
         from_attributes = True
@@ -96,17 +95,23 @@ class PlayerNewsResponse(BaseModel):
 @router.get("/news")
 async def get_sports_news(
     sport: str = Query(..., description="Sport type"),
-    player_id: Optional[str] = Query(None, description="Player identifier"),
-    limit: int = Query(default=20, ge=1, le=100, description="Maximum number of stories"),
-    days_back: int = Query(default=7, ge=1, le=30, description="How far back to search"),
+    player_id: str | None = Query(None, description="Player identifier"),
+    limit: int = Query(
+        default=20, ge=1, le=100, description="Maximum number of stories"
+    ),
+    days_back: int = Query(
+        default=7, ge=1, le=30, description="How far back to search"
+    ),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
+    sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Return recent sports news for a player or sport."""
 
     sport_normalized = sport.lower()
     if sport_normalized not in SUPPORTED_SPORTS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sport")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sport"
+        )
 
     # Contract allows empty list; use player-specific news when id provided, else empty list.
     if player_id:
@@ -125,16 +130,16 @@ class GameScheduleResponse(BaseModel):
     game_id: str
     sport: str
     season: str
-    week: Optional[int]
+    week: int | None
     home_team: str
     away_team: str
     game_date: datetime
     status: str
-    venue: Optional[str]
-    weather: Optional[Dict[str, Any]]
-    tv_coverage: Optional[str]
-    home_score: Optional[int]
-    away_score: Optional[int]
+    venue: str | None
+    weather: dict[str, Any] | None
+    tv_coverage: str | None
+    home_score: int | None
+    away_score: int | None
 
     class Config:
         from_attributes = True
@@ -146,12 +151,12 @@ class TeamResponse(BaseModel):
     abbreviation: str
     city: str
     sport: str
-    conference: Optional[str]
-    division: Optional[str]
-    logo_url: Optional[str]
-    primary_color: Optional[str]
-    secondary_color: Optional[str]
-    record: Optional[Dict[str, int]]
+    conference: str | None
+    division: str | None
+    logo_url: str | None
+    primary_color: str | None
+    secondary_color: str | None
+    record: dict[str, int] | None
 
     class Config:
         from_attributes = True
@@ -162,7 +167,7 @@ class ProjectionsResponse(BaseModel):
     week: int
     projected_points: float
     confidence: float
-    stat_projections: Dict[str, float]
+    stat_projections: dict[str, float]
     injury_risk: float
 
     class Config:
@@ -176,8 +181,8 @@ class InjuryReportResponse(BaseModel):
     position: str
     injury_status: str
     injury_description: str
-    estimated_return: Optional[date]
-    practice_status: Optional[str]
+    estimated_return: date | None
+    practice_status: str | None
     game_status: str
     last_updated: datetime
 
@@ -190,8 +195,8 @@ def _player_payload(
     *,
     include_stats: bool = True,
     include_projections: bool = True,
-    default_sport: Optional[str] = None,
-) -> Dict[str, Any]:
+    default_sport: str | None = None,
+) -> dict[str, Any]:
     """Normalize player structures (ORM objects or provider dicts) to response payload."""
 
     def _get(attr: str, default: Any = None) -> Any:
@@ -202,7 +207,7 @@ def _player_payload(
     team_id = _get("team_id") or _get("team")
     sport = _get("sport", default_sport)
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "player_id": str(_get("player_id") or _get("id") or _get("external_id") or ""),
         "external_id": str(_get("external_id") or _get("player_id") or ""),
         "name": _get("name", ""),
@@ -224,7 +229,7 @@ def _player_payload(
     return payload
 
 
-def _to_injury_response(player: Any) -> Dict[str, Any]:
+def _to_injury_response(player: Any) -> dict[str, Any]:
     """Build a lightweight injury report from a player record."""
 
     return {
@@ -239,7 +244,7 @@ def _to_injury_response(player: Any) -> Dict[str, Any]:
     }
 
 
-def _parse_uuid(value: str) -> Optional[_uuid.UUID]:
+def _parse_uuid(value: str) -> _uuid.UUID | None:
     try:
         return _uuid.UUID(value)
     except (ValueError, AttributeError, TypeError):
@@ -249,12 +254,17 @@ def _parse_uuid(value: str) -> Optional[_uuid.UUID]:
 # Player Data Endpoints
 @router.get("/players")
 async def list_players(
-    sport: Optional[str] = Query(None, description="Sport type (optional, returns all sports if not specified)"),
-    position: Optional[str] = Query(None, description="Filter by position"),
-    team: Optional[str] = Query(None, description="Filter by team"),
-    search: Optional[str] = Query(None, description="Search query"),
-    limit: int = Query(default=50, ge=1, le=200, description="Maximum number of results"),
+    sport: str | None = Query(
+        None, description="Sport type (optional, returns all sports if not specified)"
+    ),
+    position: str | None = Query(None, description="Filter by position"),
+    team: str | None = Query(None, description="Filter by team"),
+    search: str | None = Query(None, description="Search query"),
+    limit: int = Query(
+        default=50, ge=1, le=200, description="Maximum number of results"
+    ),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
+    current_user: dict = Depends(get_current_user),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Return players matching the provided filters."""
@@ -299,25 +309,28 @@ async def list_players(
     # For response structure, match contract expectations
     return {
         "players": [
-            _player_payload(player, include_stats=False, include_projections=False, default_sport=sport)
+            _player_payload(
+                player,
+                include_stats=False,
+                include_projections=False,
+                default_sport=sport,
+            )
             for player in paginated
         ],
-        "pagination": {
-            "offset": offset,
-            "limit": limit,
-            "total": len(all_players)
-        },
-        "total": len(all_players)
+        "pagination": {"offset": offset, "limit": limit, "total": len(all_players)},
+        "total": len(all_players),
     }
 
 
 @router.get("/players/{player_id}")
 async def get_player(
     player_id: str,
-    include_stats: bool = Query(default=True, description="Include current season stats"),
+    include_stats: bool = Query(
+        default=True, description="Include current season stats"
+    ),
     include_projections: bool = Query(default=True, description="Include projections"),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Get detailed player information"""
@@ -359,33 +372,32 @@ async def get_player(
 
     except PlayerNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Player not found"
         )
     except SQLAlchemyError:
-        return APIResponse(
-            success=True,
-            data=[],
-            message="Player stats unavailable"
-        )
+        return APIResponse(success=True, data=[], message="Player stats unavailable")
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
 # Legacy per-player stats endpoint (not used by contract tests) retained for compatibility
-@router.get("/players/{player_id}/stats", response_model=APIResponse[List[PlayerStatsResponse]])
+@router.get(
+    "/players/{player_id}/stats", response_model=APIResponse[list[PlayerStatsResponse]]
+)
 async def get_player_stats(
     player_id: str,
-    season: Optional[str] = Query(None, description="Season year (defaults to current)"),
-    week: Optional[int] = Query(None, description="Specific week"),
-    start_date: Optional[date] = Query(None, description="Start date filter"),
-    end_date: Optional[date] = Query(None, description="End date filter"),
+    season: str | None = Query(
+        None, description="Season year (defaults to current)"
+    ),
+    week: int | None = Query(None, description="Specific week"),
+    start_date: date | None = Query(None, description="Start date filter"),
+    end_date: date | None = Query(None, description="End date filter"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
+    sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Get player statistics for specified time period"""
     try:
@@ -406,27 +418,33 @@ async def get_player_stats(
         return APIResponse(
             success=True,
             data=[PlayerStatsResponse.from_orm(stat) for stat in stats],
-            message="Player stats retrieved successfully"
+            message="Player stats retrieved successfully",
         )
 
     except PlayerNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Player not found"
         )
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
-@router.get("/players/{player_id}/projections", response_model=APIResponse[List[ProjectionsResponse]])
+@router.get(
+    "/players/{player_id}/projections",
+    response_model=APIResponse[list[ProjectionsResponse]],
+)
 async def get_player_projections(
     player_id: str,
-    season: Optional[str] = Query(None, description="Season year (defaults to current)"),
-    week: Optional[int] = Query(None, description="Specific week"),
-    projection_type: str = Query(default="season", description="Projection type: season, weekly, rest_of_season"),
+    season: str | None = Query(
+        None, description="Season year (defaults to current)"
+    ),
+    week: int | None = Query(None, description="Specific week"),
+    projection_type: str = Query(
+        default="season", description="Projection type: season, weekly, rest_of_season"
+    ),
     current_user: dict = Depends(get_current_user),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
@@ -445,13 +463,15 @@ async def get_player_projections(
             season_value,
         )
 
-        payload: List[ProjectionsResponse] = []
+        payload: list[ProjectionsResponse] = []
         if projection:
             payload.append(
                 ProjectionsResponse(
                     player_id=projection.player_id,
                     week=projection.week,
-                    projected_points=getattr(projection, "projected_fantasy_points", 0.0),
+                    projected_points=getattr(
+                        projection, "projected_fantasy_points", 0.0
+                    ),
                     confidence=getattr(projection, "confidence", 0.0),
                     stat_projections=getattr(projection, "projected_stats", {}),
                     injury_risk=getattr(projection, "injury_risk", None) or 0.0,
@@ -461,29 +481,29 @@ async def get_player_projections(
         return APIResponse(
             success=True,
             data=payload,
-            message="Player projections retrieved successfully"
+            message="Player projections retrieved successfully",
         )
 
     except PlayerNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Player not found"
         )
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/players/{player_id}/news", response_model=APIResponse[List[PlayerNewsResponse]])
+@router.get(
+    "/players/{player_id}/news", response_model=APIResponse[list[PlayerNewsResponse]]
+)
 async def get_player_news(
     player_id: str,
-    days_back: int = Query(default=7, ge=1, le=30, description="Days to look back for news"),
+    days_back: int = Query(
+        default=7, ge=1, le=30, description="Days to look back for news"
+    ),
     limit: int = Query(default=20, le=100, description="Maximum number of articles"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
+    sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Get recent news and updates for a player"""
     try:
@@ -498,27 +518,26 @@ async def get_player_news(
         return APIResponse(
             success=True,
             data=[PlayerNewsResponse.model_validate(article) for article in news],
-            message="Player news retrieved successfully"
+            message="Player news retrieved successfully",
         )
 
     except PlayerNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Player not found"
         )
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
 # Team and Schedule Endpoints
-@router.get("/teams", response_model=APIResponse[List[TeamResponse]])
+@router.get("/teams", response_model=APIResponse[list[TeamResponse]])
 async def get_teams(
     sport: str = Query(..., description="Sport type"),
-    conference: Optional[str] = Query(None, description="Filter by conference"),
-    division: Optional[str] = Query(None, description="Filter by division"),
+    conference: str | None = Query(None, description="Filter by conference"),
+    division: str | None = Query(None, description="Filter by division"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
@@ -526,38 +545,34 @@ async def get_teams(
     """Get teams for a specific sport"""
     try:
         teams = await sports_data_service.get_teams(
-            sport=sport,
-            conference=conference,
-            division=division,
-            db=db
+            sport=sport, conference=conference, division=division, db=db
         )
 
         return APIResponse(
             success=True,
             data=[TeamResponse.from_orm(team) for team in teams],
-            message="Teams retrieved successfully"
+            message="Teams retrieved successfully",
         )
 
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
-@router.get("/schedule", response_model=APIResponse[List[GameScheduleResponse]])
+@router.get("/schedule", response_model=APIResponse[list[GameScheduleResponse]])
 async def get_schedule(
     sport: str = Query(..., description="Sport type"),
-    season: Optional[str] = Query(None, description="Season year (defaults to current)"),
-    week: Optional[int] = Query(None, description="Specific week"),
-    team: Optional[str] = Query(None, description="Filter by team"),
-    start_date: Optional[date] = Query(None, description="Start date filter"),
-    end_date: Optional[date] = Query(None, description="End date filter"),
+    season: str | None = Query(
+        None, description="Season year (defaults to current)"
+    ),
+    week: int | None = Query(None, description="Specific week"),
+    team: str | None = Query(None, description="Filter by team"),
+    start_date: date | None = Query(None, description="Start date filter"),
+    end_date: date | None = Query(None, description="End date filter"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
@@ -571,24 +586,21 @@ async def get_schedule(
             team=team,
             start_date=start_date,
             end_date=end_date,
-            db=db
+            db=db,
         )
 
         return APIResponse(
             success=True,
             data=[GameScheduleResponse.from_orm(game) for game in schedule],
-            message="Schedule retrieved successfully"
+            message="Schedule retrieved successfully",
         )
 
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
@@ -596,11 +608,11 @@ async def get_schedule(
 @router.get("/injuries")
 async def get_injury_report(
     sport: str = Query(..., description="Sport type"),
-    team: Optional[str] = Query(None, description="Filter by team"),
-    position: Optional[str] = Query(None, description="Filter by position"),
-    status: Optional[str] = Query(None, description="Filter by injury status"),
+    team: str | None = Query(None, description="Filter by team"),
+    position: str | None = Query(None, description="Filter by position"),
+    status: str | None = Query(None, description="Filter by injury status"),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
+    sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Get current injury report for specified sport/team"""
     try:
@@ -619,28 +631,26 @@ async def get_injury_report(
         return [_to_injury_response(player) for player in injuries]
 
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
 # Fantasy Specific Endpoints
-@router.get("/trending", response_model=APIResponse[List[PlayerResponse]])
+@router.get("/trending", response_model=APIResponse[list[PlayerResponse]])
 async def get_trending_players(
     sport: str = Query(..., description="Sport type"),
-    trend_type: str = Query(default="hot", description="Trend type: hot, cold, rising, falling"),
+    trend_type: str = Query(
+        default="hot", description="Trend type: hot, cold, rising, falling"
+    ),
     timeframe: str = Query(default="7d", description="Timeframe: 24h, 7d, 30d"),
-    position: Optional[str] = Query(None, description="Filter by position"),
+    position: str | None = Query(None, description="Filter by position"),
     limit: int = Query(default=25, le=100, description="Maximum number of results"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Get trending players based on fantasy activity"""
@@ -676,12 +686,19 @@ async def get_trending_players(
                 active_only=True,
             )
             responses = [
-                _player_payload(p, include_stats=False, include_projections=False, default_sport=sport_normalized)
+                _player_payload(
+                    p,
+                    include_stats=False,
+                    include_projections=False,
+                    default_sport=sport_normalized,
+                )
                 for p in fallback_players[:limit]
             ]
 
         if position:
-            responses = [player for player in responses if player.get("position") == position]
+            responses = [
+                player for player in responses if player.get("position") == position
+            ]
 
         data = [PlayerResponse.model_validate(player) for player in responses]
 
@@ -692,27 +709,27 @@ async def get_trending_players(
         )
 
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
-@router.get("/rankings", response_model=APIResponse[List[PlayerResponse]])
+@router.get("/rankings", response_model=APIResponse[list[PlayerResponse]])
 async def get_player_rankings(
     sport: str = Query(..., description="Sport type"),
-    position: Optional[str] = Query(None, description="Filter by position"),
-    ranking_type: str = Query(default="overall", description="Ranking type: overall, positional, ppr"),
-    timeframe: str = Query(default="season", description="Timeframe: season, ros, weekly"),
+    position: str | None = Query(None, description="Filter by position"),
+    ranking_type: str = Query(
+        default="overall", description="Ranking type: overall, positional, ppr"
+    ),
+    timeframe: str = Query(
+        default="season", description="Timeframe: season, ros, weekly"
+    ),
     limit: int = Query(default=50, le=200, description="Maximum number of results"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    player_service: PlayerService = Depends(get_player_service),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Get fantasy player rankings"""
@@ -749,7 +766,12 @@ async def get_player_rankings(
 
         data = [
             PlayerResponse.model_validate(
-                _player_payload(player, include_stats=False, include_projections=False, default_sport=sport_normalized)
+                _player_payload(
+                    player,
+                    include_stats=False,
+                    include_projections=False,
+                    default_sport=sport_normalized,
+                )
             )
             for player in fallback_players[:limit]
         ]
@@ -761,14 +783,11 @@ async def get_player_rankings(
         )
 
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Sports data provider error: {str(e)}"
+            detail=f"Sports data provider error: {e!s}",
         )
 
 
@@ -776,8 +795,12 @@ async def get_player_rankings(
 @router.post("/sync/{sport}")
 async def sync_sport_data(
     sport: str,
-    data_type: str = Query(default="all", description="Data type to sync: all, players, stats, schedule"),
-    force: bool = Query(default=False, description="Force refresh even if recently updated"),
+    data_type: str = Query(
+        default="all", description="Data type to sync: all, players, stats, schedule"
+    ),
+    force: bool = Query(
+        default=False, description="Force refresh even if recently updated"
+    ),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
@@ -793,41 +816,31 @@ async def sync_sport_data(
         )
         if not user.is_admin:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
             )
 
         result = await sports_data_service.sync_sport_data(
-            sport=sport,
-            data_type=data_type,
-            force=force,
-            db=db
+            sport=sport, data_type=data_type, force=force, db=db
         )
 
         return APIResponse(
-            success=True,
-            data=result,
-            message="Data sync initiated successfully"
+            success=True, data=result, message="Data sync initiated successfully"
         )
 
     except InsufficientPermissionsError:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except RateLimitExceededError:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded. Please try again later."
+            detail="Rate limit exceeded. Please try again later.",
         )
 
 
-@router.get("/sync/status", response_model=APIResponse[Dict[str, Any]])
+@router.get("/sync/status", response_model=APIResponse[dict[str, Any]])
 async def get_sync_status(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
@@ -838,34 +851,38 @@ async def get_sync_status(
         status_info = await sports_data_service.get_sync_status(db)
 
         return APIResponse(
-            success=True,
-            data=status_info,
-            message="Sync status retrieved successfully"
+            success=True, data=status_info, message="Sync status retrieved successfully"
         )
 
     except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error occurred"
+            detail="Database error occurred",
         )
+
+
 @router.get("/stats")
 async def get_stats(
     sport: str = Query(..., description="Sport type"),
     timeframe: str = Query(..., description="Timeframe: season or week"),
-    player_id: Optional[str] = Query(None, description="Player identifier"),
-    team_id: Optional[str] = Query(None, description="Team identifier"),
-    week: Optional[int] = Query(None, description="Specific week when timeframe=week"),
+    player_id: str | None = Query(None, description="Player identifier"),
+    team_id: str | None = Query(None, description="Team identifier"),
+    week: int | None = Query(None, description="Specific week when timeframe=week"),
     sports_data_service: SportsDataService = Depends(get_sports_data_service),
 ):
     """Return player or team statistics depending on filters."""
 
     sport_normalized = sport.lower()
     if sport_normalized not in SUPPORTED_SPORTS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sport")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sport"
+        )
 
     timeframe_normalized = timeframe.lower()
     if timeframe_normalized not in {"season", "week"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timeframe")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timeframe"
+        )
 
     if team_id:
         team_players = await sports_data_service.get_players(
@@ -883,11 +900,16 @@ async def get_stats(
         ]
 
     if not player_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="player_id or team_id required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="player_id or team_id required",
+        )
 
     player_uuid = _parse_uuid(player_id)
     if player_uuid is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Player not found"
+        )
 
     season_value = datetime.utcnow().year
     stats_item = await sports_data_service.get_player_stats(
@@ -897,7 +919,9 @@ async def get_stats(
     )
 
     if stats_item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Player not found"
+        )
 
     stats_dict = getattr(stats_item, "stats", {})
     last_updated = getattr(stats_item, "last_updated", datetime.utcnow())
@@ -907,5 +931,9 @@ async def get_stats(
         "sport": sport_normalized,
         "timeframe": timeframe_normalized,
         "stats": stats_dict,
-        "last_updated": last_updated.isoformat() if isinstance(last_updated, datetime) else datetime.utcnow().isoformat(),
+        "last_updated": (
+            last_updated.isoformat()
+            if isinstance(last_updated, datetime)
+            else datetime.utcnow().isoformat()
+        ),
     }

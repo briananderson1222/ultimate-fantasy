@@ -1,19 +1,19 @@
-import React from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Constants from 'expo-constants';
-import { httpClient } from '@ultimate-fantasy/api-client';
+import React from "react";
+import { StatusBar } from "expo-status-bar";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import Constants from "expo-constants";
+import { httpClient } from "@ultimate-fantasy/api-client";
 
 // Import navigation and auth
-import AppNavigator from './src/navigation/AppNavigator';
-import { AuthProvider } from './src/contexts/AuthContext';
+import AppNavigator from "./src/navigation/AppNavigator";
+import { AuthProvider } from "./src/contexts/AuthContext";
 
 const DEFAULT_HTTP_PORT = 8000;
 
 const resolveApiBaseUrl = (): string => {
   const env =
-    (typeof process !== 'undefined' && process?.env) ||
+    (typeof process !== "undefined" && process?.env) ||
     ({} as NodeJS.ProcessEnv);
 
   const candidates = [
@@ -23,27 +23,28 @@ const resolveApiBaseUrl = (): string => {
   ];
 
   for (const value of candidates) {
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim().replace(/\/+$/, '');
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim().replace(/\/+$/, "");
     }
   }
 
-  const extra = (Constants.expoConfig?.extra ?? (Constants.manifest as any)?.extra) as
-    | { apiBaseUrl?: unknown }
+  const extra = (Constants.expoConfig?.extra ??
+    (Constants.manifest as { extra?: { apiBaseUrl?: string } })?.extra) as
+    | { apiBaseUrl?: string }
     | undefined;
 
-  if (typeof extra?.apiBaseUrl === 'string' && extra.apiBaseUrl.trim()) {
-    return extra.apiBaseUrl.trim().replace(/\/+$/, '');
+  if (typeof extra?.apiBaseUrl === "string" && extra.apiBaseUrl.trim()) {
+    return extra.apiBaseUrl.trim().replace(/\/+$/, "");
   }
 
   const debuggerHost =
     Constants.expoConfig?.hostUri ??
-    (Constants.expoConfig as any)?.debuggerHost ??
-    (Constants.manifest as any)?.debuggerHost ??
+    (Constants.expoConfig as { debuggerHost?: string })?.debuggerHost ??
+    (Constants.manifest as { debuggerHost?: string })?.debuggerHost ??
     null;
 
-  if (typeof debuggerHost === 'string' && debuggerHost.length > 0) {
-    const [host] = debuggerHost.split(':');
+  if (typeof debuggerHost === "string" && debuggerHost.length > 0) {
+    const [host] = debuggerHost.split(":");
     if (host) {
       return `http://${host}:${DEFAULT_HTTP_PORT}`;
     }

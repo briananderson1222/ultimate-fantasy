@@ -3,20 +3,21 @@ from __future__ import annotations
 import asyncio
 import random
 import uuid as _uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from domains.drafts.models.draft import Draft
 from domains.leagues.models.league import League
 from domains.leagues.models.team import Team
+from domains.shared.models.notification import Notification
 from domains.sports.models.player import Player
 from infrastructure.database.session_factory import get_session_factory
 from infrastructure.logging.domain_logger import get_logger
-from models.notification import Notification
 
 logger = get_logger(__name__)
 
@@ -45,8 +46,8 @@ class DraftPick:
     pick_number: int
     round_number: int
     team_id: str
-    player_id: Optional[str] = None
-    pick_time: Optional[datetime] = None
+    player_id: str | None = None
+    pick_time: datetime | None = None
     is_autopick: bool = False
 
 
@@ -57,10 +58,10 @@ class DraftSettings:
     draft_type: str = "snake"
     pick_timer_seconds: int = 90
     auto_draft_enabled: bool = True
-    draft_order: Optional[List[str]] = None
+    draft_order: list[str] | None = None
     pause_between_rounds: bool = False
     allow_pick_trading: bool = False
-    rounds: Optional[int] = None
+    rounds: int | None = None
 
 
 class DraftServiceError(Exception):
@@ -84,8 +85,8 @@ class DraftService:
 
     def __init__(self, session: Session) -> None:
         self.session = session
-        self.timer_callbacks: Dict[str, List[Callable[[int], None]]] = {}
-        self.active_timers: Dict[str, asyncio.Task] = {}
+        self.timer_callbacks: dict[str, list[Callable[[int], None]]] = {}
+        self.active_timers: dict[str, asyncio.Task] = {}
         self.min_pick_timer = 30
         self.max_pick_timer = 300
 
@@ -97,8 +98,8 @@ class DraftService:
         *,
         league_id: str,
         commissioner_id: str,
-        draft_settings: Optional[DraftSettings] = None,
-        db: Optional[Session] = None,
+        draft_settings: DraftSettings | None = None,
+        db: Session | None = None,
     ) -> Draft:
         session = db or self.session
 
@@ -114,16 +115,26 @@ class DraftService:
         if existing:
             raise DraftServiceError("Draft already exists for this league")
 
-        teams = session.query(Team).filter(Team.league_id == league_id).order_by(Team.created_at).all()
+        teams = (
+            session.query(Team)
+            .filter(Team.league_id == league_id)
+            .order_by(Team.created_at)
+            .all()
+        )
         if len(teams) < 2:
             raise DraftServiceError("Need at least 2 teams to create a draft")
 
         draft_settings = draft_settings or DraftSettings()
         draft_order = (
-            draft_settings.draft_order if draft_settings.draft_order else self._generate_draft_order(teams)
+            draft_settings.draft_order
+            if draft_settings.draft_order
+            else self._generate_draft_order(teams)
         )
 
-        pick_timer = max(self.min_pick_timer, min(self.max_pick_timer, draft_settings.pick_timer_seconds))
+        pick_timer = max(
+            self.min_pick_timer,
+            min(self.max_pick_timer, draft_settings.pick_timer_seconds),
+        )
         rounds = (
             draft_settings.rounds
             if draft_settings.rounds and draft_settings.rounds > 0
@@ -149,7 +160,10 @@ class DraftService:
         session.commit()
         session.refresh(draft)
 
-        logger.info("Draft created", extra={"league_id": league_id, "draft_id": str(draft.draft_id)})
+        logger.info(
+            "Draft created",
+            extra={"league_id": league_id, "draft_id": str(draft.draft_id)},
+        )
         return draft
 
     def start_draft(
@@ -157,7 +171,7 @@ class DraftService:
         *,
         draft_id: str,
         commissioner_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Draft:
         session = db or self.session
 
@@ -165,12 +179,16 @@ class DraftService:
         if not draft:
             raise DraftNotFoundError("Draft not found")
 
-        league = session.query(League).filter(League.league_id == draft.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == draft.league_id).first()
+        )
         if not league or str(league.commissioner_id) != str(commissioner_id):
             raise DraftServiceError("Only commissioner can start draft")
 
         if draft.status != DraftStatus.SCHEDULED.value:
-            raise InvalidDraftStateError(f"Cannot start draft with status {draft.status}")
+            raise InvalidDraftStateError(
+                f"Cannot start draft with status {draft.status}"
+            )
 
         draft.status = DraftStatus.ACTIVE.value
         draft.started_at = datetime.utcnow()
@@ -194,14 +212,16 @@ class DraftService:
         *,
         draft_id: str,
         commissioner_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Draft:
         session = db or self.session
         draft = session.query(Draft).filter(Draft.draft_id == draft_id).first()
         if not draft:
             raise DraftNotFoundError("Draft not found")
 
-        league = session.query(League).filter(League.league_id == draft.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == draft.league_id).first()
+        )
         if not league or str(league.commissioner_id) != str(commissioner_id):
             raise DraftServiceError("Only commissioner can pause draft")
         if draft.status != DraftStatus.ACTIVE.value:
@@ -219,14 +239,16 @@ class DraftService:
         *,
         draft_id: str,
         commissioner_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Draft:
         session = db or self.session
         draft = session.query(Draft).filter(Draft.draft_id == draft_id).first()
         if not draft:
             raise DraftNotFoundError("Draft not found")
 
-        league = session.query(League).filter(League.league_id == draft.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == draft.league_id).first()
+        )
         if not league or str(league.commissioner_id) != str(commissioner_id):
             raise DraftServiceError("Only commissioner can resume draft")
         if draft.status != DraftStatus.PAUSED.value:
@@ -239,11 +261,13 @@ class DraftService:
         logger.info("Draft resumed", extra={"draft_id": str(draft.draft_id)})
         return draft
 
-    def get_draft(self, draft_id: str, db: Optional[Session] = None) -> Optional[Draft]:
+    def get_draft(self, draft_id: str, db: Session | None = None) -> Draft | None:
         session = db or self.session
         return session.query(Draft).filter(Draft.draft_id == draft_id).first()
 
-    def get_draft_by_league(self, league_id: str, db: Optional[Session] = None) -> Optional[Draft]:
+    def get_draft_by_league(
+        self, league_id: str, db: Session | None = None
+    ) -> Draft | None:
         session = db or self.session
         return session.query(Draft).filter(Draft.league_id == league_id).first()
 
@@ -258,7 +282,7 @@ class DraftService:
         player_id: str,
         user_id: str,
         is_autopick: bool = False,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> DraftPick:
         session = db or self.session
 
@@ -333,7 +357,7 @@ class DraftService:
         *,
         draft_id: str,
         team_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> DraftPick:
         session = db or self.session
         available_players = self.get_available_players(draft_id, limit=50, db=session)
@@ -356,14 +380,16 @@ class DraftService:
     def get_draft_board(
         self,
         draft_id: str,
-        db: Optional[Session] = None,
-    ) -> Dict[str, Any]:
+        db: Session | None = None,
+    ) -> dict[str, Any]:
         session = db or self.session
         draft = session.query(Draft).filter(Draft.draft_id == draft_id).first()
         if not draft:
             raise DraftNotFoundError("Draft not found")
 
-        league = session.query(League).filter(League.league_id == draft.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == draft.league_id).first()
+        )
         teams = (
             session.query(Team)
             .filter(Team.league_id == draft.league_id)
@@ -375,46 +401,71 @@ class DraftService:
         total_rounds = self._calculate_total_rounds(league, teams)
         total_picks = len(teams) * total_rounds
 
-        picks_with_players: List[Dict[str, Any]] = []
+        picks_with_players: list[dict[str, Any]] = []
         for pick in draft.picks or []:
-            player = session.query(Player).filter(Player.player_id == pick["player_id"]).first()
+            player = (
+                session.query(Player)
+                .filter(Player.player_id == pick["player_id"])
+                .first()
+            )
             team = session.query(Team).filter(Team.team_id == pick["team_id"]).first()
             picks_with_players.append(
                 {
                     "pick_number": pick["pick_number"],
                     "round_number": pick["round_number"],
-                    "team": {
-                        "team_id": str(team.team_id),
-                        "name": team.team_name if hasattr(team, "team_name") else team.name,
-                        "user_id": str(team.user_id),
-                    }
-                    if team
-                    else None,
-                    "player": {
-                        "player_id": str(player.player_id),
-                        "name": player.name,
-                        "position": player.position,
-                        "team_id": player.team_id,
-                    }
-                    if player
-                    else None,
+                    "team": (
+                        {
+                            "team_id": str(team.team_id),
+                            "name": (
+                                team.team_name
+                                if hasattr(team, "team_name")
+                                else team.name
+                            ),
+                            "user_id": str(team.user_id),
+                        }
+                        if team
+                        else None
+                    ),
+                    "player": (
+                        {
+                            "player_id": str(player.player_id),
+                            "name": player.name,
+                            "position": player.position,
+                            "team_id": player.team_id,
+                        }
+                        if player
+                        else None
+                    ),
                     "pick_time": pick.get("pick_time"),
                     "is_autopick": pick.get("is_autopick", False),
                 }
             )
 
-        current_pick_info: Optional[Dict[str, Any]] = None
-        if draft.status == DraftStatus.ACTIVE.value and draft.current_pick <= total_picks:
+        current_pick_info: dict[str, Any] | None = None
+        if (
+            draft.status == DraftStatus.ACTIVE.value
+            and draft.current_pick <= total_picks
+        ):
             current_team = None
             if draft.current_team_id:
-                current_team = session.query(Team).filter(Team.team_id == draft.current_team_id).first()
+                current_team = (
+                    session.query(Team)
+                    .filter(Team.team_id == draft.current_team_id)
+                    .first()
+                )
             if current_team:
                 current_pick_info = {
                     "pick_number": draft.current_pick,
-                    "round_number": self._calculate_round_number(draft.current_pick, session, draft),
+                    "round_number": self._calculate_round_number(
+                        draft.current_pick, session, draft
+                    ),
                     "team": {
                         "team_id": str(current_team.team_id),
-                        "name": current_team.team_name if hasattr(current_team, "team_name") else current_team.name,
+                        "name": (
+                            current_team.team_name
+                            if hasattr(current_team, "team_name")
+                            else current_team.name
+                        ),
                         "user_id": str(current_team.user_id),
                     },
                     "time_remaining": self._get_time_remaining(str(draft.draft_id)),
@@ -431,7 +482,9 @@ class DraftService:
                 "current_pick": draft.current_pick,
                 "total_picks": total_picks,
                 "total_rounds": total_rounds,
-                "started_at": draft.started_at.isoformat() if draft.started_at else None,
+                "started_at": (
+                    draft.started_at.isoformat() if draft.started_at else None
+                ),
             },
             "teams": [
                 {
@@ -450,11 +503,11 @@ class DraftService:
     def get_available_players(
         self,
         draft_id: str,
-        position: Optional[str] = None,
+        position: str | None = None,
         limit: int = 100,
         offset: int = 0,
-        db: Optional[Session] = None,
-    ) -> List[Dict[str, Any]]:
+        db: Session | None = None,
+    ) -> list[dict[str, Any]]:
         session = db or self.session
         draft = session.query(Draft).filter(Draft.draft_id == draft_id).first()
         if not draft:
@@ -469,7 +522,7 @@ class DraftService:
 
         players = query.order_by(Player.name).offset(offset).limit(limit).all()
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for player in players:
             results.append(
                 {
@@ -488,7 +541,7 @@ class DraftService:
         draft_id: str,
         team_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> None:
         logger.info(
             "Auto-draft enabled",
@@ -498,22 +551,28 @@ class DraftService:
     def get_draft_summary(
         self,
         draft_id: str,
-        db: Optional[Session] = None,
-    ) -> Dict[str, Any]:
+        db: Session | None = None,
+    ) -> dict[str, Any]:
         session = db or self.session
         draft = session.query(Draft).filter(Draft.draft_id == draft_id).first()
         if not draft:
             raise DraftNotFoundError("Draft not found")
 
-        league = session.query(League).filter(League.league_id == draft.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == draft.league_id).first()
+        )
         teams = session.query(Team).filter(Team.league_id == draft.league_id).all()
 
         total_picks = len(draft.picks or [])
-        autopicks = sum(1 for pick in (draft.picks or []) if pick.get("is_autopick", False))
+        autopicks = sum(
+            1 for pick in (draft.picks or []) if pick.get("is_autopick", False)
+        )
 
         duration_minutes = None
         if draft.started_at and draft.completed_at:
-            duration_minutes = (draft.completed_at - draft.started_at).total_seconds() / 60.0
+            duration_minutes = (
+                draft.completed_at - draft.started_at
+            ).total_seconds() / 60.0
 
         return {
             "draft_id": str(draft.draft_id),
@@ -524,9 +583,13 @@ class DraftService:
             "autopick_count": autopicks,
             "manual_pick_count": total_picks - autopicks,
             "started_at": draft.started_at.isoformat() if draft.started_at else None,
-            "completed_at": draft.completed_at.isoformat() if draft.completed_at else None,
+            "completed_at": (
+                draft.completed_at.isoformat() if draft.completed_at else None
+            ),
             "duration_minutes": duration_minutes,
-            "current_pick": draft.current_pick if draft.status == DraftStatus.ACTIVE.value else None,
+            "current_pick": (
+                draft.current_pick if draft.status == DraftStatus.ACTIVE.value else None
+            ),
         }
 
     # ------------------------------------------------------------------
@@ -558,7 +621,9 @@ class DraftService:
                     return
 
             try:
-                self.make_autopick(draft_id=draft_id, team_id=str(draft.current_team_id), db=session)
+                self.make_autopick(
+                    draft_id=draft_id, team_id=str(draft.current_team_id), db=session
+                )
             except Exception as exc:  # pragma: no cover - defensive logging
                 logger.error(
                     "Auto-pick failed",
@@ -590,12 +655,12 @@ class DraftService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _generate_draft_order(self, teams: List[Team]) -> List[str]:
+    def _generate_draft_order(self, teams: list[Team]) -> list[str]:
         team_ids = [str(team.team_id) for team in teams]
         random.shuffle(team_ids)
         return team_ids
 
-    def _get_draft_order(self, draft: Draft, teams: List[Team]) -> List[str]:
+    def _get_draft_order(self, draft: Draft, teams: list[Team]) -> list[str]:
         if draft.draft_order:
             return list(draft.draft_order)
         return [str(team.team_id) for team in teams]
@@ -603,26 +668,37 @@ class DraftService:
     def _calculate_round_number(
         self, pick_number: int, session: Session, draft: Draft
     ) -> int:
-        team_count = session.query(Team).filter(Team.league_id == draft.league_id).count()
+        team_count = (
+            session.query(Team).filter(Team.league_id == draft.league_id).count()
+        )
         if team_count == 0:
             return 1
         return ((pick_number - 1) // team_count) + 1
 
-    def _calculate_total_rounds(self, league: Optional[League], teams: List[Team]) -> int:
+    def _calculate_total_rounds(
+        self, league: League | None, teams: list[Team]
+    ) -> int:
         roster_settings = (league.roster_settings if league else {}) or {}
         starting_positions = roster_settings.get("starting_positions", [])
         bench_spots = roster_settings.get("bench_spots", 5)
         return len(starting_positions) + bench_spots
 
     def _advance_to_next_pick(self, draft: Draft, session: Session) -> None:
-        teams = session.query(Team).filter(Team.league_id == draft.league_id).order_by(Team.created_at).all()
+        teams = (
+            session.query(Team)
+            .filter(Team.league_id == draft.league_id)
+            .order_by(Team.created_at)
+            .all()
+        )
         if not teams:
             draft.status = DraftStatus.COMPLETED.value
             draft.completed_at = datetime.utcnow()
             draft.current_team_id = None
             return
 
-        league = session.query(League).filter(League.league_id == draft.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == draft.league_id).first()
+        )
         total_rounds = draft.rounds or self._calculate_total_rounds(league, teams)
         total_picks = len(teams) * total_rounds
 
@@ -635,7 +711,9 @@ class DraftService:
             return
 
         draft.current_pick += 1
-        draft.current_round = self._calculate_round_number(draft.current_pick, session, draft)
+        draft.current_round = self._calculate_round_number(
+            draft.current_pick, session, draft
+        )
 
         draft_order = self._get_draft_order(draft, teams)
         team_count = len(draft_order)
@@ -648,15 +726,21 @@ class DraftService:
 
         draft.current_team_id = _uuid.UUID(draft_order[team_index])
 
-    def _is_player_drafted(self, draft_id: str, player_id: str, session: Session) -> bool:
+    def _is_player_drafted(
+        self, draft_id: str, player_id: str, session: Session
+    ) -> bool:
         draft = session.query(Draft).filter(Draft.draft_id == draft_id).first()
         if not draft or not draft.picks:
             return False
         return any(pick.get("player_id") == str(player_id) for pick in draft.picks)
 
-    def _validate_roster_limits(self, team_id: str, player: Player, session: Session) -> None:
+    def _validate_roster_limits(
+        self, team_id: str, player: Player, session: Session
+    ) -> None:
         team = session.query(Team).filter(Team.team_id == team_id).first()
-        league = session.query(League).filter(League.league_id == team.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == team.league_id).first()
+        )
 
         roster_settings = league.roster_settings or {}
         max_per_position = roster_settings.get("max_per_position", {})
@@ -665,12 +749,18 @@ class DraftService:
 
         current_count = 0
         for roster_player_id in team.roster or []:
-            roster_player = session.query(Player).filter(Player.player_id == roster_player_id).first()
+            roster_player = (
+                session.query(Player)
+                .filter(Player.player_id == roster_player_id)
+                .first()
+            )
             if roster_player and roster_player.position == player.position:
                 current_count += 1
 
         if current_count >= max_per_position[player.position]:
-            raise DraftServiceError(f"Team has reached maximum {player.position} players")
+            raise DraftServiceError(
+                f"Team has reached maximum {player.position} players"
+            )
 
     def _notify_current_pick(self, draft: Draft, session: Session) -> None:
         if not draft.current_team_id:
@@ -692,11 +782,11 @@ class DraftService:
 
 
 __all__ = [
+    "DraftNotFoundError",
+    "DraftPick",
     "DraftService",
     "DraftServiceError",
-    "DraftNotFoundError",
+    "DraftSettings",
     "InvalidDraftStateError",
     "PickTimerExpiredError",
-    "DraftSettings",
-    "DraftPick",
 ]

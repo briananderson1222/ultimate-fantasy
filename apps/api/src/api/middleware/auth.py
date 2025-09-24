@@ -3,37 +3,33 @@ Authentication middleware for Ultimate Fantasy Platform
 Provides JWT token validation, role-based access control, rate limiting, and security headers
 """
 
-import json
-import time
 import logging
 import os
+import time
 import uuid as _uuid
 from collections import defaultdict
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Any, Callable
+from typing import Any
 
 import jwt
-from jwt import PyJWKClient
-from fastapi import (
-    Request,
-    Response,
-    HTTPException,
-    Depends,
-    status
-)
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 import redis.asyncio as redis
+from fastapi import Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 from sqlalchemy.orm import Session
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from domains.users.services.user_service import UserService
+from infrastructure.config import settings
 from infrastructure.database.session_factory import (
     get_db_session as get_async_db_session,
+)
+from infrastructure.database.session_factory import (
     get_session_factory,
 )
-from infrastructure.config import settings
-from domains.users.services.user_service import UserService
 
 
 class AuthenticationError(Exception):
@@ -88,7 +84,7 @@ class TokenManager:
         self.expiration_hours = settings.JWT_EXPIRATION_HOURS
 
         # Token blacklist (Redis-backed)
-        self.redis_client: Optional[redis.Redis] = None
+        self.redis_client: redis.Redis | None = None
         self.blacklist_prefix = "token_blacklist:"
 
     async def set_redis_client(self, redis_client: redis.Redis):
@@ -100,9 +96,9 @@ class TokenManager:
         user_id: str,
         username: str,
         email: str,
-        roles: List[str] = None,
-        permissions: List[str] = None,
-        expires_delta: Optional[timedelta] = None
+        roles: list[str] | None = None,
+        permissions: list[str] | None = None,
+        expires_delta: timedelta | None = None,
     ) -> str:
         """
         Create a JWT access token
@@ -131,7 +127,7 @@ class TokenManager:
             "permissions": permissions or [],
             "exp": expire,
             "iat": datetime.utcnow(),
-            "type": "access"
+            "type": "access",
         }
 
         token = jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
@@ -156,14 +152,14 @@ class TokenManager:
             "username": username,
             "exp": expire,
             "iat": datetime.utcnow(),
-            "type": "refresh"
+            "type": "refresh",
         }
 
         token = jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
         logger.debug(f"Created refresh token for user {username}")
         return token
 
-    async def validate_token(self, token: str) -> Dict[str, Any]:
+    async def validate_token(self, token: str) -> dict[str, Any]:
         """
         Validate a JWT token
 
@@ -188,7 +184,7 @@ class TokenManager:
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],
-                options={"verify_exp": True}
+                options={"verify_exp": True},
             )
 
             # Validate token type
@@ -200,12 +196,12 @@ class TokenManager:
         except jwt.ExpiredSignatureError:
             raise TokenExpiredError("Token has expired")
         except jwt.InvalidTokenError as e:
-            raise InvalidTokenError(f"Invalid token: {str(e)}")
+            raise InvalidTokenError(f"Invalid token: {e!s}")
         except Exception as e:
             logger.error(f"Token validation error: {e}")
             raise AuthenticationError("Token validation failed")
 
-    async def blacklist_token(self, token: str, expiry_time: Optional[int] = None):
+    async def blacklist_token(self, token: str, expiry_time: int | None = None):
         """
         Add token to blacklist
 
@@ -224,7 +220,7 @@ class TokenManager:
                     token,
                     self.secret_key,
                     algorithms=[self.algorithm],
-                    options={"verify_exp": False}
+                    options={"verify_exp": False},
                 )
                 exp_timestamp = payload.get("exp")
                 if exp_timestamp:
@@ -235,7 +231,7 @@ class TokenManager:
             await self.redis_client.set(
                 blacklist_key,
                 "blacklisted",
-                ex=expiry_time or 86400  # Default 24 hours
+                ex=expiry_time or 86400,  # Default 24 hours
             )
 
             logger.debug("Token added to blacklist")
@@ -269,28 +265,31 @@ class TokenManager:
 class RateLimiter:
     """Rate limiting functionality"""
 
-    def __init__(self, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: redis.Redis | None = None):
         self.redis_client = redis_client
         self.rate_limit_prefix = "rate_limit:"
 
         # Default rate limits per endpoint type
         self.default_limits = {
-            "auth": {"requests": 10, "window": 60},      # 10 requests per minute for auth
-            "api": {"requests": 100, "window": 60},      # 100 requests per minute for API
-            "upload": {"requests": 5, "window": 60},     # 5 uploads per minute
-            "websocket": {"requests": 20, "window": 60}  # 20 WebSocket connections per minute
+            "auth": {"requests": 10, "window": 60},  # 10 requests per minute for auth
+            "api": {"requests": 100, "window": 60},  # 100 requests per minute for API
+            "upload": {"requests": 5, "window": 60},  # 5 uploads per minute
+            "websocket": {
+                "requests": 20,
+                "window": 60,
+            },  # 20 WebSocket connections per minute
         }
 
         # In-memory fallback when Redis unavailable
-        self.memory_cache: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        self.memory_cache: dict[str, dict[str, Any]] = defaultdict(dict)
 
     async def check_rate_limit(
         self,
         identifier: str,
         limit_type: str = "api",
-        custom_limit: Optional[int] = None,
-        custom_window: Optional[int] = None
-    ) -> Dict[str, Any]:
+        custom_limit: int | None = None,
+        custom_window: int | None = None,
+    ) -> dict[str, Any]:
         """
         Check if request is within rate limits
 
@@ -344,7 +343,7 @@ class RateLimiter:
                 "requests_made": 0,
                 "requests_remaining": max_requests,
                 "reset_time": current_time + window_seconds,
-                "error": str(e)
+                "error": str(e),
             }
 
     async def _check_redis_rate_limit(
@@ -353,13 +352,15 @@ class RateLimiter:
         limit_type: str,
         max_requests: int,
         window_seconds: int,
-        current_time: int
-    ) -> Dict[str, Any]:
+        current_time: int,
+    ) -> dict[str, Any]:
         """Redis-based rate limiting using sliding window"""
         key = f"{self.rate_limit_prefix}{limit_type}:{identifier}"
         window_start = current_time - window_seconds
 
         # Use Redis pipeline for atomic operations
+        if self.redis_client is None:
+            raise RuntimeError("Redis client not available for rate limiting")
         pipe = self.redis_client.pipeline()
 
         # Remove old entries and add current request
@@ -376,7 +377,7 @@ class RateLimiter:
             "requests_made": requests_made,
             "requests_remaining": max(0, max_requests - requests_made),
             "reset_time": current_time + window_seconds,
-            "window_seconds": window_seconds
+            "window_seconds": window_seconds,
         }
 
     def _check_memory_rate_limit(
@@ -385,8 +386,8 @@ class RateLimiter:
         limit_type: str,
         max_requests: int,
         window_seconds: int,
-        current_time: int
-    ) -> Dict[str, Any]:
+        current_time: int,
+    ) -> dict[str, Any]:
         """Memory-based rate limiting fallback"""
         key = f"{limit_type}:{identifier}"
         window_start = current_time - window_seconds
@@ -407,7 +408,9 @@ class RateLimiter:
         requests_made = len(self.memory_cache[key]["requests"])
 
         # Cleanup memory cache periodically
-        if current_time - self.memory_cache[key]["last_cleanup"] > 300:  # Every 5 minutes
+        if (
+            current_time - self.memory_cache[key]["last_cleanup"] > 300
+        ):  # Every 5 minutes
             self._cleanup_memory_cache(current_time)
             self.memory_cache[key]["last_cleanup"] = current_time
 
@@ -416,7 +419,7 @@ class RateLimiter:
             "requests_made": requests_made,
             "requests_remaining": max(0, max_requests - requests_made),
             "reset_time": current_time + window_seconds,
-            "window_seconds": window_seconds
+            "window_seconds": window_seconds,
         }
 
     def _cleanup_memory_cache(self, current_time: int):
@@ -441,7 +444,7 @@ class RateLimiter:
 class AuthContextMiddleware(BaseHTTPMiddleware):
     """Enhanced authentication context middleware with rate limiting and security"""
 
-    def __init__(self, app, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, app, redis_client: redis.Redis | None = None):
         super().__init__(app)
         self.token_manager = TokenManager()
         self.rate_limiter = RateLimiter(redis_client)
@@ -455,7 +458,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             "/api/v1/draft",
             "/api/v1/trades",
             "/api/v1/lineups",
-            "/api/v1/waivers"
+            "/api/v1/waivers",
         }
 
         # Rate limit configuration per endpoint
@@ -463,7 +466,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             "/api/v1/auth/login": {"type": "auth", "requests": 10, "window": 60},
             "/api/v1/auth/register": {"type": "auth", "requests": 5, "window": 60},
             "/api/v1/draft/*/pick": {"type": "api", "requests": 30, "window": 60},
-            "/api/v1/sports/players": {"type": "api", "requests": 200, "window": 60}
+            "/api/v1/sports/players": {"type": "api", "requests": 200, "window": 60},
         }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -492,7 +495,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             logger.error(f"Auth middleware error: {e}")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"error": "Internal server error"}
+                content={"error": "Internal server error"},
             )
 
     async def _apply_rate_limiting(self, request: Request):
@@ -514,13 +517,15 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             identifier=client_id,
             limit_type=rate_config["type"],
             custom_limit=rate_config.get("requests"),
-            custom_window=rate_config.get("window")
+            custom_window=rate_config.get("window"),
         )
 
     async def _apply_legacy_auth(self, request: Request):
         """Apply legacy authentication (preserve existing functionality)"""
         mode = os.getenv("AUTH_MODE", "dev").lower()
-        authz = request.headers.get("authorization") or request.headers.get("Authorization")
+        authz = request.headers.get("authorization") or request.headers.get(
+            "Authorization"
+        )
 
         request.state.user_id = None
         request.state.user_claims = None
@@ -588,7 +593,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             return
 
         # If already authenticated via legacy method, skip
-        if hasattr(request.state, 'user_id') and request.state.user_id:
+        if hasattr(request.state, "user_id") and request.state.user_id:
             return
 
         # Extract token and validate with enhanced token manager
@@ -606,8 +611,12 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
     def _requires_authentication(self, path: str) -> bool:
         """Check if endpoint requires authentication"""
         public_endpoints = {
-            "/health", "/api/health", "/api/v1/auth/login", "/api/v1/auth/register",
-            "/docs", "/openapi.json"
+            "/health",
+            "/api/health",
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/docs",
+            "/openapi.json",
         }
 
         if path in public_endpoints:
@@ -615,7 +624,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
 
         return any(path.startswith(endpoint) for endpoint in self.protected_endpoints)
 
-    def _extract_token(self, request: Request) -> Optional[str]:
+    def _extract_token(self, request: Request) -> str | None:
         """Extract JWT token from request"""
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
@@ -642,7 +651,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
 
         return f"ip:{client_ip}"
 
-    def _get_endpoint_rate_config(self, path: str) -> Dict[str, Any]:
+    def _get_endpoint_rate_config(self, path: str) -> dict[str, Any]:
         """Get rate limit configuration for endpoint"""
         # Check exact matches first
         if path in self.endpoint_rate_limits:
@@ -663,7 +672,9 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
     def _create_error_response(self, error: Exception) -> JSONResponse:
@@ -672,17 +683,20 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={"error": "rate_limit_exceeded", "message": str(error)},
-                headers={"Retry-After": "60"}
+                headers={"Retry-After": "60"},
             )
         elif isinstance(error, AuthenticationError):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"error": "authentication_failed", "message": str(error)}
+                content={"error": "authentication_failed", "message": str(error)},
             )
         else:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"error": "internal_error", "message": "An unexpected error occurred"}
+                content={
+                    "error": "internal_error",
+                    "message": "An unexpected error occurred",
+                },
             )
 
 
@@ -693,8 +707,8 @@ token_manager = TokenManager()
 # Dependency functions for FastAPI
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_async_db_session)
-) -> Dict[str, Any]:
+    db: Session = Depends(get_async_db_session),
+) -> dict[str, Any]:
     """
     FastAPI dependency to get current authenticated user
 
@@ -708,7 +722,7 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
@@ -721,8 +735,7 @@ async def get_current_user(
 
         if not user or not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User account inactive"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="User account inactive"
             )
 
         return {
@@ -732,21 +745,21 @@ async def get_current_user(
             "roles": token_payload.get("roles", []),
             "permissions": token_payload.get("permissions", []),
             "is_admin": user.is_admin,
-            "token_payload": token_payload
+            "token_payload": token_payload,
         }
 
     except (AuthenticationError, TokenExpiredError, InvalidTokenError) as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
 async def get_optional_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_async_db_session)
-) -> Optional[Dict[str, Any]]:
+    db: Session = Depends(get_async_db_session),
+) -> dict[str, Any] | None:
     """
     FastAPI dependency to optionally get current authenticated user
 
@@ -763,8 +776,8 @@ async def get_optional_current_user(
 
 
 async def require_admin(
-    current_user: Dict[str, Any] = Depends(get_current_user)
-) -> Dict[str, Any]:
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     FastAPI dependency that requires admin access
 
@@ -776,8 +789,7 @@ async def require_admin(
     """
     if not current_user.get("is_admin"):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
 
     return current_user

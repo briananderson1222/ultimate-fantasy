@@ -83,14 +83,10 @@ async def lineups_detailed_health_check(
 
     try:
         # Check for lineups set for current week
+        from infrastructure.database.sql_utils import HEALTH_QUERIES
+
         current_week_lineups = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM lineups
-            WHERE week = EXTRACT(week FROM NOW())
-            AND year = EXTRACT(year FROM NOW())
-        """
-            )
+            text(HEALTH_QUERIES["current_week_lineups"]())
         ).scalar()
 
         detailed_status["checks"]["current_week_lineups"] = {
@@ -100,12 +96,7 @@ async def lineups_detailed_health_check(
 
         # Check for recent lineup changes
         recent_changes = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM lineups
-            WHERE updated_at > NOW() - INTERVAL '1 hour'
-        """
-            )
+            text(HEALTH_QUERIES["recent_lineups"]())
         ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {

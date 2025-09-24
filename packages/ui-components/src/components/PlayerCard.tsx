@@ -1,29 +1,117 @@
-import React from 'react';
-import { designTokens } from '../tokens/design-tokens';
-import { PlatformAdapter } from '../adapters/platform';
+/**
+ * Enhanced PlayerCard Component
+ *
+ * A comprehensive player card component for fantasy sports applications.
+ * Features rich player information, statistics, projections, and interactive elements
+ * with full theming support and accessibility compliance.
+ */
+
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  fantasyTheme,
+  getPositionColor,
+  getPlayerStatusColor,
+  getScoringColor,
+  ThemeMode,
+  getThemeColors
+} from '../tokens/fantasy-theme';
+
+export interface PlayerStats {
+  passingYards?: number;
+  passingTouchdowns?: number;
+  interceptions?: number;
+  rushingYards?: number;
+  rushingTouchdowns?: number;
+  receptions?: number;
+  receivingYards?: number;
+  receivingTouchdowns?: number;
+  fieldGoalsMade?: number;
+  fieldGoalsAttempted?: number;
+  pointsAgainst?: number;
+  sacks?: number;
+  turnovers?: number;
+  fantasyPoints?: number;
+  [key: string]: number | undefined;
+}
+
+export interface PlayerProjections {
+  weekly?: number;
+  season?: number;
+  confidence?: number; // 0-1 scale
+}
 
 export interface Player {
   id: string;
   name: string;
   position: string;
   team: string;
-  projected_points: number;
-  injury_status: 'healthy' | 'questionable' | 'doubtful' | 'out' | 'ir';
+  jerseyNumber?: number;
+  status: 'healthy' | 'questionable' | 'doubtful' | 'out' | 'injured' | 'bye' | 'suspended';
+  ownedBy?: string; // User ID if owned
+  salary?: number; // For DFS
+  averageDraftPosition?: number;
+
+  // Statistics
+  stats?: PlayerStats;
+  projections?: PlayerProjections;
+
+  // Legacy support
+  projected_points?: number;
+  injury_status?: 'healthy' | 'questionable' | 'doubtful' | 'out' | 'ir';
   bye_week?: number;
   trade_value?: number;
   avatar_url?: string;
+
+  // Metadata
+  photoUrl?: string;
+  injuryReport?: string;
+  newsItems?: Array<{
+    title: string;
+    summary: string;
+    timestamp: string;
+    impact: 'positive' | 'negative' | 'neutral';
+  }>;
+
+  // Fantasy-specific
+  rosteredPercentage?: number;
+  trendingDirection?: 'up' | 'down' | 'steady';
+  tier?: number;
+  sleeper?: boolean;
+  rookie?: boolean;
 }
 
 export interface PlayerCardProps {
   player: Player;
-  variant?: 'default' | 'compact' | 'detailed';
-  selectable?: boolean;
+  variant?: 'compact' | 'standard' | 'detailed' | 'draft';
+  theme?: ThemeMode;
+  showProjections?: boolean;
+  showNews?: boolean;
+  showOwnership?: boolean;
+  showTrends?: boolean;
+  interactive?: boolean;
   selected?: boolean;
+  disabled?: boolean;
+
+  // Legacy support
+  selectable?: boolean;
   showProjection?: boolean;
   showTradeValue?: boolean;
   onPress?: (player: Player) => void;
-  style?: any;
   platform?: 'web' | 'mobile';
+
+  // Event handlers
+  onClick?: (player: Player) => void;
+  onDoubleClick?: (player: Player) => void;
+  onAdd?: (player: Player) => void;
+  onRemove?: (player: Player) => void;
+  onTrade?: (player: Player) => void;
+  onViewDetails?: (player: Player) => void;
+
+  // Customization
+  className?: string;
+  style?: React.CSSProperties;
+  actions?: React.ReactNode;
+  badges?: React.ReactNode;
 }
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({

@@ -1,25 +1,60 @@
-# Ultimate Fantasy - Architecture Documentation
+# Ultimate Fantasy Platform - Comprehensive Architecture Documentation
 
-This document provides a comprehensive overview of the Ultimate Fantasy platform architecture, focusing on the cross-platform shared logic implementation and monorepo structure.
+This document provides an extensive overview of the Ultimate Fantasy platform architecture, covering the complete system design, implementation details, and operational aspects.
 
 ## Table of Contents
 
-- [Overview](#overview)
+- [Platform Overview](#platform-overview)
 - [System Architecture](#system-architecture)
-- [Shared Package Architecture](#shared-package-architecture)
-- [Cross-Platform Strategy](#cross-platform-strategy)
-- [Data Flow](#data-flow)
-- [State Management](#state-management)
+- [Fantasy Sports Domain Model](#fantasy-sports-domain-model)
+- [Cross-Platform Architecture](#cross-platform-architecture)
+- [Backend Architecture](#backend-architecture)
+- [Frontend Architecture](#frontend-architecture)
+- [Shared Package System](#shared-package-system)
+- [Data Flow & State Management](#data-flow--state-management)
 - [API Architecture](#api-architecture)
 - [UI Component System](#ui-component-system)
 - [Testing Strategy](#testing-strategy)
 - [Build & Deployment](#build--deployment)
-- [Security Considerations](#security-considerations)
+- [Security Architecture](#security-architecture)
 - [Performance Optimization](#performance-optimization)
+- [Monitoring & Observability](#monitoring--observability)
+- [Development Workflow](#development-workflow)
 
-## Overview
+## Platform Overview
 
-Ultimate Fantasy is a modern fantasy sports platform built with a cross-platform architecture that maximizes code reuse between web and mobile applications. The system is designed around a monorepo structure with shared packages that provide business logic, API services, and UI components.
+Ultimate Fantasy is a comprehensive multi-sport fantasy platform that enables users to create, manage, and participate in fantasy sports leagues across multiple sports including MLB, WNBA, and NFL. The platform supports various league formats from traditional season-long leagues to elimination-style tournaments.
+
+### Core Capabilities
+
+- **Multi-Sport Support**: MLB, WNBA, NFL with extensible architecture for additional sports
+- **Multiple League Formats**: Traditional, Guillotine elimination, Dynasty, Keeper leagues
+- **Cross-Platform Experience**: Seamless experience across web and mobile applications
+- **AI-Powered Content**: Automated game recaps, analysis, and insights
+- **Real-Time Updates**: Live scoring, notifications, and real-time league updates
+- **Advanced Features**: Waivers, trades, draft management, lineup optimization
+
+### Technology Stack
+
+#### Frontend Applications
+
+- **Web Platform**: Next.js 15, React 18, TypeScript 5, Tailwind CSS
+- **Mobile Platform**: React Native 0.81, Expo SDK 54, TypeScript 5
+- **Shared UI**: Cross-platform component library with platform-specific adaptations
+
+#### Backend Services
+
+- **API Framework**: FastAPI, Python 3.11, Pydantic v2
+- **Database**: PostgreSQL 15, SQLAlchemy ORM, Alembic migrations
+- **Cache & Performance**: Redis 7, background job processing
+- **Authentication**: JWT tokens with refresh mechanisms
+
+#### Shared Infrastructure
+
+- **Build System**: Rollup, TypeScript, ESLint, Prettier
+- **State Management**: Zustand, React Query, React Context
+- **Testing**: Jest, React Testing Library, Playwright, Detox, pytest
+- **Documentation**: Storybook, TypeDoc, OpenAPI/Swagger
 
 ### Key Principles
 
@@ -29,6 +64,8 @@ Ultimate Fantasy is a modern fantasy sports platform built with a cross-platform
 4. **Performance**: Optimized for fast loading and smooth interactions
 5. **Accessibility**: WCAG compliant and inclusive design
 6. **Testing**: Comprehensive test coverage with automated validation
+7. **Domain-Driven Design**: Clean architecture with bounded contexts
+8. **Real-Time Capabilities**: WebSocket support for live updates
 
 ## System Architecture
 
@@ -89,18 +126,21 @@ graph TB
 ### Technology Stack
 
 #### Frontend
+
 - **Web**: NextJS 15, React 18, TypeScript 5, Tailwind CSS
 - **Mobile**: React Native 0.81, Expo SDK 54, TypeScript 5
 - **State**: Zustand, React Query, React Context
 - **Testing**: Jest, React Testing Library, Playwright, Detox
 
 #### Backend
+
 - **API**: FastAPI, Python 3.11, Pydantic
 - **Database**: PostgreSQL 15, SQLAlchemy ORM
 - **Cache**: Redis 7, Background Tasks
 - **Testing**: pytest, httpx, factories
 
 #### Shared Packages
+
 - **Build**: Rollup, TypeScript, ESLint
 - **Validation**: Zod schemas
 - **Documentation**: Storybook, TypeDoc
@@ -162,10 +202,13 @@ The shared packages automatically detect the runtime environment:
 ```typescript
 // Platform detection utility
 export const platformUtils = {
-  isWeb: () => typeof window !== 'undefined',
-  isNative: () => typeof navigator !== 'undefined' && navigator.product === 'ReactNative',
-  isMobile: () => platformUtils.isNative() || (platformUtils.isWeb() && window.innerWidth < 768),
-  hasTouch: () => 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  isWeb: () => typeof window !== "undefined",
+  isNative: () =>
+    typeof navigator !== "undefined" && navigator.product === "ReactNative",
+  isMobile: () =>
+    platformUtils.isNative() ||
+    (platformUtils.isWeb() && window.innerWidth < 768),
+  hasTouch: () => "ontouchstart" in window || navigator.maxTouchPoints > 0,
 };
 ```
 
@@ -195,17 +238,23 @@ class WebStorageAdapter implements StorageAdapter {
 
 class NativeStorageAdapter implements StorageAdapter {
   async getItem(key: string) {
-    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    const AsyncStorage = await import(
+      "@react-native-async-storage/async-storage"
+    );
     return AsyncStorage.default.getItem(key);
   }
 
   async setItem(key: string, value: string) {
-    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    const AsyncStorage = await import(
+      "@react-native-async-storage/async-storage"
+    );
     return AsyncStorage.default.setItem(key, value);
   }
 
   async removeItem(key: string) {
-    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    const AsyncStorage = await import(
+      "@react-native-async-storage/async-storage"
+    );
     return AsyncStorage.default.removeItem(key);
   }
 }
@@ -298,23 +347,25 @@ export const useLeagueStore = create<LeagueState>()(
       // Actions
       setLeagues: (leagues) => set({ leagues }),
       setSelectedLeague: (league) => set({ selectedLeague: league }),
-      addLeague: (league) => set((state) => ({
-        leagues: [...state.leagues, league]
-      })),
+      addLeague: (league) =>
+        set((state) => ({
+          leagues: [...state.leagues, league],
+        })),
 
       // Computed values
-      getLeagueById: (id) => get().leagues.find(l => l.id === id),
-      getActiveLeagues: () => get().leagues.filter(l => l.status === 'active'),
+      getLeagueById: (id) => get().leagues.find((l) => l.id === id),
+      getActiveLeagues: () =>
+        get().leagues.filter((l) => l.status === "active"),
     }),
     {
-      name: 'league-store',
+      name: "league-store",
       storage: createJSONStorage(() => getStorageAdapter()),
       partialize: (state) => ({
         leagues: state.leagues,
-        selectedLeague: state.selectedLeague
-      })
-    }
-  )
+        selectedLeague: state.selectedLeague,
+      }),
+    },
+  ),
 );
 ```
 
@@ -326,7 +377,7 @@ export const useLeagueData = (options = {}) => {
   const store = useLeagueStore();
 
   const query = useQuery({
-    queryKey: ['leagues'],
+    queryKey: ["leagues"],
     queryFn: async () => {
       const service = LeaguesService.create(httpClient);
       return service.getMyLeagues();
@@ -339,7 +390,7 @@ export const useLeagueData = (options = {}) => {
       store.setError(error.message);
       options.onError?.(error);
     },
-    ...options
+    ...options,
   });
 
   return {
@@ -372,12 +423,12 @@ export class BaseApiService {
   protected handleError(error: any): ApiError {
     if (error.response) {
       return new ApiError(
-        error.response.data?.message || 'API Error',
+        error.response.data?.message || "API Error",
         error.response.status,
-        error.response.data
+        error.response.data,
       );
     }
-    return new ApiError('Network Error', 0, error);
+    return new ApiError("Network Error", 0, error);
   }
 }
 
@@ -385,18 +436,18 @@ export class BaseApiService {
 export class LeaguesService extends BaseApiService {
   async getMyLeagues(): Promise<PaginatedResponse<League>> {
     return this.request({
-      method: 'GET',
-      url: '/leagues',
-      validateStatus: (status) => status === 200
+      method: "GET",
+      url: "/leagues",
+      validateStatus: (status) => status === 200,
     });
   }
 
   async createLeague(data: CreateLeagueRequest): Promise<League> {
     return this.request({
-      method: 'POST',
-      url: '/leagues',
+      method: "POST",
+      url: "/leagues",
       data,
-      validateStatus: (status) => status === 201
+      validateStatus: (status) => status === 201,
     });
   }
 }
@@ -410,16 +461,16 @@ export const createHttpClient = (config: HttpClientConfig) => {
   const baseConfig = {
     timeout: 30000,
     headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      "Content-Type": "application/json",
+      Accept: "application/json",
     },
-    ...config
+    ...config,
   };
 
   // Platform-specific configurations
   if (platformUtils.isNative()) {
     // React Native specific settings
-    baseConfig.adapter = 'react-native';
+    baseConfig.adapter = "react-native";
   } else {
     // Web specific settings
     baseConfig.withCredentials = true;
@@ -445,7 +496,7 @@ export const createHttpClient = (config: HttpClientConfig) => {
         // Redirect to login
       }
       return Promise.reject(error);
-    }
+    },
   );
 
   return client;
@@ -461,56 +512,56 @@ export const createHttpClient = (config: HttpClientConfig) => {
 export const designTokens = {
   colors: {
     primary: {
-      50: '#eff6ff',
-      100: '#dbeafe',
+      50: "#eff6ff",
+      100: "#dbeafe",
       // ... color scale
-      900: '#1e3a8a',
+      900: "#1e3a8a",
     },
     semantic: {
-      success: '#10b981',
-      warning: '#f59e0b',
-      error: '#ef4444',
-      info: '#3b82f6',
-    }
+      success: "#10b981",
+      warning: "#f59e0b",
+      error: "#ef4444",
+      info: "#3b82f6",
+    },
   },
 
   typography: {
     fontFamilies: {
-      sans: ['Inter', 'system-ui', 'sans-serif'],
-      mono: ['Fira Code', 'monospace'],
+      sans: ["Inter", "system-ui", "sans-serif"],
+      mono: ["Fira Code", "monospace"],
     },
     fontSizes: {
-      xs: '0.75rem',
-      sm: '0.875rem',
-      base: '1rem',
-      lg: '1.125rem',
-      xl: '1.25rem',
-      '2xl': '1.5rem',
+      xs: "0.75rem",
+      sm: "0.875rem",
+      base: "1rem",
+      lg: "1.125rem",
+      xl: "1.25rem",
+      "2xl": "1.5rem",
     },
     fontWeights: {
       normal: 400,
       medium: 500,
       semibold: 600,
       bold: 700,
-    }
+    },
   },
 
   spacing: {
-    0: '0',
-    1: '0.25rem',
-    2: '0.5rem',
-    3: '0.75rem',
-    4: '1rem',
+    0: "0",
+    1: "0.25rem",
+    2: "0.5rem",
+    3: "0.75rem",
+    4: "1rem",
     // ... spacing scale
   },
 
   borderRadius: {
-    none: '0',
-    sm: '0.125rem',
-    md: '0.375rem',
-    lg: '0.5rem',
-    full: '9999px',
-  }
+    none: "0",
+    sm: "0.125rem",
+    md: "0.375rem",
+    lg: "0.5rem",
+    full: "9999px",
+  },
 };
 ```
 
@@ -701,37 +752,32 @@ graph LR
 ```javascript
 // rollup.config.js
 export default {
-  input: 'src/index.ts',
+  input: "src/index.ts",
   output: [
     {
-      file: 'dist/index.js',
-      format: 'cjs',
-      sourcemap: true
+      file: "dist/index.js",
+      format: "cjs",
+      sourcemap: true,
     },
     {
-      file: 'dist/index.esm.js',
-      format: 'esm',
-      sourcemap: true
-    }
+      file: "dist/index.esm.js",
+      format: "esm",
+      sourcemap: true,
+    },
   ],
-  external: [
-    'react',
-    'react-native',
-    'zustand',
-    '@tanstack/react-query'
-  ],
+  external: ["react", "react-native", "zustand", "@tanstack/react-query"],
   plugins: [
     typescript({
       declaration: true,
       declarationMap: true,
-      outDir: 'dist'
+      outDir: "dist",
     }),
     resolve({
-      preferBuiltins: false
+      preferBuiltins: false,
     }),
     commonjs(),
-    terser()
-  ]
+    terser(),
+  ],
 };
 ```
 
@@ -743,9 +789,9 @@ name: Shared Packages
 
 on:
   push:
-    paths: ['packages/**']
+    paths: ["packages/**"]
   pull_request:
-    paths: ['packages/**']
+    paths: ["packages/**"]
 
 jobs:
   test:
@@ -754,8 +800,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - run: npm ci
       - run: npm run typecheck --workspaces
@@ -792,13 +838,13 @@ export class AuthManager {
   async setToken(token: string): Promise<void> {
     this.token = token;
     const storage = getStorageAdapter();
-    await storage.setItem('auth_token', token);
+    await storage.setItem("auth_token", token);
   }
 
   async getToken(): Promise<string | null> {
     if (!this.token) {
       const storage = getStorageAdapter();
-      this.token = await storage.getItem('auth_token');
+      this.token = await storage.getItem("auth_token");
     }
     return this.token;
   }
@@ -806,12 +852,12 @@ export class AuthManager {
   async clearToken(): Promise<void> {
     this.token = null;
     const storage = getStorageAdapter();
-    await storage.removeItem('auth_token');
+    await storage.removeItem("auth_token");
   }
 
   isTokenExpired(token: string): boolean {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = JSON.parse(atob(token.split(".")[1]));
       return Date.now() >= payload.exp * 1000;
     } catch {
       return true;
@@ -825,20 +871,22 @@ export class AuthManager {
 ```typescript
 // Zod schema validation
 export const CreateLeagueSchema = z.object({
-  name: z.string()
-    .min(3, 'League name must be at least 3 characters')
-    .max(50, 'League name must be less than 50 characters')
-    .regex(/^[a-zA-Z0-9\s]+$/, 'League name contains invalid characters'),
+  name: z
+    .string()
+    .min(3, "League name must be at least 3 characters")
+    .max(50, "League name must be less than 50 characters")
+    .regex(/^[a-zA-Z0-9\s]+$/, "League name contains invalid characters"),
 
-  total_rosters: z.number()
-    .int('Total rosters must be an integer')
-    .min(4, 'League must have at least 4 teams')
-    .max(20, 'League cannot have more than 20 teams'),
+  total_rosters: z
+    .number()
+    .int("Total rosters must be an integer")
+    .min(4, "League must have at least 4 teams")
+    .max(20, "League cannot have more than 20 teams"),
 
   settings: LeagueSettingsSchema.refine(
     (settings) => validateRosterConfiguration(settings.roster),
-    { message: 'Invalid roster configuration' }
-  )
+    { message: "Invalid roster configuration" },
+  ),
 });
 
 // Usage in API service
@@ -846,9 +894,9 @@ export class LeaguesService {
   async createLeague(data: unknown): Promise<League> {
     const validatedData = CreateLeagueSchema.parse(data);
     return this.request({
-      method: 'POST',
-      url: '/leagues',
-      data: validatedData
+      method: "POST",
+      url: "/leagues",
+      data: validatedData,
     });
   }
 }
@@ -861,9 +909,9 @@ export class LeaguesService {
 ```typescript
 // Code splitting with dynamic imports
 export const LazyLeagueSettings = React.lazy(() =>
-  import('./LeagueSettings').then(module => ({
-    default: module.LeagueSettings
-  }))
+  import("./LeagueSettings").then((module) => ({
+    default: module.LeagueSettings,
+  })),
 );
 
 // Platform-specific optimizations
@@ -873,7 +921,7 @@ export const optimizeForPlatform = () => {
     return {
       enableHermes: true,
       bundleForDevice: true,
-      minify: true
+      minify: true,
     };
   }
 
@@ -881,7 +929,7 @@ export const optimizeForPlatform = () => {
   return {
     enableCodeSplitting: true,
     enableTreeShaking: true,
-    enableMinification: true
+    enableMinification: true,
   };
 };
 ```
@@ -891,18 +939,18 @@ export const optimizeForPlatform = () => {
 ```typescript
 // Optimized selectors to prevent unnecessary re-renders
 export const useLeagueSelectors = () => {
-  const leagues = useLeagueStore(state => state.leagues);
-  const selectedLeague = useLeagueStore(state => state.selectedLeague);
+  const leagues = useLeagueStore((state) => state.leagues);
+  const selectedLeague = useLeagueStore((state) => state.selectedLeague);
 
   // Memoized computed values
   const activeLeagues = useMemo(
-    () => leagues.filter(league => league.status === 'active'),
-    [leagues]
+    () => leagues.filter((league) => league.status === "active"),
+    [leagues],
   );
 
   const draftingLeagues = useMemo(
-    () => leagues.filter(league => league.status === 'drafting'),
-    [leagues]
+    () => leagues.filter((league) => league.status === "drafting"),
+    [leagues],
   );
 
   return { leagues, selectedLeague, activeLeagues, draftingLeagues };
@@ -915,24 +963,24 @@ export const useLeagueSelectors = () => {
 // Performance metrics collection
 export const performanceMonitor = {
   markStart: (operation: string) => {
-    if (typeof performance !== 'undefined') {
+    if (typeof performance !== "undefined") {
       performance.mark(`${operation}-start`);
     }
   },
 
   markEnd: (operation: string) => {
-    if (typeof performance !== 'undefined') {
+    if (typeof performance !== "undefined") {
       performance.mark(`${operation}-end`);
       performance.measure(operation, `${operation}-start`, `${operation}-end`);
     }
   },
 
   getMetrics: () => {
-    if (typeof performance !== 'undefined') {
-      return performance.getEntriesByType('measure');
+    if (typeof performance !== "undefined") {
+      return performance.getEntriesByType("measure");
     }
     return [];
-  }
+  },
 };
 
 // Usage in components

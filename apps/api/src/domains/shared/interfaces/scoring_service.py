@@ -114,6 +114,7 @@ class ScoringServiceInterface(ABC):
 # Type hints for forward references
 if TYPE_CHECKING:
     from domains.scoring.models.player_performance import PlayerPerformance
-    from domains.scoring.models.score import Score
     from domains.scoring.models.score_audit import ScoreAudit
     from domains.scoring.models.scoring_rule import ScoringRules
+
+    from domains.scoring.models.score import Score

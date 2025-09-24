@@ -26,7 +26,7 @@ class TestDraftFlow:
             {"team_id": "team_1", "pick_order": 1, "owner": "user1"},
             {"team_id": "team_2", "pick_order": 2, "owner": "user2"},
             {"team_id": "team_3", "pick_order": 3, "owner": "user3"},
-            {"team_id": "team_4", "pick_order": 4, "owner": "user4"}
+            {"team_id": "team_4", "pick_order": 4, "owner": "user4"},
         ]
 
         # Mock available players
@@ -54,12 +54,11 @@ class TestDraftFlow:
             "draft_type": "snake",
             "rounds": 2,
             "pick_time_limit": 120,
-            "auto_draft_enabled": False
+            "auto_draft_enabled": False,
         }
 
         draft_response = self.client.post(
-            f"/api/v1/draft/{self.league_id}",
-            json=draft_config
+            f"/api/v1/draft/{self.league_id}", json=draft_config
         )
         assert draft_response.status_code == 201
         draft_data = draft_response.json()
@@ -97,14 +96,10 @@ class TestDraftFlow:
             current_team = expected_snake_order[pick_num - 1]["team_id"]
             player_id = self.available_players[pick_num - 1]["player_id"]
 
-            pick_data = {
-                "player_id": player_id,
-                "team_id": current_team
-            }
+            pick_data = {"player_id": player_id, "team_id": current_team}
 
             pick_response = self.client.post(
-                f"/api/v1/draft/{self.league_id}/pick",
-                json=pick_data
+                f"/api/v1/draft/{self.league_id}/pick", json=pick_data
             )
             assert pick_response.status_code == 201
             pick_result = pick_response.json()
@@ -136,14 +131,10 @@ class TestDraftFlow:
             # Use remaining players or create new ones for second round
             player_id = f"player_round2_{pick_num}"
 
-            pick_data = {
-                "player_id": player_id,
-                "team_id": current_team
-            }
+            pick_data = {"player_id": player_id, "team_id": current_team}
 
             pick_response = self.client.post(
-                f"/api/v1/draft/{self.league_id}/pick",
-                json=pick_data
+                f"/api/v1/draft/{self.league_id}/pick", json=pick_data
             )
             assert pick_response.status_code == 201
 
@@ -169,12 +160,11 @@ class TestDraftFlow:
         # Try to make pick for wrong team (team_2 when team_1 should pick)
         wrong_pick_data = {
             "player_id": "player_1",
-            "team_id": "team_2"  # Wrong team for first pick
+            "team_id": "team_2",  # Wrong team for first pick
         }
 
         response = self.client.post(
-            f"/api/v1/draft/{self.league_id}/pick",
-            json=wrong_pick_data
+            f"/api/v1/draft/{self.league_id}/pick", json=wrong_pick_data
         )
         assert response.status_code == 400
         assert "not your turn" in response.json()["message"].lower()
@@ -190,21 +180,14 @@ class TestDraftFlow:
         self.client.post(f"/api/v1/draft/{self.league_id}", json=draft_config)
 
         # First pick
-        first_pick = {
-            "player_id": "player_1",
-            "team_id": "team_1"
-        }
+        first_pick = {"player_id": "player_1", "team_id": "team_1"}
         self.client.post(f"/api/v1/draft/{self.league_id}/pick", json=first_pick)
 
         # Try to pick same player again
-        duplicate_pick = {
-            "player_id": "player_1",  # Same player
-            "team_id": "team_2"
-        }
+        duplicate_pick = {"player_id": "player_1", "team_id": "team_2"}  # Same player
 
         response = self.client.post(
-            f"/api/v1/draft/{self.league_id}/pick",
-            json=duplicate_pick
+            f"/api/v1/draft/{self.league_id}/pick", json=duplicate_pick
         )
         assert response.status_code == 400
         assert "already drafted" in response.json()["message"].lower()
@@ -220,21 +203,19 @@ class TestDraftFlow:
         self.client.post(f"/api/v1/draft/{self.league_id}", json=draft_config)
 
         # Make a pick
-        pick_data = {
-            "player_id": "player_1",
-            "team_id": "team_1"
-        }
+        pick_data = {"player_id": "player_1", "team_id": "team_1"}
 
         response = self.client.post(
-            f"/api/v1/draft/{self.league_id}/pick",
-            json=pick_data
+            f"/api/v1/draft/{self.league_id}/pick", json=pick_data
         )
 
         # Should include real-time update headers
         assert response.status_code == 201
-        assert ("X-WebSocket-Broadcast" in response.headers or
-                "X-Event-Published" in response.headers or
-                "X-Real-Time-Update" in response.headers)
+        assert (
+            "X-WebSocket-Broadcast" in response.headers
+            or "X-Event-Published" in response.headers
+            or "X-Real-Time-Update" in response.headers
+        )
 
     def test_draft_timer_functionality(self):
         """
@@ -247,12 +228,11 @@ class TestDraftFlow:
             "draft_type": "snake",
             "rounds": 1,
             "pick_time_limit": 5,  # 5 seconds
-            "auto_draft_enabled": True
+            "auto_draft_enabled": True,
         }
 
         draft_response = self.client.post(
-            f"/api/v1/draft/{self.league_id}",
-            json=draft_config
+            f"/api/v1/draft/{self.league_id}", json=draft_config
         )
         assert draft_response.status_code == 201
 

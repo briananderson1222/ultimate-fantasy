@@ -5,17 +5,16 @@ Provides connection pooling, configuration management, and fantasy sports
 specific caching patterns with high availability and performance optimization.
 """
 
-import os
 import json
 import logging
-from typing import Optional, Dict, Any, Union, List
-from datetime import datetime, timedelta
+import os
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Any
 
 import redis.asyncio as redis
 from redis.asyncio.connection import ConnectionPool
-from redis.exceptions import RedisError, ConnectionError, TimeoutError
-
+from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +26,14 @@ class FantasyRedisConfig:
         self,
         host: str = "localhost",
         port: int = 6379,
-        password: Optional[str] = None,
+        password: str | None = None,
         db: int = 0,
         max_connections: int = 20,
         retry_on_timeout: bool = True,
         health_check_interval: int = 30,
         socket_timeout: float = 5.0,
         socket_connect_timeout: float = 5.0,
-        decode_responses: bool = True
+        decode_responses: bool = True,
     ):
         """
         Initialize Redis configuration.
@@ -71,9 +70,11 @@ class FantasyRedisConfig:
         self.port = int(os.getenv("REDIS_PORT", str(self.port)))
         self.password = os.getenv("REDIS_PASSWORD", self.password)
         self.db = int(os.getenv("REDIS_DB", str(self.db)))
-        self.max_connections = int(os.getenv("REDIS_MAX_CONNECTIONS", str(self.max_connections)))
+        self.max_connections = int(
+            os.getenv("REDIS_MAX_CONNECTIONS", str(self.max_connections))
+        )
 
-    def get_connection_kwargs(self) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> dict[str, Any]:
         """
         Get connection parameters for Redis.
 
@@ -89,7 +90,7 @@ class FantasyRedisConfig:
             "health_check_interval": self.health_check_interval,
             "socket_timeout": self.socket_timeout,
             "socket_connect_timeout": self.socket_connect_timeout,
-            "decode_responses": self.decode_responses
+            "decode_responses": self.decode_responses,
         }
 
         if self.password:
@@ -101,7 +102,7 @@ class FantasyRedisConfig:
 class FantasyRedisPool:
     """Redis connection pool manager for fantasy sports operations."""
 
-    def __init__(self, config: Optional[FantasyRedisConfig] = None):
+    def __init__(self, config: FantasyRedisConfig | None = None):
         """
         Initialize Redis pool manager.
 
@@ -109,8 +110,8 @@ class FantasyRedisPool:
             config: Redis configuration (uses default if None)
         """
         self.config = config or FantasyRedisConfig()
-        self.pool: Optional[ConnectionPool] = None
-        self.redis_client: Optional[redis.Redis] = None
+        self.pool: ConnectionPool | None = None
+        self.redis_client: redis.Redis | None = None
 
         # Fantasy sports specific cache key prefixes
         self.key_prefixes = {
@@ -125,22 +126,22 @@ class FantasyRedisPool:
             "stats": "fantasy:stats:",
             "projection": "fantasy:projection:",
             "session": "fantasy:session:",
-            "notification": "fantasy:notification:"
+            "notification": "fantasy:notification:",
         }
 
         # Default TTL values for different data types (in seconds)
         self.default_ttl = {
-            "player_stats": 300,      # 5 minutes
-            "player_projection": 3600, # 1 hour
-            "league_settings": 1800,   # 30 minutes
-            "team_roster": 600,        # 10 minutes
-            "draft_state": 5,          # 5 seconds (real-time)
-            "trade_status": 60,        # 1 minute
-            "lineup": 300,             # 5 minutes
-            "scores": 30,              # 30 seconds
-            "waiver_priority": 1800,   # 30 minutes
-            "user_session": 86400,     # 24 hours
-            "notifications": 3600      # 1 hour
+            "player_stats": 300,  # 5 minutes
+            "player_projection": 3600,  # 1 hour
+            "league_settings": 1800,  # 30 minutes
+            "team_roster": 600,  # 10 minutes
+            "draft_state": 5,  # 5 seconds (real-time)
+            "trade_status": 60,  # 1 minute
+            "lineup": 300,  # 5 minutes
+            "scores": 30,  # 30 seconds
+            "waiver_priority": 1800,  # 30 minutes
+            "user_session": 86400,  # 24 hours
+            "notifications": 3600,  # 1 hour
         }
 
     async def initialize(self) -> None:
@@ -155,7 +156,9 @@ class FantasyRedisPool:
 
             # Test connection
             await self.redis_client.ping()
-            logger.info(f"Redis connection pool initialized: {self.config.host}:{self.config.port}")
+            logger.info(
+                f"Redis connection pool initialized: {self.config.host}:{self.config.port}"
+            )
 
         except RedisError as e:
             logger.error(f"Failed to initialize Redis pool: {e}")
@@ -167,7 +170,7 @@ class FantasyRedisPool:
             await self.redis_client.close()
             logger.info("Redis connection pool closed")
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform health check on Redis connection.
 
@@ -193,14 +196,11 @@ class FantasyRedisPool:
                 "connected_clients": info.get("connected_clients"),
                 "used_memory": info.get("used_memory_human"),
                 "keyspace_hits": info.get("keyspace_hits"),
-                "keyspace_misses": info.get("keyspace_misses")
+                "keyspace_misses": info.get("keyspace_misses"),
             }
 
         except Exception as e:
-            return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+            return {"status": "unhealthy", "error": str(e)}
 
     def _build_key(self, prefix: str, identifier: str, suffix: str = "") -> str:
         """
@@ -220,7 +220,9 @@ class FantasyRedisPool:
             key = f"{key}:{suffix}"
         return key
 
-    async def get(self, prefix: str, identifier: str, suffix: str = "") -> Optional[Any]:
+    async def get(
+        self, prefix: str, identifier: str, suffix: str = ""
+    ) -> Any | None:
         """
         Get value from cache.
 
@@ -256,8 +258,8 @@ class FantasyRedisPool:
         prefix: str,
         identifier: str,
         value: Any,
-        ttl: Optional[int] = None,
-        suffix: str = ""
+        ttl: int | None = None,
+        suffix: str = "",
     ) -> bool:
         """
         Set value in cache.
@@ -341,7 +343,9 @@ class FantasyRedisPool:
             logger.error(f"Redis EXISTS error for key {prefix}:{identifier}: {e}")
             return False
 
-    async def increment(self, prefix: str, identifier: str, amount: int = 1, suffix: str = "") -> Optional[int]:
+    async def increment(
+        self, prefix: str, identifier: str, amount: int = 1, suffix: str = ""
+    ) -> int | None:
         """
         Increment counter in cache.
 
@@ -366,7 +370,9 @@ class FantasyRedisPool:
             logger.error(f"Redis INCR error for key {prefix}:{identifier}: {e}")
             return None
 
-    async def expire(self, prefix: str, identifier: str, ttl: int, suffix: str = "") -> bool:
+    async def expire(
+        self, prefix: str, identifier: str, ttl: int, suffix: str = ""
+    ) -> bool:
         """
         Set expiration for existing key.
 
@@ -391,7 +397,7 @@ class FantasyRedisPool:
             logger.error(f"Redis EXPIRE error for key {prefix}:{identifier}: {e}")
             return False
 
-    async def get_keys_by_pattern(self, pattern: str) -> List[str]:
+    async def get_keys_by_pattern(self, pattern: str) -> list[str]:
         """
         Get keys matching pattern.
 
@@ -412,7 +418,7 @@ class FantasyRedisPool:
             logger.error(f"Redis KEYS error for pattern {pattern}: {e}")
             return []
 
-    async def clear_fantasy_cache(self, cache_type: Optional[str] = None) -> int:
+    async def clear_fantasy_cache(self, cache_type: str | None = None) -> int:
         """
         Clear fantasy sports cache data.
 
@@ -445,7 +451,7 @@ class FantasyRedisPool:
 
 
 # Global Redis pool instance
-_redis_pool: Optional[FantasyRedisPool] = None
+_redis_pool: FantasyRedisPool | None = None
 
 
 async def get_redis_pool() -> FantasyRedisPool:
@@ -489,37 +495,40 @@ async def redis_connection():
 
 # Convenience functions for common fantasy sports caching patterns
 
-async def cache_player_stats(player_id: str, stats: Dict[str, Any], ttl: int = 300) -> bool:
+
+async def cache_player_stats(
+    player_id: str, stats: dict[str, Any], ttl: int = 300
+) -> bool:
     """Cache player statistics with default TTL."""
     pool = await get_redis_pool()
     return await pool.set("player", player_id, stats, ttl, "stats")
 
 
-async def get_player_stats(player_id: str) -> Optional[Dict[str, Any]]:
+async def get_player_stats(player_id: str) -> dict[str, Any] | None:
     """Get cached player statistics."""
     pool = await get_redis_pool()
     return await pool.get("player", player_id, "stats")
 
 
-async def cache_league_settings(league_id: str, settings: Dict[str, Any]) -> bool:
+async def cache_league_settings(league_id: str, settings: dict[str, Any]) -> bool:
     """Cache league settings."""
     pool = await get_redis_pool()
     return await pool.set("league", league_id, settings, suffix="settings")
 
 
-async def get_league_settings(league_id: str) -> Optional[Dict[str, Any]]:
+async def get_league_settings(league_id: str) -> dict[str, Any] | None:
     """Get cached league settings."""
     pool = await get_redis_pool()
     return await pool.get("league", league_id, "settings")
 
 
-async def cache_draft_state(draft_id: str, state: Dict[str, Any]) -> bool:
+async def cache_draft_state(draft_id: str, state: dict[str, Any]) -> bool:
     """Cache draft state with short TTL for real-time updates."""
     pool = await get_redis_pool()
     return await pool.set("draft", draft_id, state, ttl=5, suffix="state")
 
 
-async def get_draft_state(draft_id: str) -> Optional[Dict[str, Any]]:
+async def get_draft_state(draft_id: str) -> dict[str, Any] | None:
     """Get cached draft state."""
     pool = await get_redis_pool()
     return await pool.get("draft", draft_id, "state")

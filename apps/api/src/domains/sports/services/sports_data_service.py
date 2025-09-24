@@ -11,29 +11,27 @@ Combines legacy functionality with domain architecture:
 - Provider fallback mechanisms
 """
 
-import asyncio
+
 try:
     import aiohttp
 except ImportError:  # pragma: no cover - optional dependency not always installed
     aiohttp = None  # type: ignore[assignment]
 import logging
-import uuid as _uuid
-from datetime import datetime, date, timedelta
-from typing import Dict, List, Optional, Any, Protocol, Union
+from abc import abstractmethod
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
-import json
+from datetime import date, datetime, timedelta
+from typing import Any, Protocol
 
 try:
     import httpx
 except ImportError:
     httpx = None  # type: ignore[assignment]
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
 
-from domains.sports.models.player import Player
-from domains.scoring.models.score import Score
 from domains.shared.enums import DataProvider, SportType
+from domains.sports.models.player import Player
+
 try:
     from infrastructure.cache.redis_pool import FantasyRedisPool, get_redis_pool
 except ImportError:
@@ -43,6 +41,7 @@ except ImportError:
 try:
     from infrastructure.observability.tracing import get_tracer, trace_fantasy_operation
 except ImportError:
+
     class MockSpan:
         def set_attribute(self, key, value):
             pass
@@ -63,6 +62,7 @@ except ImportError:
 
         return mock_trace()
 
+
 try:
     from infrastructure.database.session_factory import get_db_session
 except ImportError:
@@ -72,6 +72,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 
@@ -82,49 +83,53 @@ tracer = get_tracer()
 @dataclass
 class PlayerData:
     """Normalized player data structure"""
+
     external_id: str
     name: str
     position: str
     team_id: str
     sport: str
     injury_status: str = "healthy"
-    injury_description: Optional[str] = None
-    season_stats: Optional[Dict[str, Any]] = None
-    game_stats: Optional[Dict[str, Any]] = None
-    projections: Optional[Dict[str, Any]] = None
+    injury_description: str | None = None
+    season_stats: dict[str, Any] | None = None
+    game_stats: dict[str, Any] | None = None
+    projections: dict[str, Any] | None = None
 
 
 @dataclass
 class GameData:
     """Game/match information"""
+
     game_id: str
     home_team: str
     away_team: str
     game_date: date
     sport: str
     status: str = "scheduled"  # scheduled, in_progress, completed
-    scores: Optional[Dict[str, int]] = None
+    scores: dict[str, int] | None = None
 
 
 @dataclass
 class StatUpdate:
     """Player statistics update"""
+
     player_external_id: str
     game_id: str
     game_date: date
-    stats: Dict[str, Any]
+    stats: dict[str, Any]
     is_final: bool = False
 
 
 @dataclass
 class PlayerStats:
     """Standardized player statistics."""
+
     player_id: str
     external_id: str
     season: str
-    week: Optional[int]
+    week: int | None
     games_played: int
-    stats: Dict[str, Union[int, float]]
+    stats: dict[str, int | float]
     fantasy_points: float
     position: str
     team: str
@@ -133,10 +138,11 @@ class PlayerStats:
 @dataclass
 class PlayerProjection:
     """Player performance projections."""
+
     player_id: str
     week: int
     season: str
-    projected_stats: Dict[str, float]
+    projected_stats: dict[str, float]
     projected_fantasy_points: float
     confidence: float
     last_updated: datetime
@@ -145,27 +151,28 @@ class PlayerProjection:
 @dataclass
 class InjuryReport:
     """Player injury information."""
+
     player_id: str
     status: str  # healthy, questionable, doubtful, out, ir
-    description: Optional[str]
-    return_date: Optional[datetime]
+    description: str | None
+    return_date: datetime | None
     severity: str  # low, medium, high
     last_updated: datetime
 
 
 class SportsDataServiceError(Exception):
     """Base exception for sports data service errors"""
-    pass
+
 
 
 class ProviderError(SportsDataServiceError):
     """External provider API errors"""
-    pass
+
 
 
 class DataValidationError(SportsDataServiceError):
     """Data validation errors"""
-    pass
+
 
 
 class SportsDataProvider(Protocol):
@@ -175,54 +182,43 @@ class SportsDataProvider(Protocol):
     async def get_players(
         self,
         sport: str = "NFL",
-        position: Optional[str] = None,
-        team: Optional[str] = None,
-        active_only: bool = True
-    ) -> List[Dict[str, Any]]:
+        position: str | None = None,
+        team: str | None = None,
+        active_only: bool = True,
+    ) -> list[dict[str, Any]]:
         """Get players data."""
         ...
 
     @abstractmethod
     async def get_player_stats(
-        self,
-        player_id: str,
-        season: str,
-        week: Optional[int] = None
-    ) -> Optional[PlayerStats]:
+        self, player_id: str, season: str, week: int | None = None
+    ) -> PlayerStats | None:
         """Get player statistics."""
         ...
 
     @abstractmethod
     async def get_player_projections(
-        self,
-        player_id: str,
-        week: int,
-        season: str
-    ) -> Optional[PlayerProjection]:
+        self, player_id: str, week: int, season: str
+    ) -> PlayerProjection | None:
         """Get player projections."""
         ...
 
     @abstractmethod
     async def get_injury_report(
-        self,
-        player_id: Optional[str] = None,
-        team: Optional[str] = None
-    ) -> List[InjuryReport]:
+        self, player_id: str | None = None, team: str | None = None
+    ) -> list[InjuryReport]:
         """Get injury reports."""
         ...
 
     @abstractmethod
-    async def get_teams(self, sport: str = "NFL") -> List[Dict[str, Any]]:
+    async def get_teams(self, sport: str = "NFL") -> list[dict[str, Any]]:
         """Get teams data."""
         ...
 
     @abstractmethod
     async def get_schedule(
-        self,
-        season: str,
-        week: Optional[int] = None,
-        team: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, season: str, week: int | None = None, team: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get schedule data."""
         ...
 
@@ -233,10 +229,10 @@ class MockSportsDataProvider:
     async def get_players(
         self,
         sport: str = "NFL",
-        position: Optional[str] = None,
-        team: Optional[str] = None,
-        active_only: bool = True
-    ) -> List[Dict[str, Any]]:
+        position: str | None = None,
+        team: str | None = None,
+        active_only: bool = True,
+    ) -> list[dict[str, Any]]:
         """Return mock player data."""
         mock_players = [
             {
@@ -247,7 +243,7 @@ class MockSportsDataProvider:
                 "team": "KC",
                 "sport": "NFL",
                 "status": "active",
-                "injury_status": "healthy"
+                "injury_status": "healthy",
             },
             {
                 "player_id": "mock_player_2",
@@ -257,7 +253,7 @@ class MockSportsDataProvider:
                 "team": "BUF",
                 "sport": "NFL",
                 "status": "active",
-                "injury_status": "healthy"
+                "injury_status": "healthy",
             },
             {
                 "player_id": "mock_player_3",
@@ -267,25 +263,24 @@ class MockSportsDataProvider:
                 "team": "TEN",
                 "sport": "NFL",
                 "status": "active",
-                "injury_status": "questionable"
-            }
+                "injury_status": "questionable",
+            },
         ]
 
         # Apply filters
         filtered_players = mock_players
         if position:
-            filtered_players = [p for p in filtered_players if p["position"] == position]
+            filtered_players = [
+                p for p in filtered_players if p["position"] == position
+            ]
         if team:
             filtered_players = [p for p in filtered_players if p["team"] == team]
 
         return filtered_players
 
     async def get_player_stats(
-        self,
-        player_id: str,
-        season: str,
-        week: Optional[int] = None
-    ) -> Optional[PlayerStats]:
+        self, player_id: str, season: str, week: int | None = None
+    ) -> PlayerStats | None:
         """Return mock player stats."""
         return PlayerStats(
             player_id=player_id,
@@ -298,19 +293,16 @@ class MockSportsDataProvider:
                 "passing_tds": 35,
                 "interceptions": 8,
                 "rushing_yards": 250,
-                "rushing_tds": 3
+                "rushing_tds": 3,
             },
             fantasy_points=285.5,
             position="QB",
-            team="KC"
+            team="KC",
         )
 
     async def get_player_projections(
-        self,
-        player_id: str,
-        week: int,
-        season: str
-    ) -> Optional[PlayerProjection]:
+        self, player_id: str, week: int, season: str
+    ) -> PlayerProjection | None:
         """Return mock projections."""
         return PlayerProjection(
             player_id=player_id,
@@ -321,18 +313,16 @@ class MockSportsDataProvider:
                 "passing_tds": 2.1,
                 "interceptions": 0.8,
                 "rushing_yards": 15.0,
-                "rushing_tds": 0.3
+                "rushing_tds": 0.3,
             },
             projected_fantasy_points=18.5,
             confidence=0.85,
-            last_updated=datetime.utcnow()
+            last_updated=datetime.utcnow(),
         )
 
     async def get_injury_report(
-        self,
-        player_id: Optional[str] = None,
-        team: Optional[str] = None
-    ) -> List[InjuryReport]:
+        self, player_id: str | None = None, team: str | None = None
+    ) -> list[InjuryReport]:
         """Return mock injury data."""
         return [
             InjuryReport(
@@ -341,11 +331,11 @@ class MockSportsDataProvider:
                 description="Ankle sprain",
                 return_date=None,
                 severity="medium",
-                last_updated=datetime.utcnow()
+                last_updated=datetime.utcnow(),
             )
         ]
 
-    async def get_teams(self, sport: str = "NFL") -> List[Dict[str, Any]]:
+    async def get_teams(self, sport: str = "NFL") -> list[dict[str, Any]]:
         """Return mock teams."""
         return [
             {
@@ -355,7 +345,7 @@ class MockSportsDataProvider:
                 "abbreviation": "KC",
                 "conference": "AFC",
                 "division": "West",
-                "sport": sport
+                "sport": sport,
             },
             {
                 "team_id": "BUF",
@@ -364,16 +354,13 @@ class MockSportsDataProvider:
                 "abbreviation": "BUF",
                 "conference": "AFC",
                 "division": "East",
-                "sport": sport
-            }
+                "sport": sport,
+            },
         ]
 
     async def get_schedule(
-        self,
-        season: str,
-        week: Optional[int] = None,
-        team: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, season: str, week: int | None = None, team: str | None = None
+    ) -> list[dict[str, Any]]:
         """Return mock schedule."""
         return [
             {
@@ -384,7 +371,7 @@ class MockSportsDataProvider:
                 "game_time": "15:30:00",
                 "status": "scheduled",
                 "week": week or 1,
-                "season": season
+                "season": season,
             }
         ]
 
@@ -404,24 +391,42 @@ class SportsDataService:
     def __init__(
         self,
         primary_provider: DataProvider = DataProvider.ESPN,
-        providers: List[SportsDataProvider] = None,
-        redis_pool: Optional[FantasyRedisPool] = None,
-        default_cache_ttl: int = 300
+        providers: list[SportsDataProvider] = None,
+        redis_pool: FantasyRedisPool | None = None,
+        default_cache_ttl: int = 300,
+        use_external_apis: bool = True,
     ):
         """
         Initialize sports data service.
 
         Args:
             primary_provider: Primary data provider to use
-            providers: List of data providers (defaults to mock)
+            providers: List of data providers (defaults to configured external APIs)
             redis_pool: Redis connection pool for caching
             default_cache_ttl: Default cache TTL in seconds
+            use_external_apis: Whether to use real external APIs or mock data
         """
         self.primary_provider = primary_provider
         self.fallback_providers = [DataProvider.THE_ATHLETIC, DataProvider.MOCK]
         self.session_timeout = 30
         self.retry_attempts = 3
-        self.providers = providers or [MockSportsDataProvider()]
+        self.use_external_apis = use_external_apis
+
+        # Initialize providers with external API integrations
+        if providers is not None:
+            self.providers = providers
+        elif use_external_apis:
+            # Import here to avoid circular imports
+            try:
+                from domains.sports.integrations.provider_factory import configure_sports_providers
+                self.providers = configure_sports_providers()
+                logger.info(f"Initialized {len(self.providers)} external API providers")
+            except ImportError as e:
+                logger.warning(f"Failed to import external providers: {e}")
+                self.providers = [MockSportsDataProvider()]
+        else:
+            self.providers = [MockSportsDataProvider()]
+
         self.redis_pool = redis_pool
         self.default_cache_ttl = default_cache_ttl
 
@@ -430,38 +435,38 @@ class SportsDataService:
             DataProvider.ESPN: {
                 "base_url": "https://site.api.espn.com/apis/site/v2/sports",
                 "rate_limit": 100,  # requests per minute
-                "requires_auth": False
+                "requires_auth": False,
             },
             DataProvider.THE_ATHLETIC: {
                 "base_url": "https://api.theathletic.com/v1",
                 "rate_limit": 60,
-                "requires_auth": True
+                "requires_auth": True,
             },
             DataProvider.MOCK: {
                 "base_url": "https://mock-sports-api.example.com",
                 "rate_limit": 1000,
-                "requires_auth": False
-            }
+                "requires_auth": False,
+            },
         }
 
         # Cache TTL for different data types
         self.cache_ttl = {
-            "players": 3600,        # 1 hour
-            "player_stats": 300,    # 5 minutes
-            "projections": 1800,    # 30 minutes
-            "injuries": 300,        # 5 minutes
-            "teams": 86400,         # 24 hours
-            "schedule": 3600        # 1 hour
+            "players": 3600,  # 1 hour
+            "player_stats": 300,  # 5 minutes
+            "projections": 1800,  # 30 minutes
+            "injuries": 300,  # 5 minutes
+            "teams": 86400,  # 24 hours
+            "schedule": 3600,  # 1 hour
         }
 
     async def get_players(
         self,
         sport: str = "NFL",
-        position: Optional[str] = None,
-        team: Optional[str] = None,
+        position: str | None = None,
+        team: str | None = None,
         active_only: bool = True,
-        use_cache: bool = True
-    ) -> List[Dict[str, Any]]:
+        use_cache: bool = True,
+    ) -> list[dict[str, Any]]:
         """
         Get players data with caching and multi-provider support.
 
@@ -476,11 +481,12 @@ class SportsDataService:
             List of player dictionaries
         """
         with trace_fantasy_operation(
-            tracer, "get_players",
-            sport=sport, position=position, team=team
+            tracer, "get_players", sport=sport, position=position, team=team
         ) as span:
             # Build cache key
-            cache_key = f"players:{sport}:{position or 'all'}:{team or 'all'}:{active_only}"
+            cache_key = (
+                f"players:{sport}:{position or 'all'}:{team or 'all'}:{active_only}"
+            )
 
             # Try cache first
             if use_cache and self.redis_pool:
@@ -493,13 +499,14 @@ class SportsDataService:
             for i, provider in enumerate(self.providers):
                 try:
                     span.set_attribute(f"provider_{i}_attempted", True)
-                    players = await provider.get_players(sport, position, team, active_only)
+                    players = await provider.get_players(
+                        sport, position, team, active_only
+                    )
 
                     # Cache successful result
                     if use_cache and self.redis_pool and players:
                         await self.redis_pool.set(
-                            "sports", cache_key, players,
-                            ttl=self.cache_ttl["players"]
+                            "sports", cache_key, players, ttl=self.cache_ttl["players"]
                         )
 
                     span.set_attribute("players_count", len(players))
@@ -521,8 +528,8 @@ class SportsDataService:
         player_id: str,
         include_stats: bool = True,
         include_projections: bool = True,
-        use_cache: bool = True
-    ) -> Optional[Dict[str, Any]]:
+        use_cache: bool = True,
+    ) -> dict[str, Any] | None:
         """
         Get comprehensive player details.
 
@@ -536,10 +543,11 @@ class SportsDataService:
             Player details dictionary or None
         """
         with trace_fantasy_operation(
-            tracer, "get_player_details",
-            player_id=player_id
+            tracer, "get_player_details", player_id=player_id
         ) as span:
-            cache_key = f"player_details:{player_id}:{include_stats}:{include_projections}"
+            cache_key = (
+                f"player_details:{player_id}:{include_stats}:{include_projections}"
+            )
 
             # Try cache first
             if use_cache and self.redis_pool:
@@ -560,24 +568,31 @@ class SportsDataService:
             enhanced_player = player.copy()
 
             if include_stats:
-                stats = await self.get_player_stats(player_id, "2024", use_cache=use_cache)
+                stats = await self.get_player_stats(
+                    player_id, "2024", use_cache=use_cache
+                )
                 enhanced_player["season_stats"] = stats.__dict__ if stats else None
 
             if include_projections:
                 projections = await self.get_player_projections(
                     player_id, 1, "2024", use_cache=use_cache
                 )
-                enhanced_player["projections"] = projections.__dict__ if projections else None
+                enhanced_player["projections"] = (
+                    projections.__dict__ if projections else None
+                )
 
             # Get injury status
-            injuries = await self.get_injury_report(player_id=player_id, use_cache=use_cache)
-            enhanced_player["injury_details"] = injuries[0].__dict__ if injuries else None
+            injuries = await self.get_injury_report(
+                player_id=player_id, use_cache=use_cache
+            )
+            enhanced_player["injury_details"] = (
+                injuries[0].__dict__ if injuries else None
+            )
 
             # Cache result
             if use_cache and self.redis_pool:
                 await self.redis_pool.set(
-                    "sports", cache_key, enhanced_player,
-                    ttl=self.cache_ttl["players"]
+                    "sports", cache_key, enhanced_player, ttl=self.cache_ttl["players"]
                 )
 
             span.set_attribute("enhanced_player_created", True)
@@ -587,13 +602,12 @@ class SportsDataService:
         self,
         player_id: str,
         season: str,
-        week: Optional[int] = None,
-        use_cache: bool = True
-    ) -> Optional[PlayerStats]:
+        week: int | None = None,
+        use_cache: bool = True,
+    ) -> PlayerStats | None:
         """Get player statistics."""
         with trace_fantasy_operation(
-            tracer, "get_player_stats",
-            player_id=player_id, season=season, week=week
+            tracer, "get_player_stats", player_id=player_id, season=season, week=week
         ) as span:
             cache_key = f"stats:{player_id}:{season}:{week or 'season'}"
 
@@ -607,8 +621,10 @@ class SportsDataService:
                     stats = await provider.get_player_stats(player_id, season, week)
                     if stats and use_cache and self.redis_pool:
                         await self.redis_pool.set(
-                            "sports", cache_key, stats.__dict__,
-                            ttl=self.cache_ttl["player_stats"]
+                            "sports",
+                            cache_key,
+                            stats.__dict__,
+                            ttl=self.cache_ttl["player_stats"],
                         )
                     return stats
                 except Exception as e:
@@ -618,12 +634,8 @@ class SportsDataService:
             return None
 
     async def get_player_projections(
-        self,
-        player_id: str,
-        week: int,
-        season: str,
-        use_cache: bool = True
-    ) -> Optional[PlayerProjection]:
+        self, player_id: str, week: int, season: str, use_cache: bool = True
+    ) -> PlayerProjection | None:
         """Get player projections."""
         cache_key = f"projections:{player_id}:{season}:{week}"
 
@@ -634,11 +646,15 @@ class SportsDataService:
 
         for provider in self.providers:
             try:
-                projections = await provider.get_player_projections(player_id, week, season)
+                projections = await provider.get_player_projections(
+                    player_id, week, season
+                )
                 if projections and use_cache and self.redis_pool:
                     await self.redis_pool.set(
-                        "sports", cache_key, projections.__dict__,
-                        ttl=self.cache_ttl["projections"]
+                        "sports",
+                        cache_key,
+                        projections.__dict__,
+                        ttl=self.cache_ttl["projections"],
                     )
                 return projections
             except Exception as e:
@@ -649,10 +665,10 @@ class SportsDataService:
 
     async def get_injury_report(
         self,
-        player_id: Optional[str] = None,
-        team: Optional[str] = None,
-        use_cache: bool = True
-    ) -> List[InjuryReport]:
+        player_id: str | None = None,
+        team: str | None = None,
+        use_cache: bool = True,
+    ) -> list[InjuryReport]:
         """Get injury reports."""
         cache_key = f"injuries:{player_id or 'all'}:{team or 'all'}"
 
@@ -667,8 +683,10 @@ class SportsDataService:
                 if injuries and use_cache and self.redis_pool:
                     injury_dicts = [injury.__dict__ for injury in injuries]
                     await self.redis_pool.set(
-                        "sports", cache_key, injury_dicts,
-                        ttl=self.cache_ttl["injuries"]
+                        "sports",
+                        cache_key,
+                        injury_dicts,
+                        ttl=self.cache_ttl["injuries"],
                     )
                 return injuries
             except Exception as e:
@@ -678,10 +696,8 @@ class SportsDataService:
         return []
 
     async def get_teams(
-        self,
-        sport: str = "NFL",
-        use_cache: bool = True
-    ) -> List[Dict[str, Any]]:
+        self, sport: str = "NFL", use_cache: bool = True
+    ) -> list[dict[str, Any]]:
         """Get teams data."""
         cache_key = f"teams:{sport}"
 
@@ -695,8 +711,7 @@ class SportsDataService:
                 teams = await provider.get_teams(sport)
                 if teams and use_cache and self.redis_pool:
                     await self.redis_pool.set(
-                        "sports", cache_key, teams,
-                        ttl=self.cache_ttl["teams"]
+                        "sports", cache_key, teams, ttl=self.cache_ttl["teams"]
                     )
                 return teams
             except Exception as e:
@@ -708,10 +723,10 @@ class SportsDataService:
     async def get_schedule(
         self,
         season: str,
-        week: Optional[int] = None,
-        team: Optional[str] = None,
-        use_cache: bool = True
-    ) -> List[Dict[str, Any]]:
+        week: int | None = None,
+        team: str | None = None,
+        use_cache: bool = True,
+    ) -> list[dict[str, Any]]:
         """Get schedule data."""
         cache_key = f"schedule:{season}:{week or 'all'}:{team or 'all'}"
 
@@ -725,8 +740,7 @@ class SportsDataService:
                 schedule = await provider.get_schedule(season, week, team)
                 if schedule and use_cache and self.redis_pool:
                     await self.redis_pool.set(
-                        "sports", cache_key, schedule,
-                        ttl=self.cache_ttl["schedule"]
+                        "sports", cache_key, schedule, ttl=self.cache_ttl["schedule"]
                     )
                 return schedule
             except Exception as e:
@@ -736,12 +750,8 @@ class SportsDataService:
         return []
 
     async def search_players(
-        self,
-        query: str,
-        sport: str = "NFL",
-        limit: int = 20,
-        use_cache: bool = True
-    ) -> List[Dict[str, Any]]:
+        self, query: str, sport: str = "NFL", limit: int = 20, use_cache: bool = True
+    ) -> list[dict[str, Any]]:
         """
         Search players by name.
 
@@ -759,16 +769,13 @@ class SportsDataService:
         # Simple text search
         query_lower = query.lower()
         matching_players = [
-            player for player in players
-            if query_lower in player["name"].lower()
+            player for player in players if query_lower in player["name"].lower()
         ]
 
         return matching_players[:limit]
 
     async def invalidate_cache(
-        self,
-        cache_type: Optional[str] = None,
-        player_id: Optional[str] = None
+        self, cache_type: str | None = None, player_id: str | None = None
     ) -> int:
         """
         Invalidate cached data.
@@ -801,7 +808,7 @@ class SportsDataService:
 
         return 0
 
-    async def get_cache_stats(self) -> Dict[str, Any]:
+    async def get_cache_stats(self) -> dict[str, Any]:
         """Get cache performance statistics."""
         if not self.redis_pool:
             return {"cache_enabled": False}
@@ -810,7 +817,7 @@ class SportsDataService:
         return {
             "cache_enabled": True,
             "cache_ttl_config": self.cache_ttl,
-            "providers_count": len(self.providers)
+            "providers_count": len(self.providers),
         }
 
     # Legacy API methods for compatibility
@@ -818,8 +825,8 @@ class SportsDataService:
         self,
         external_id: str,
         sport: SportType,
-        provider: Optional[DataProvider] = None
-    ) -> Optional[PlayerData]:
+        provider: DataProvider | None = None,
+    ) -> PlayerData | None:
         """
         Get player data from external API
 
@@ -853,7 +860,9 @@ class SportsDataService:
             for fallback_provider in self.fallback_providers:
                 if fallback_provider != provider:
                     try:
-                        return await self.get_player_data(external_id, sport, fallback_provider)
+                        return await self.get_player_data(
+                            external_id, sport, fallback_provider
+                        )
                     except Exception:
                         continue
 
@@ -864,8 +873,8 @@ class SportsDataService:
         query: str,
         sport: SportType,
         limit: int = 20,
-        provider: Optional[DataProvider] = None
-    ) -> List[PlayerData]:
+        provider: DataProvider | None = None,
+    ) -> list[PlayerData]:
         """
         Search for players by name or team using specific provider
 
@@ -895,11 +904,8 @@ class SportsDataService:
             raise ProviderError(f"Player search failed: {e}")
 
     async def get_team_roster(
-        self,
-        team_id: str,
-        sport: SportType,
-        provider: Optional[DataProvider] = None
-    ) -> List[PlayerData]:
+        self, team_id: str, sport: SportType, provider: DataProvider | None = None
+    ) -> list[PlayerData]:
         """
         Get team roster
 
@@ -932,8 +938,8 @@ class SportsDataService:
         sport: SportType,
         start_date: date,
         end_date: date,
-        provider: Optional[DataProvider] = None
-    ) -> List[GameData]:
+        provider: DataProvider | None = None,
+    ) -> list[GameData]:
         """
         Get games schedule for date range
 
@@ -965,9 +971,9 @@ class SportsDataService:
     async def get_live_scores(
         self,
         sport: SportType,
-        game_date: Optional[date] = None,
-        provider: Optional[DataProvider] = None
-    ) -> List[Dict[str, Any]]:
+        game_date: date | None = None,
+        provider: DataProvider | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Get live scores for games
 
@@ -1002,8 +1008,8 @@ class SportsDataService:
         sport: SportType,
         season: str,
         stat_type: str = "season",
-        provider: Optional[DataProvider] = None
-    ) -> Optional[Dict[str, Any]]:
+        provider: DataProvider | None = None,
+    ) -> dict[str, Any] | None:
         """
         Get player statistics
 
@@ -1021,11 +1027,17 @@ class SportsDataService:
 
         try:
             if provider == DataProvider.ESPN:
-                return await self._get_espn_player_stats(external_id, sport, season, stat_type)
+                return await self._get_espn_player_stats(
+                    external_id, sport, season, stat_type
+                )
             elif provider == DataProvider.THE_ATHLETIC:
-                return await self._get_athletic_player_stats(external_id, sport, season, stat_type)
+                return await self._get_athletic_player_stats(
+                    external_id, sport, season, stat_type
+                )
             elif provider == DataProvider.MOCK:
-                return await self._get_mock_player_stats(external_id, sport, season, stat_type)
+                return await self._get_mock_player_stats(
+                    external_id, sport, season, stat_type
+                )
             else:
                 raise ProviderError(f"Unsupported provider: {provider}")
 
@@ -1036,9 +1048,9 @@ class SportsDataService:
     async def get_injury_reports(
         self,
         sport: SportType,
-        team_id: Optional[str] = None,
-        provider: Optional[DataProvider] = None
-    ) -> List[Dict[str, Any]]:
+        team_id: str | None = None,
+        provider: DataProvider | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Get injury reports
 
@@ -1067,11 +1079,8 @@ class SportsDataService:
             return []
 
     async def sync_player_data(
-        self,
-        player_ids: List[str],
-        sport: SportType,
-        db: Optional[Session] = None
-    ) -> Dict[str, bool]:
+        self, player_ids: list[str], sport: SportType, db: Session | None = None
+    ) -> dict[str, bool]:
         """
         Synchronize player data with database
 
@@ -1087,7 +1096,9 @@ class SportsDataService:
 
         if db is None:
             if get_db_session is None:
-                raise RuntimeError("Database session factory not available and no session provided")
+                raise RuntimeError(
+                    "Database session factory not available and no session provided"
+                )
             session_context = get_db_session()
         else:
             session_context = db
@@ -1102,12 +1113,16 @@ class SportsDataService:
                         continue
 
                     # Find or create player in database
-                    player = session.query(Player).filter(
-                        and_(
-                            Player.external_id == player_id,
-                            Player.sport == sport.value
+                    player = (
+                        session.query(Player)
+                        .filter(
+                            and_(
+                                Player.external_id == player_id,
+                                Player.sport == sport.value,
+                            )
                         )
-                    ).first()
+                        .first()
+                    )
 
                     if player:
                         # Update existing player
@@ -1131,7 +1146,7 @@ class SportsDataService:
                             injury_description=player_data.injury_description,
                             season_stats=player_data.season_stats,
                             game_stats=player_data.game_stats,
-                            projections=player_data.projections
+                            projections=player_data.projections,
                         )
                         session.add(player)
 
@@ -1146,7 +1161,75 @@ class SportsDataService:
         logger.info(f"Synced {sum(results.values())}/{len(player_ids)} players")
         return results
 
-    def validate_player_data(self, data: Dict[str, Any]) -> PlayerData:
+    async def health_check(self) -> dict[str, Any]:
+        """
+        Check health status of all providers and the service.
+
+        Returns:
+            Dictionary with health status information
+        """
+        try:
+            from domains.sports.integrations.provider_factory import ProviderFactory
+
+            provider_health = await ProviderFactory.health_check_providers(self.providers)
+
+            cache_status = "disabled"
+            if self.redis_pool:
+                try:
+                    # Try a simple Redis operation
+                    await self.redis_pool.redis_client.ping()
+                    cache_status = "healthy"
+                except Exception:
+                    cache_status = "unhealthy"
+
+            return {
+                "service_status": "healthy",
+                "providers": provider_health,
+                "cache_status": cache_status,
+                "provider_count": len(self.providers),
+                "primary_provider": self.primary_provider.value,
+                "use_external_apis": self.use_external_apis,
+                "cache_ttl_config": self.cache_ttl
+            }
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return {
+                "service_status": "unhealthy",
+                "error": str(e),
+                "provider_count": len(self.providers),
+                "primary_provider": self.primary_provider.value
+            }
+
+    async def get_provider_info(self) -> dict[str, Any]:
+        """
+        Get information about configured providers.
+
+        Returns:
+            Dictionary with provider information
+        """
+        provider_info = []
+
+        for i, provider in enumerate(self.providers):
+            info = {
+                "index": i,
+                "type": type(provider).__name__,
+                "is_mock": isinstance(provider, MockSportsDataProvider)
+            }
+
+            # Add provider-specific info if available
+            if hasattr(provider, "config"):
+                info["base_url"] = getattr(provider.config, "base_url", None)
+                info["has_api_key"] = bool(getattr(provider.config, "api_key", None))
+
+            provider_info.append(info)
+
+        return {
+            "total_providers": len(self.providers),
+            "primary_provider": self.primary_provider.value,
+            "providers": provider_info
+        }
+
+    def validate_player_data(self, data: dict[str, Any]) -> PlayerData:
         """
         Validate and normalize player data
 
@@ -1190,14 +1273,16 @@ class SportsDataService:
                 injury_description=data.get("injury_description"),
                 season_stats=data.get("season_stats"),
                 game_stats=data.get("game_stats"),
-                projections=data.get("projections")
+                projections=data.get("projections"),
             )
 
         except Exception as e:
             raise DataValidationError(f"Player data validation failed: {e}")
 
     # Provider implementation methods
-    async def _get_espn_player_data(self, external_id: str, sport: SportType) -> Optional[PlayerData]:
+    async def _get_espn_player_data(
+        self, external_id: str, sport: SportType
+    ) -> PlayerData | None:
         """Get player data from ESPN API"""
         if not aiohttp:
             return await self._get_mock_player_data(external_id, sport)
@@ -1205,33 +1290,38 @@ class SportsDataService:
         base_url = self.provider_configs[DataProvider.ESPN]["base_url"]
         url = f"{base_url}/{sport.value}/athletes/{external_id}"
 
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.session_timeout)) as session:
-            async with session.get(url) as response:
-                if response.status == 404:
-                    return None
-                response.raise_for_status()
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+        ) as session, session.get(url) as response:
+            if response.status == 404:
+                return None
+            response.raise_for_status()
 
-                data = await response.json()
+            data = await response.json()
 
-                # ESPN data structure adaptation
-                athlete = data.get("athlete", {})
-                return PlayerData(
-                    external_id=str(athlete.get("id", external_id)),
-                    name=athlete.get("displayName", ""),
-                    position=athlete.get("position", {}).get("abbreviation", ""),
-                    team_id=athlete.get("team", {}).get("abbreviation", ""),
-                    sport=sport.value,
-                    injury_status="healthy",  # ESPN injury data requires separate call
-                    season_stats=athlete.get("statistics"),
-                    projections=athlete.get("projections")
-                )
+            # ESPN data structure adaptation
+            athlete = data.get("athlete", {})
+            return PlayerData(
+                external_id=str(athlete.get("id", external_id)),
+                name=athlete.get("displayName", ""),
+                position=athlete.get("position", {}).get("abbreviation", ""),
+                team_id=athlete.get("team", {}).get("abbreviation", ""),
+                sport=sport.value,
+                injury_status="healthy",  # ESPN injury data requires separate call
+                season_stats=athlete.get("statistics"),
+                projections=athlete.get("projections"),
+            )
 
-    async def _search_espn_players(self, query: str, sport: SportType, limit: int) -> List[PlayerData]:
+    async def _search_espn_players(
+        self, query: str, sport: SportType, limit: int
+    ) -> list[PlayerData]:
         """Search players via ESPN API"""
         # ESPN doesn't have a direct search API, so we'll implement a mock response
         return await self._search_mock_players(query, sport, limit)
 
-    async def _get_espn_team_roster(self, team_id: str, sport: SportType) -> List[PlayerData]:
+    async def _get_espn_team_roster(
+        self, team_id: str, sport: SportType
+    ) -> list[PlayerData]:
         """Get team roster from ESPN API"""
         if not aiohttp:
             return await self._get_mock_team_roster(team_id, sport)
@@ -1239,24 +1329,31 @@ class SportsDataService:
         base_url = self.provider_configs[DataProvider.ESPN]["base_url"]
         url = f"{base_url}/{sport.value}/teams/{team_id}/roster"
 
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.session_timeout)) as session:
-            async with session.get(url) as response:
-                response.raise_for_status()
-                data = await response.json()
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+        ) as session, session.get(url) as response:
+            response.raise_for_status()
+            data = await response.json()
 
-                roster = []
-                for athlete in data.get("athletes", []):
-                    roster.append(PlayerData(
+            roster = []
+            for athlete in data.get("athletes", []):
+                roster.append(
+                    PlayerData(
                         external_id=str(athlete.get("id", "")),
                         name=athlete.get("displayName", ""),
-                        position=athlete.get("position", {}).get("abbreviation", ""),
+                        position=athlete.get("position", {}).get(
+                            "abbreviation", ""
+                        ),
                         team_id=team_id,
-                        sport=sport.value
-                    ))
+                        sport=sport.value,
+                    )
+                )
 
-                return roster
+            return roster
 
-    async def _get_espn_schedule(self, sport: SportType, start_date: date, end_date: date) -> List[GameData]:
+    async def _get_espn_schedule(
+        self, sport: SportType, start_date: date, end_date: date
+    ) -> list[GameData]:
         """Get schedule from ESPN API"""
         if not aiohttp:
             return await self._get_mock_schedule(sport, start_date, end_date)
@@ -1267,7 +1364,9 @@ class SportsDataService:
         games = []
         current_date = start_date
 
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.session_timeout)) as session:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+        ) as session:
             while current_date <= end_date:
                 date_str = current_date.strftime("%Y%m%d")
                 daily_url = f"{url}?dates={date_str}"
@@ -1284,26 +1383,52 @@ class SportsDataService:
                                 competitors = competition.get("competitors", [])
 
                                 if len(competitors) >= 2:
-                                    home_team = next((c for c in competitors if c.get("homeAway") == "home"), {})
-                                    away_team = next((c for c in competitors if c.get("homeAway") == "away"), {})
+                                    home_team = next(
+                                        (
+                                            c
+                                            for c in competitors
+                                            if c.get("homeAway") == "home"
+                                        ),
+                                        {},
+                                    )
+                                    away_team = next(
+                                        (
+                                            c
+                                            for c in competitors
+                                            if c.get("homeAway") == "away"
+                                        ),
+                                        {},
+                                    )
 
-                                    games.append(GameData(
-                                        game_id=str(event.get("id", "")),
-                                        home_team=home_team.get("team", {}).get("abbreviation", ""),
-                                        away_team=away_team.get("team", {}).get("abbreviation", ""),
-                                        game_date=current_date,
-                                        sport=sport.value,
-                                        status=event.get("status", {}).get("type", {}).get("name", "scheduled")
-                                    ))
+                                    games.append(
+                                        GameData(
+                                            game_id=str(event.get("id", "")),
+                                            home_team=home_team.get("team", {}).get(
+                                                "abbreviation", ""
+                                            ),
+                                            away_team=away_team.get("team", {}).get(
+                                                "abbreviation", ""
+                                            ),
+                                            game_date=current_date,
+                                            sport=sport.value,
+                                            status=event.get("status", {})
+                                            .get("type", {})
+                                            .get("name", "scheduled"),
+                                        )
+                                    )
 
                 except Exception as e:
-                    logger.warning(f"Failed to get ESPN schedule for {current_date}: {e}")
+                    logger.warning(
+                        f"Failed to get ESPN schedule for {current_date}: {e}"
+                    )
 
                 current_date += timedelta(days=1)
 
         return games
 
-    async def _get_espn_live_scores(self, sport: SportType, game_date: date) -> List[Dict[str, Any]]:
+    async def _get_espn_live_scores(
+        self, sport: SportType, game_date: date
+    ) -> list[dict[str, Any]]:
         """Get live scores from ESPN API"""
         if not aiohttp:
             return await self._get_mock_live_scores(sport, game_date)
@@ -1312,53 +1437,65 @@ class SportsDataService:
         date_str = game_date.strftime("%Y%m%d")
         url = f"{base_url}/{sport.value}/scoreboard?dates={date_str}"
 
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.session_timeout)) as session:
-            async with session.get(url) as response:
-                response.raise_for_status()
-                data = await response.json()
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+        ) as session, session.get(url) as response:
+            response.raise_for_status()
+            data = await response.json()
 
-                scores = []
-                for event in data.get("events", []):
-                    competitions = event.get("competitions", [])
-                    if competitions:
-                        competition = competitions[0]
-                        scores.append({
+            scores = []
+            for event in data.get("events", []):
+                competitions = event.get("competitions", [])
+                if competitions:
+                    competition = competitions[0]
+                    scores.append(
+                        {
                             "game_id": str(event.get("id", "")),
-                            "status": event.get("status", {}).get("type", {}).get("name", ""),
+                            "status": event.get("status", {})
+                            .get("type", {})
+                            .get("name", ""),
                             "competitors": competition.get("competitors", []),
-                            "last_updated": datetime.utcnow().isoformat()
-                        })
+                            "last_updated": datetime.utcnow().isoformat(),
+                        }
+                    )
 
-                return scores
+            return scores
 
-    async def _get_espn_player_stats(self, external_id: str, sport: SportType, season: str, stat_type: str) -> Optional[Dict[str, Any]]:
+    async def _get_espn_player_stats(
+        self, external_id: str, sport: SportType, season: str, stat_type: str
+    ) -> dict[str, Any] | None:
         """Get player stats from ESPN API"""
         # ESPN stats API requires complex navigation, implementing mock for now
         return await self._get_mock_player_stats(external_id, sport, season, stat_type)
 
-    async def _get_espn_injury_reports(self, sport: SportType, team_id: Optional[str]) -> List[Dict[str, Any]]:
+    async def _get_espn_injury_reports(
+        self, sport: SportType, team_id: str | None
+    ) -> list[dict[str, Any]]:
         """Get injury reports from ESPN API"""
         # ESPN injury reports require separate endpoint, implementing mock for now
         return await self._get_mock_injury_reports(sport, team_id)
 
     # Mock provider methods
-    async def _get_mock_player_data(self, external_id: str, sport: SportType) -> Optional[PlayerData]:
+    async def _get_mock_player_data(
+        self, external_id: str, sport: SportType
+    ) -> PlayerData | None:
         """Mock player data for testing"""
         # Generate consistent mock data based on ID
         import hashlib
+
         hash_obj = hashlib.md5(external_id.encode())
         hash_hex = hash_obj.hexdigest()
 
         positions_by_sport = {
             SportType.MLB: ["C", "1B", "2B", "3B", "SS", "OF", "P"],
             SportType.NFL: ["QB", "RB", "WR", "TE", "K", "DEF"],
-            SportType.WNBA: ["PG", "SG", "SF", "PF", "C"]
+            SportType.WNBA: ["PG", "SG", "SF", "PF", "C"],
         }
 
         teams_by_sport = {
             SportType.MLB: ["LAA", "HOU", "NYY", "TB", "BOS"],
             SportType.NFL: ["BUF", "MIA", "NE", "NYJ", "BAL"],
-            SportType.WNBA: ["LAS", "NY", "CON", "IND", "ATL"]
+            SportType.WNBA: ["LAS", "NY", "CON", "IND", "ATL"],
         }
 
         position_idx = int(hash_hex[:2], 16) % len(positions_by_sport[sport])
@@ -1372,10 +1509,12 @@ class SportsDataService:
             sport=sport.value,
             injury_status="healthy",
             season_stats={"games": 50, "points": 15.5},
-            projections={"fantasy_points": 18.2}
+            projections={"fantasy_points": 18.2},
         )
 
-    async def _search_mock_players(self, query: str, sport: SportType, limit: int) -> List[PlayerData]:
+    async def _search_mock_players(
+        self, query: str, sport: SportType, limit: int
+    ) -> list[PlayerData]:
         """Mock player search for testing"""
         players = []
         for i in range(min(limit, 10)):
@@ -1386,7 +1525,9 @@ class SportsDataService:
                 players.append(player_data)
         return players
 
-    async def _get_mock_team_roster(self, team_id: str, sport: SportType) -> List[PlayerData]:
+    async def _get_mock_team_roster(
+        self, team_id: str, sport: SportType
+    ) -> list[PlayerData]:
         """Mock team roster for testing"""
         roster = []
         for i in range(25):  # Mock roster size
@@ -1397,7 +1538,9 @@ class SportsDataService:
                 roster.append(player_data)
         return roster
 
-    async def _get_mock_schedule(self, sport: SportType, start_date: date, end_date: date) -> List[GameData]:
+    async def _get_mock_schedule(
+        self, sport: SportType, start_date: date, end_date: date
+    ) -> list[GameData]:
         """Mock schedule for testing"""
         games = []
         current_date = start_date
@@ -1406,20 +1549,24 @@ class SportsDataService:
         while current_date <= end_date:
             # Generate 2-5 games per day
             for i in range(2, 6):
-                games.append(GameData(
-                    game_id=f"mock_game_{game_id}",
-                    home_team=f"TEAM{i}",
-                    away_team=f"TEAM{i+1}",
-                    game_date=current_date,
-                    sport=sport.value
-                ))
+                games.append(
+                    GameData(
+                        game_id=f"mock_game_{game_id}",
+                        home_team=f"TEAM{i}",
+                        away_team=f"TEAM{i+1}",
+                        game_date=current_date,
+                        sport=sport.value,
+                    )
+                )
                 game_id += 1
 
             current_date += timedelta(days=1)
 
         return games
 
-    async def _get_mock_live_scores(self, sport: SportType, game_date: date) -> List[Dict[str, Any]]:
+    async def _get_mock_live_scores(
+        self, sport: SportType, game_date: date
+    ) -> list[dict[str, Any]]:
         """Mock live scores for testing"""
         return [
             {
@@ -1428,38 +1575,46 @@ class SportsDataService:
                 "home_score": 7,
                 "away_score": 3,
                 "period": "3rd Quarter",
-                "time_remaining": "10:45"
+                "time_remaining": "10:45",
             },
             {
                 "game_id": "mock_game_2",
                 "status": "completed",
                 "home_score": 21,
                 "away_score": 14,
-                "final": True
-            }
+                "final": True,
+            },
         ]
 
-    async def _get_mock_player_stats(self, external_id: str, sport: SportType, season: str, stat_type: str) -> Optional[Dict[str, Any]]:
+    async def _get_mock_player_stats(
+        self, external_id: str, sport: SportType, season: str, stat_type: str
+    ) -> dict[str, Any] | None:
         """Mock player stats for testing"""
         if sport == SportType.MLB:
             return {
                 "batting": {"avg": 0.285, "hr": 25, "rbi": 85, "runs": 78},
-                "pitching": {"era": 3.45, "wins": 12, "saves": 5, "strikeouts": 150}
+                "pitching": {"era": 3.45, "wins": 12, "saves": 5, "strikeouts": 150},
             }
         elif sport == SportType.NFL:
             return {
                 "passing": {"yards": 3500, "touchdowns": 28, "interceptions": 10},
                 "rushing": {"yards": 1200, "touchdowns": 8, "attempts": 250},
-                "receiving": {"yards": 900, "touchdowns": 6, "receptions": 65}
+                "receiving": {"yards": 900, "touchdowns": 6, "receptions": 65},
             }
         elif sport == SportType.WNBA:
             return {
-                "points": 18.5, "rebounds": 7.2, "assists": 5.8, "steals": 1.8, "blocks": 1.1
+                "points": 18.5,
+                "rebounds": 7.2,
+                "assists": 5.8,
+                "steals": 1.8,
+                "blocks": 1.1,
             }
 
         return None
 
-    async def _get_mock_injury_reports(self, sport: SportType, team_id: Optional[str]) -> List[Dict[str, Any]]:
+    async def _get_mock_injury_reports(
+        self, sport: SportType, team_id: str | None
+    ) -> list[dict[str, Any]]:
         """Mock injury reports for testing"""
         return [
             {
@@ -1467,49 +1622,63 @@ class SportsDataService:
                 "player_name": "Mock Player 1",
                 "injury_status": "questionable",
                 "injury_description": "Knee soreness",
-                "expected_return": (date.today() + timedelta(days=3)).isoformat()
+                "expected_return": (date.today() + timedelta(days=3)).isoformat(),
             },
             {
                 "player_id": "mock_injured_2",
                 "player_name": "Mock Player 2",
                 "injury_status": "out",
                 "injury_description": "Ankle sprain",
-                "expected_return": (date.today() + timedelta(days=14)).isoformat()
-            }
+                "expected_return": (date.today() + timedelta(days=14)).isoformat(),
+            },
         ]
 
     # The Athletic Provider Methods (stubs for future implementation)
-    async def _get_athletic_player_data(self, external_id: str, sport: SportType) -> Optional[PlayerData]:
+    async def _get_athletic_player_data(
+        self, external_id: str, sport: SportType
+    ) -> PlayerData | None:
         """Get player data from The Athletic API (future implementation)"""
         return await self._get_mock_player_data(external_id, sport)
 
-    async def _search_athletic_players(self, query: str, sport: SportType, limit: int) -> List[PlayerData]:
+    async def _search_athletic_players(
+        self, query: str, sport: SportType, limit: int
+    ) -> list[PlayerData]:
         """Search players via The Athletic API (future implementation)"""
         return await self._search_mock_players(query, sport, limit)
 
-    async def _get_athletic_team_roster(self, team_id: str, sport: SportType) -> List[PlayerData]:
+    async def _get_athletic_team_roster(
+        self, team_id: str, sport: SportType
+    ) -> list[PlayerData]:
         """Get team roster from The Athletic API (future implementation)"""
         return await self._get_mock_team_roster(team_id, sport)
 
-    async def _get_athletic_schedule(self, sport: SportType, start_date: date, end_date: date) -> List[GameData]:
+    async def _get_athletic_schedule(
+        self, sport: SportType, start_date: date, end_date: date
+    ) -> list[GameData]:
         """Get schedule from The Athletic API (future implementation)"""
         return await self._get_mock_schedule(sport, start_date, end_date)
 
-    async def _get_athletic_live_scores(self, sport: SportType, game_date: date) -> List[Dict[str, Any]]:
+    async def _get_athletic_live_scores(
+        self, sport: SportType, game_date: date
+    ) -> list[dict[str, Any]]:
         """Get live scores from The Athletic API (future implementation)"""
         return await self._get_mock_live_scores(sport, game_date)
 
-    async def _get_athletic_player_stats(self, external_id: str, sport: SportType, season: str, stat_type: str) -> Optional[Dict[str, Any]]:
+    async def _get_athletic_player_stats(
+        self, external_id: str, sport: SportType, season: str, stat_type: str
+    ) -> dict[str, Any] | None:
         """Get player stats from The Athletic API (future implementation)"""
         return await self._get_mock_player_stats(external_id, sport, season, stat_type)
 
-    async def _get_athletic_injury_reports(self, sport: SportType, team_id: Optional[str]) -> List[Dict[str, Any]]:
+    async def _get_athletic_injury_reports(
+        self, sport: SportType, team_id: str | None
+    ) -> list[dict[str, Any]]:
         """Get injury reports from The Athletic API (future implementation)"""
         return await self._get_mock_injury_reports(sport, team_id)
 
 
 # Global service instance
-_sports_data_service: Optional[SportsDataService] = None
+_sports_data_service: SportsDataService | None = None
 
 
 async def get_sports_data_service() -> SportsDataService:

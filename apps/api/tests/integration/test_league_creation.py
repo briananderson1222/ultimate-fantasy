@@ -15,6 +15,7 @@ import json
 # Import will fail initially - this is expected for TDD
 try:
     from src.main import app
+
     client = TestClient(app)
 except ImportError:
     client = None
@@ -32,7 +33,7 @@ class TestLeagueCreationFlow:
         commissioner_data = {
             "email": "commissioner@test.com",
             "password": "password123",
-            "name": "Test Commissioner"
+            "name": "Test Commissioner",
         }
 
         register_response = client.post("/api/v1/auth/register", json=commissioner_data)
@@ -53,13 +54,11 @@ class TestLeagueCreationFlow:
             "season": "2025",
             "max_teams": 8,
             "scoring_rules": {"hits": 1, "home_runs": 4, "rbis": 1},
-            "draft_settings": {"type": "snake", "pick_timer": 60}
+            "draft_settings": {"type": "snake", "pick_timer": 60},
         }
 
         league_response = client.post(
-            "/api/v1/leagues",
-            json=league_data,
-            headers=commissioner_headers
+            "/api/v1/leagues", json=league_data, headers=commissioner_headers
         )
         assert league_response.status_code == 201
 
@@ -75,8 +74,7 @@ class TestLeagueCreationFlow:
 
         # Verify commissioner team was automatically created
         teams_response = client.get(
-            f"/api/v1/leagues/{league_id}/teams",
-            headers=commissioner_headers
+            f"/api/v1/leagues/{league_id}/teams", headers=commissioner_headers
         )
         assert teams_response.status_code == 200
 
@@ -88,7 +86,7 @@ class TestLeagueCreationFlow:
         user2_data = {
             "email": "user2@test.com",
             "password": "password123",
-            "name": "Test User 2"
+            "name": "Test User 2",
         }
 
         user2_register_response = client.post("/api/v1/auth/register", json=user2_data)
@@ -99,15 +97,10 @@ class TestLeagueCreationFlow:
         user2_headers = {"Authorization": f"Bearer {user2_token}"}
 
         # Step 4: Join league with invite code
-        join_data = {
-            "team_name": "Test Team 2",
-            "invite_code": invite_code
-        }
+        join_data = {"team_name": "Test Team 2", "invite_code": invite_code}
 
         join_response = client.post(
-            f"/api/v1/leagues/{league_id}/join",
-            json=join_data,
-            headers=user2_headers
+            f"/api/v1/leagues/{league_id}/join", json=join_data, headers=user2_headers
         )
         assert join_response.status_code == 201
 
@@ -119,8 +112,7 @@ class TestLeagueCreationFlow:
         # Step 5: Validate final state
         # League should now have 2 teams
         final_teams_response = client.get(
-            f"/api/v1/leagues/{league_id}/teams",
-            headers=commissioner_headers
+            f"/api/v1/leagues/{league_id}/teams", headers=commissioner_headers
         )
         assert final_teams_response.status_code == 200
 
@@ -129,8 +121,7 @@ class TestLeagueCreationFlow:
 
         # League should still be in setup status
         league_status_response = client.get(
-            f"/api/v1/leagues/{league_id}",
-            headers=commissioner_headers
+            f"/api/v1/leagues/{league_id}", headers=commissioner_headers
         )
         assert league_status_response.status_code == 200
 
@@ -147,7 +138,7 @@ class TestLeagueCreationFlow:
         user_data = {
             "email": "test@test.com",
             "password": "password123",
-            "name": "Test User"
+            "name": "Test User",
         }
 
         register_response = client.post("/api/v1/auth/register", json=user_data)
@@ -160,10 +151,12 @@ class TestLeagueCreationFlow:
             "sport": "invalid_sport",
             "league_type": "head_to_head",
             "season": "2025",
-            "max_teams": 8
+            "max_teams": 8,
         }
 
-        response = client.post("/api/v1/leagues", json=invalid_league_data, headers=headers)
+        response = client.post(
+            "/api/v1/leagues", json=invalid_league_data, headers=headers
+        )
         assert response.status_code == 400
 
         # Test invalid max_teams (too low)
@@ -172,15 +165,19 @@ class TestLeagueCreationFlow:
             "sport": "mlb",
             "league_type": "head_to_head",
             "season": "2025",
-            "max_teams": 1
+            "max_teams": 1,
         }
 
-        response = client.post("/api/v1/leagues", json=invalid_teams_data, headers=headers)
+        response = client.post(
+            "/api/v1/leagues", json=invalid_teams_data, headers=headers
+        )
         assert response.status_code == 400
 
         # Test invalid max_teams (too high)
         invalid_teams_data["max_teams"] = 25
-        response = client.post("/api/v1/leagues", json=invalid_teams_data, headers=headers)
+        response = client.post(
+            "/api/v1/leagues", json=invalid_teams_data, headers=headers
+        )
         assert response.status_code == 400
 
     def test_duplicate_team_names_in_league(self):
@@ -189,7 +186,11 @@ class TestLeagueCreationFlow:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         # Create league with first user
-        user1_data = {"email": "user1@test.com", "password": "password123", "name": "User 1"}
+        user1_data = {
+            "email": "user1@test.com",
+            "password": "password123",
+            "name": "User 1",
+        }
         user1_response = client.post("/api/v1/auth/register", json=user1_data)
         user1_token = user1_response.json()["access_token"]
         user1_headers = {"Authorization": f"Bearer {user1_token}"}
@@ -199,33 +200,39 @@ class TestLeagueCreationFlow:
             "sport": "mlb",
             "league_type": "head_to_head",
             "season": "2025",
-            "max_teams": 8
+            "max_teams": 8,
         }
 
-        league_response = client.post("/api/v1/leagues", json=league_data, headers=user1_headers)
+        league_response = client.post(
+            "/api/v1/leagues", json=league_data, headers=user1_headers
+        )
         league = league_response.json()
         league_id = league["league_id"]
         invite_code = league["invite_code"]
 
         # Second user tries to join with same team name as commissioner
-        user2_data = {"email": "user2@test.com", "password": "password123", "name": "User 2"}
+        user2_data = {
+            "email": "user2@test.com",
+            "password": "password123",
+            "name": "User 2",
+        }
         user2_response = client.post("/api/v1/auth/register", json=user2_data)
         user2_token = user2_response.json()["access_token"]
         user2_headers = {"Authorization": f"Bearer {user2_token}"}
 
         # Get commissioner's team name
-        teams_response = client.get(f"/api/v1/leagues/{league_id}/teams", headers=user1_headers)
+        teams_response = client.get(
+            f"/api/v1/leagues/{league_id}/teams", headers=user1_headers
+        )
         commissioner_team_name = teams_response.json()[0]["name"]
 
         join_data = {
             "team_name": commissioner_team_name,  # Same name as commissioner
-            "invite_code": invite_code
+            "invite_code": invite_code,
         }
 
         join_response = client.post(
-            f"/api/v1/leagues/{league_id}/join",
-            json=join_data,
-            headers=user2_headers
+            f"/api/v1/leagues/{league_id}/join", json=join_data, headers=user2_headers
         )
         assert join_response.status_code == 400
 
@@ -238,8 +245,14 @@ class TestLeagueCreationFlow:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         # Create league with max_teams = 2
-        commissioner_data = {"email": "commissioner@test.com", "password": "password123", "name": "Commissioner"}
-        commissioner_response = client.post("/api/v1/auth/register", json=commissioner_data)
+        commissioner_data = {
+            "email": "commissioner@test.com",
+            "password": "password123",
+            "name": "Commissioner",
+        }
+        commissioner_response = client.post(
+            "/api/v1/auth/register", json=commissioner_data
+        )
         commissioner_token = commissioner_response.json()["access_token"]
         commissioner_headers = {"Authorization": f"Bearer {commissioner_token}"}
 
@@ -248,36 +261,52 @@ class TestLeagueCreationFlow:
             "sport": "mlb",
             "league_type": "head_to_head",
             "season": "2025",
-            "max_teams": 2  # Only 2 teams allowed
+            "max_teams": 2,  # Only 2 teams allowed
         }
 
-        league_response = client.post("/api/v1/leagues", json=league_data, headers=commissioner_headers)
+        league_response = client.post(
+            "/api/v1/leagues", json=league_data, headers=commissioner_headers
+        )
         league = league_response.json()
         league_id = league["league_id"]
         invite_code = league["invite_code"]
 
         # First user joins successfully
-        user1_data = {"email": "user1@test.com", "password": "password123", "name": "User 1"}
+        user1_data = {
+            "email": "user1@test.com",
+            "password": "password123",
+            "name": "User 1",
+        }
         user1_response = client.post("/api/v1/auth/register", json=user1_data)
         user1_token = user1_response.json()["access_token"]
         user1_headers = {"Authorization": f"Bearer {user1_token}"}
 
         join1_data = {"team_name": "Team 1", "invite_code": invite_code}
-        join1_response = client.post(f"/api/v1/leagues/{league_id}/join", json=join1_data, headers=user1_headers)
+        join1_response = client.post(
+            f"/api/v1/leagues/{league_id}/join", json=join1_data, headers=user1_headers
+        )
         assert join1_response.status_code == 201
 
         # Second user tries to join but league is full
-        user2_data = {"email": "user2@test.com", "password": "password123", "name": "User 2"}
+        user2_data = {
+            "email": "user2@test.com",
+            "password": "password123",
+            "name": "User 2",
+        }
         user2_response = client.post("/api/v1/auth/register", json=user2_data)
         user2_token = user2_response.json()["access_token"]
         user2_headers = {"Authorization": f"Bearer {user2_token}"}
 
         join2_data = {"team_name": "Team 2", "invite_code": invite_code}
-        join2_response = client.post(f"/api/v1/leagues/{league_id}/join", json=join2_data, headers=user2_headers)
+        join2_response = client.post(
+            f"/api/v1/leagues/{league_id}/join", json=join2_data, headers=user2_headers
+        )
         assert join2_response.status_code == 400
 
         error = join2_response.json()
-        assert "full" in error["detail"].lower() or "capacity" in error["detail"].lower()
+        assert (
+            "full" in error["detail"].lower() or "capacity" in error["detail"].lower()
+        )
 
     def test_invalid_invite_code(self):
         """Test that invalid invite codes are rejected"""
@@ -285,21 +314,20 @@ class TestLeagueCreationFlow:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         # Register user
-        user_data = {"email": "user@test.com", "password": "password123", "name": "User"}
+        user_data = {
+            "email": "user@test.com",
+            "password": "password123",
+            "name": "User",
+        }
         user_response = client.post("/api/v1/auth/register", json=user_data)
         user_token = user_response.json()["access_token"]
         user_headers = {"Authorization": f"Bearer {user_token}"}
 
         # Try to join with invalid invite code
-        join_data = {
-            "team_name": "Test Team",
-            "invite_code": "INVALID123"
-        }
+        join_data = {"team_name": "Test Team", "invite_code": "INVALID123"}
 
         # This should fail because no league has this invite code
         join_response = client.post(
-            f"/api/v1/leagues/{str(uuid4())}/join",
-            json=join_data,
-            headers=user_headers
+            f"/api/v1/leagues/{str(uuid4())}/join", json=join_data, headers=user_headers
         )
         assert join_response.status_code == 404

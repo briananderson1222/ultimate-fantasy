@@ -1,15 +1,15 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 // Storage keys
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'uf_auth_token',
-  REFRESH_TOKEN: 'uf_refresh_token',
-  USER_EMAIL: 'uf_user_email',
-  USER_ID: 'uf_user_id',
-  BIOMETRIC_ENABLED: 'uf_biometric_enabled',
-  THEME_PREFERENCE: 'uf_theme',
-  NOTIFICATION_SETTINGS: 'uf_notifications',
+  AUTH_TOKEN: "uf_auth_token",
+  REFRESH_TOKEN: "uf_refresh_token",
+  USER_EMAIL: "uf_user_email",
+  USER_ID: "uf_user_id",
+  BIOMETRIC_ENABLED: "uf_biometric_enabled",
+  THEME_PREFERENCE: "uf_theme",
+  NOTIFICATION_SETTINGS: "uf_notifications",
 } as const;
 
 // Secure storage wrapper with fallback to AsyncStorage
@@ -65,19 +65,16 @@ class SecureStorageManager {
       ];
 
       await Promise.all(
-        sensitiveKeys.map(key =>
-          SecureStore.deleteItemAsync(key).catch(() => {})
-        )
+        sensitiveKeys.map((key) =>
+          SecureStore.deleteItemAsync(key).catch(() => {}),
+        ),
       );
     }
   }
 
   private isSensitiveKey(key: string): boolean {
-    const sensitiveKeys = [
-      STORAGE_KEYS.AUTH_TOKEN,
-      STORAGE_KEYS.REFRESH_TOKEN,
-    ];
-    return sensitiveKeys.includes(key as any);
+    const sensitiveKeys = [STORAGE_KEYS.AUTH_TOKEN, STORAGE_KEYS.REFRESH_TOKEN];
+    return sensitiveKeys.includes(key);
   }
 
   // Token management helpers
@@ -111,7 +108,10 @@ class SecureStorageManager {
     ]);
   }
 
-  async getUserData(): Promise<{ userId: string | null; email: string | null }> {
+  async getUserData(): Promise<{
+    userId: string | null;
+    email: string | null;
+  }> {
     const [userId, email] = await Promise.all([
       this.getItem(STORAGE_KEYS.USER_ID),
       this.getItem(STORAGE_KEYS.USER_EMAIL),
@@ -133,20 +133,23 @@ class SecureStorageManager {
 
   async isBiometricEnabled(): Promise<boolean> {
     const value = await this.getItem(STORAGE_KEYS.BIOMETRIC_ENABLED);
-    return value === 'true';
+    return value === "true";
   }
 
-  async setThemePreference(theme: 'light' | 'dark' | 'system'): Promise<void> {
+  async setThemePreference(theme: "light" | "dark" | "system"): Promise<void> {
     await this.setItem(STORAGE_KEYS.THEME_PREFERENCE, theme);
   }
 
-  async getThemePreference(): Promise<'light' | 'dark' | 'system'> {
+  async getThemePreference(): Promise<"light" | "dark" | "system"> {
     const value = await this.getItem(STORAGE_KEYS.THEME_PREFERENCE);
-    return (value as 'light' | 'dark' | 'system') || 'system';
+    return (value as "light" | "dark" | "system") || "system";
   }
 
   async setNotificationSettings(settings: object): Promise<void> {
-    await this.setItem(STORAGE_KEYS.NOTIFICATION_SETTINGS, JSON.stringify(settings));
+    await this.setItem(
+      STORAGE_KEYS.NOTIFICATION_SETTINGS,
+      JSON.stringify(settings),
+    );
   }
 
   async getNotificationSettings(): Promise<object | null> {

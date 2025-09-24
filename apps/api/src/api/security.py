@@ -39,9 +39,13 @@ def configure_security(app: FastAPI) -> None:
 
     cors_allow_origins = _parse_origins(os.getenv("CORS_ALLOW_ORIGINS"))
     cors_allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
-    allow_credentials = (
-        os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() in {"1", "true", "t", "yes", "y"}
-    )
+    allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() in {
+        "1",
+        "true",
+        "t",
+        "yes",
+        "y",
+    }
 
     if "*" in cors_allow_origins:
         cors_allow_origins = ["*"]
@@ -63,7 +67,12 @@ def configure_security(app: FastAPI) -> None:
         allow_credentials=allow_credentials,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
-        expose_headers=["X-Domain", "X-Response-Time", "X-Metrics-Domain", "X-Metrics-Duration"],
+        expose_headers=[
+            "X-Domain",
+            "X-Response-Time",
+            "X-Metrics-Domain",
+            "X-Metrics-Duration",
+        ],
         max_age=600,
     )
 

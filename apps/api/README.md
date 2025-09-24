@@ -8,13 +8,24 @@ The backend exposes a RESTful API to manage fantasy leagues, teams, players, and
 
 ## Architecture
 
-The backend follows a standard layered architecture:
+The backend follows a **domain-driven architecture** with clear separation of concerns:
 
--   **API Layer (`src/api`)**: Defines the FastAPI routers and endpoints. This layer is responsible for handling incoming HTTP requests, validating data using Pydantic models, and returning responses.
--   **Service Layer (`src/services`)**: Contains the core business logic of the application. Services are called by the API layer to perform operations.
--   **Data Access Layer (`src/models`)**: Defines the SQLAlchemy database models and schema. All database interactions are handled through these models.
+-   **Domain Layer (`src/domains/`)**: Self-contained business domains, each with their own models, services, schemas, and business logic:
+    -   `users/`: User authentication and profile management
+    -   `leagues/`: League creation, configuration, and team management
+    -   `drafts/`: Draft coordination and pick management
+    -   `lineups/`: Lineup validation and management
+    -   `scoring/`: Scoring rules and stat processing
+    -   `trading/`: Trade proposals and waiver processing
+    -   `sports/`: Sports data integration and player information
+    -   `waitlist/`: Waitlist management
+    -   `shared/`: Common models, exceptions, and utilities
 
-Middleware for authentication and logging is applied in `src/main.py`.
+-   **API Layer (`src/api/`)**: FastAPI routers and endpoints that handle HTTP requests and responses. Uses dependency injection to access domain services.
+
+-   **Infrastructure Layer (`src/infrastructure/`)**: Cross-cutting concerns like database sessions, event dispatching, and logging.
+
+Each domain is self-contained with clear boundaries, making the codebase more maintainable and enabling independent evolution of business logic.
 
 ## Getting Started
 

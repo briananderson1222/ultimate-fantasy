@@ -289,14 +289,27 @@ def reset_session_factory() -> None:
     _session_factory = None
 
 
+# Synchronous database session for services
+def get_db_session() -> Session:
+    """
+    Get a synchronous database session for service use.
+
+    Usage:
+        with get_db_session() as session:
+            # use session
+    """
+    factory = get_session_factory()
+    return factory.get_sync_session()
+
+
 # FastAPI dependency for database sessions
-async def get_db_session() -> AsyncGenerator[Session | AsyncSession, None]:
+async def get_async_db_session() -> AsyncGenerator[Session | AsyncSession, None]:
     """
     FastAPI dependency for database sessions.
 
     Usage:
         @app.get("/endpoint")
-        async def endpoint(session: Session = Depends(get_db_session)):
+        async def endpoint(session: Session = Depends(get_async_db_session)):
             pass
     """
     factory = get_session_factory()

@@ -10,6 +10,7 @@ from enum import Enum
 
 class ScoringType(Enum):
     """Scoring calculation types for fantasy point calculations."""
+
     GAME = "game"
     WEEKLY = "weekly"
     SEASON = "season"
@@ -17,6 +18,7 @@ class ScoringType(Enum):
 
 class DataProvider(Enum):
     """Supported sports data providers for external API integration."""
+
     ESPN = "espn"
     THE_ATHLETIC = "the_athletic"
     MOCK = "mock"  # For testing
@@ -24,6 +26,7 @@ class DataProvider(Enum):
 
 class SportType(Enum):
     """Supported sports types across the platform."""
+
     MLB = "mlb"
     NFL = "nfl"
     WNBA = "wnba"
@@ -31,12 +34,14 @@ class SportType(Enum):
 
 class LeagueType(Enum):
     """League format types."""
+
     HEAD_TO_HEAD = "head_to_head"
     ROTISSERIE = "rotisserie"
 
 
 class LeagueStatus(Enum):
     """League lifecycle status."""
+
     DRAFT = "draft"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -45,6 +50,7 @@ class LeagueStatus(Enum):
 
 class DraftStatus(Enum):
     """Draft status enumeration."""
+
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     PAUSED = "paused"
@@ -54,6 +60,7 @@ class DraftStatus(Enum):
 
 class TeamStatus(Enum):
     """Team status within a league."""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     ELIMINATED = "eliminated"
@@ -61,6 +68,7 @@ class TeamStatus(Enum):
 
 class TransactionType(Enum):
     """Types of player transactions."""
+
     TRADE = "trade"
     WAIVER_CLAIM = "waiver_claim"
     FREE_AGENT_PICKUP = "free_agent_pickup"
@@ -70,6 +78,7 @@ class TransactionType(Enum):
 
 class PlayerStatus(Enum):
     """Player availability status."""
+
     HEALTHY = "healthy"
     QUESTIONABLE = "questionable"
     DOUBTFUL = "doubtful"
@@ -79,6 +88,7 @@ class PlayerStatus(Enum):
 
 class LineupStatus(Enum):
     """Lineup validation and lock status."""
+
     VALID = "valid"
     INVALID = "invalid"
     LOCKED = "locked"
@@ -87,6 +97,7 @@ class LineupStatus(Enum):
 
 class EventType(Enum):
     """Domain event types for event publishing."""
+
     PLAYER_STATS_UPDATED = "player_stats_updated"
     LINEUP_SUBMITTED = "lineup_submitted"
     TRADE_PROPOSED = "trade_proposed"
@@ -98,6 +109,7 @@ class EventType(Enum):
 
 class CacheKeyPrefix(Enum):
     """Standard cache key prefixes for Redis operations."""
+
     SPORTS_DATA = "sports"
     PLAYER_STATS = "player_stats"
     LINEUP_DATA = "lineup"

@@ -4,8 +4,9 @@ import hashlib
 import os
 import re
 import secrets
+import uuid as _uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 import jwt
 from sqlalchemy import and_, or_
@@ -18,15 +19,15 @@ from domains.shared.exceptions import (
     EmailAlreadyExistsError,
     InvalidTokenError,
     TokenExpiredError,
-    TooManyAttemptsError,
-    UserNotFoundError,
     UsernameAlreadyExistsError,
+    UserNotFoundError,
     ValidationError,
     WeakPasswordError,
 )
 from domains.shared.interfaces.user_service import UserServiceInterface
 from domains.shared.models.achievement import Achievement
 from domains.users.models.user import User
+from domains.users.models.user_preference import UserPreference
 from infrastructure.database.session_factory import get_session_factory
 from infrastructure.events.dispatcher import get_event_dispatcher
 
@@ -36,9 +37,9 @@ class UserService(UserServiceInterface):
 
     def __init__(
         self,
-        session: Optional[Session] = None,
+        session: Session | None = None,
         *,
-        jwt_secret: Optional[str] = None,
+        jwt_secret: str | None = None,
         jwt_algorithm: str = "HS256",
     ) -> None:
         if session is None:
@@ -49,7 +50,12 @@ class UserService(UserServiceInterface):
             self.session = session
             self._owns_session = False
 
-        self.jwt_secret = jwt_secret or os.getenv("AUTH_DEV_SECRET") or os.getenv("AUTH_SECRET") or "dev-secret"
+        self.jwt_secret = (
+            jwt_secret
+            or os.getenv("AUTH_DEV_SECRET")
+            or os.getenv("AUTH_SECRET")
+            or "dev-secret"
+        )
         self.jwt_algorithm = jwt_algorithm
         self.password_min_length = int(os.getenv("AUTH_PASSWORD_MIN_LENGTH", "8"))
         self.token_expiry_hours = int(os.getenv("AUTH_ACCESS_TOKEN_HOURS", "24"))
@@ -72,11 +78,11 @@ class UserService(UserServiceInterface):
         username: str,
         email: str,
         password: str,
-        first_name: Optional[str] = None,
-        last_name: Optional[str] = None,
-        date_of_birth: Optional[datetime] = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        date_of_birth: datetime | None = None,
         timezone: str = "UTC",
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> User:
         session = db or self.session
         if session is None:
@@ -130,7 +136,7 @@ class UserService(UserServiceInterface):
         *,
         username_or_email: str,
         password: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> User:
         session = db or self.session
         if session is None:
@@ -158,12 +164,16 @@ class UserService(UserServiceInterface):
         return user
 
     def create_access_token(
-        self, user_id: str, *, expires_in: Optional[int] = None, db: Optional[Session] = None
+        self,
+        user_id: str,
+        *,
+        expires_in: int | None = None,
+        db: Session | None = None,
     ) -> str:
         user = self.get_user_sync(user_id, db)
         payload = {
             "user_id": str(user.user_id),
-            "username": user.username,
+            "username": getattr(user, 'username', user.email.split('@')[0] if user.email else f'user_{user_id}'),
             "email": user.email,
             "is_premium": user.is_premium_active(),
             "iat": datetime.utcnow(),
@@ -177,7 +187,7 @@ class UserService(UserServiceInterface):
         payload["exp"] = datetime.utcnow() + exp_delta
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
 
-    def create_refresh_token(self, user_id: str, db: Optional[Session] = None) -> str:
+    def create_refresh_token(self, user_id: str, db: Session | None = None) -> str:
         user = self.get_user_sync(user_id, db)
         payload = {
             "user_id": str(user.user_id),
@@ -187,7 +197,7 @@ class UserService(UserServiceInterface):
         }
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
 
-    def validate_token(self, token: str) -> Dict[str, Any]:
+    def validate_token(self, token: str) -> dict[str, Any]:
         try:
             return jwt.decode(token, self.jwt_secret, algorithms=[self.jwt_algorithm])
         except jwt.ExpiredSignatureError as exc:
@@ -196,8 +206,8 @@ class UserService(UserServiceInterface):
             raise InvalidTokenError("Invalid token") from exc
 
     def refresh_access_token(
-        self, refresh_token: str, db: Optional[Session] = None
-    ) -> Dict[str, Any]:
+        self, refresh_token: str, db: Session | None = None
+    ) -> dict[str, Any]:
         payload = self.validate_token(refresh_token)
         if payload.get("type") != "refresh":
             raise InvalidTokenError("Invalid token type")
@@ -216,7 +226,7 @@ class UserService(UserServiceInterface):
             "user_id": str(user.user_id),
         }
 
-    def invalidate_token(self, token: str, db: Optional[Session] = None) -> None:
+    def invalidate_token(self, token: str, db: Session | None = None) -> None:
         # Token blacklisting not implemented; method retained for interface compatibility.
         return None
 
@@ -225,9 +235,9 @@ class UserService(UserServiceInterface):
         *,
         user_id: str,
         activity_type: str,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        db: Optional[Session] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         if session is None:
@@ -238,7 +248,7 @@ class UserService(UserServiceInterface):
         user.update_activity()
         session.commit()
 
-    def initiate_password_reset(self, email: str, db: Optional[Session] = None) -> str:
+    def initiate_password_reset(self, email: str, db: Session | None = None) -> str:
         session = db or self.session
         if session is None:
             raise RuntimeError("Database session not available")
@@ -251,7 +261,7 @@ class UserService(UserServiceInterface):
         return token
 
     def reset_password(
-        self, *, token: str, new_password: str, db: Optional[Session] = None
+        self, *, token: str, new_password: str, db: Session | None = None
     ) -> None:
         session = db or self.session
         if session is None:
@@ -279,7 +289,7 @@ class UserService(UserServiceInterface):
         user_id: str,
         current_password: str,
         new_password: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         if session is None:
@@ -297,11 +307,21 @@ class UserService(UserServiceInterface):
     # ------------------------------------------------------------------
     # Profile Management
     # ------------------------------------------------------------------
-    def get_user_sync(self, user_id: str, db: Optional[Session] = None) -> User:
+    def get_user_sync(self, user_id: str, db: Session | None = None) -> User:
         session = db or self.session
         if session is None:
             raise RuntimeError("Database session not available")
-        user = session.query(User).filter(User.user_id == user_id).first()
+
+        # Convert string to UUID if necessary
+        if isinstance(user_id, str):
+            try:
+                user_id_uuid = _uuid.UUID(user_id)
+            except ValueError:
+                raise UserNotFoundError("Invalid user ID format")
+        else:
+            user_id_uuid = user_id
+
+        user = session.query(User).filter(User.user_id == user_id_uuid).first()
         if not user:
             raise UserNotFoundError("User not found")
         return user
@@ -310,8 +330,8 @@ class UserService(UserServiceInterface):
         self,
         *,
         user_id: str,
-        updates: Dict[str, Any],
-        db: Optional[Session] = None,
+        updates: dict[str, Any],
+        db: Session | None = None,
     ) -> User:
         session = db or self.session
         if session is None:
@@ -345,8 +365,8 @@ class UserService(UserServiceInterface):
         self,
         *,
         user_id: str,
-        preferences: Dict[str, Any],
-        db: Optional[Session] = None,
+        preferences: dict[str, Any],
+        db: Session | None = None,
     ) -> User:
         user = self.get_user_sync(user_id, db)
         user.update_preferences(preferences)
@@ -357,8 +377,8 @@ class UserService(UserServiceInterface):
         self,
         *,
         user_id: str,
-        settings: Dict[str, Any],
-        db: Optional[Session] = None,
+        settings: dict[str, Any],
+        db: Session | None = None,
     ) -> User:
         user = self.get_user_sync(user_id, db)
         for key, value in settings.items():
@@ -370,8 +390,8 @@ class UserService(UserServiceInterface):
         self,
         *,
         user_id: str,
-        password: Optional[str] = None,
-        db: Optional[Session] = None,
+        password: str | None = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         user = self.get_user_sync(user_id, session)
@@ -380,18 +400,22 @@ class UserService(UserServiceInterface):
         user.deactivate_account()
         session.commit()
 
-    def resend_verification_email(self, user_id: str, db: Optional[Session] = None) -> str:
+    def resend_verification_email(
+        self, user_id: str, db: Session | None = None
+    ) -> str:
         user = self.get_user_sync(user_id, db)
         token = secrets.token_urlsafe(32)
         user.email_verification_token = token
         (db or self.session).commit()
         return token
 
-    def verify_email(self, token: str, db: Optional[Session] = None) -> User:
+    def verify_email(self, token: str, db: Session | None = None) -> User:
         session = db or self.session
         if session is None:
             raise RuntimeError("Database session not available")
-        user = session.query(User).filter(User.email_verification_token == token).first()
+        user = (
+            session.query(User).filter(User.email_verification_token == token).first()
+        )
         if not user:
             raise InvalidTokenError("Invalid verification token")
         user.verify_email()
@@ -399,19 +423,19 @@ class UserService(UserServiceInterface):
         return user
 
     def get_user_sessions(
-        self, user_id: str, db: Optional[Session] = None
-    ) -> list[Dict[str, Any]]:
+        self, user_id: str, db: Session | None = None
+    ) -> list[dict[str, Any]]:
         # Session management not yet implemented; return empty list for compatibility.
         self.get_user_sync(user_id, db)
         return []
 
     def revoke_session(
-        self, user_id: str, session_id: str, db: Optional[Session] = None
+        self, user_id: str, session_id: str, db: Session | None = None
     ) -> bool:
         self.get_user_sync(user_id, db)
         return True
 
-    def revoke_all_sessions(self, user_id: str, db: Optional[Session] = None) -> int:
+    def revoke_all_sessions(self, user_id: str, db: Session | None = None) -> int:
         self.get_user_sync(user_id, db)
         return 0
 
@@ -430,10 +454,21 @@ class UserService(UserServiceInterface):
             return False
         return user.is_active
 
-    async def get_user_preferences(self, user_id: str) -> User:
-        return self.get_user_sync(user_id, None)
+    async def get_user_preferences(self, user_id: str) -> UserPreference:
+        session = self.session
+        if session is None:
+            raise RuntimeError("Database session not available")
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+        user_pref = session.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+        if not user_pref:
+            # Create default preferences if they don't exist
+            user_pref = UserPreference(user_id=user_id)
+            session.add(user_pref)
+            session.commit()
+
+        return user_pref
+
+    async def get_user_by_email(self, email: str) -> User | None:
         session = self.session
         if session is None:
             return None
@@ -449,7 +484,9 @@ class UserService(UserServiceInterface):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _publish_event(self, event: str, entity_id: str, payload: Dict[str, Any]) -> None:
+    def _publish_event(
+        self, event: str, entity_id: str, payload: dict[str, Any]
+    ) -> None:
         if not self.event_publisher:
             return
         import asyncio
@@ -496,6 +533,54 @@ class UserService(UserServiceInterface):
         except ValueError:
             return False
         return hashlib.sha256((password + salt).encode()).hexdigest() == password_hash
+
+    def ensure_user_from_claims(self, claims: dict[str, Any], db: Session | None = None) -> User:
+        """Ensure user exists based on JWT claims, create if necessary."""
+        session = db or self.session
+        if session is None:
+            raise RuntimeError("Database session not available")
+
+        sub = claims.get("sub")
+        email = claims.get("email")
+        username = claims.get("username")
+
+        if not sub:
+            raise AuthenticationError("Invalid claims: missing sub")
+
+        # Try to find existing user
+        user = session.query(User).filter(User.cognito_sub == sub).first()
+
+        if user:
+            return user
+
+        # Create new user from claims
+        if not email:
+            raise AuthenticationError("Invalid claims: missing email")
+
+        # Generate username if not provided
+        if not username:
+            username = email.split("@")[0].lower()
+            # Ensure uniqueness
+            counter = 1
+            base_username = username
+            while session.query(User).filter(User.username == username).first():
+                username = f"{base_username}{counter}"
+                counter += 1
+
+        user = User(
+            username=username,
+            email=email,
+            cognito_sub=sub,
+            password_hash="external_auth:no_local_password",  # Placeholder for external auth users
+            display_name=username,
+            preferences=User.get_default_preferences(),
+            notification_settings=User.get_default_notification_settings(),
+            privacy_settings=User.get_default_privacy_settings(),
+        )
+
+        session.add(user)
+        session.commit()
+        return user
 
     def __del__(self) -> None:  # pragma: no cover - best effort cleanup
         if getattr(self, "_owns_session", False) and self.session is not None:

@@ -14,11 +14,8 @@ from main import app
 class TestTradesPostContract:
     """Contract tests for trade proposal endpoint."""
 
-    def setup_method(self):
-        """Set up test client."""
-        self.client = TestClient(app)
-
-    def test_propose_trade_returns_201_with_trade_data(self):
+    # Removed setup_method - using authenticated_client fixture instead
+    def test_propose_trade_returns_201_with_trade_data(self, authenticated_client):
         """
         Contract Test: POST /api/v1/trades returns 201 with trade details.
 
@@ -29,10 +26,10 @@ class TestTradesPostContract:
             "to_team_id": "team_456",
             "offered_players": ["player_789", "player_101"],
             "requested_players": ["player_112", "player_131"],
-            "message": "Fair trade for both teams"
+            "message": "Fair trade for both teams",
         }
 
-        response = self.client.post("/api/v1/trades", json=trade_data)
+        response = authenticated_client.post("/api/v1/trades", json=trade_data)
 
         assert response.status_code == 201
         data = response.json()
@@ -48,7 +45,7 @@ class TestTradesPostContract:
         assert "expiration_date" in data
         assert data["status"] == "pending"
 
-    def test_propose_trade_with_invalid_teams_returns_400(self):
+    def test_propose_trade_with_invalid_teams_returns_400(self, authenticated_client):
         """
         Contract Test: Trade with invalid team IDs returns 400.
 
@@ -58,10 +55,10 @@ class TestTradesPostContract:
             "from_team_id": "invalid_team",
             "to_team_id": "team_456",
             "offered_players": ["player_789"],
-            "requested_players": ["player_112"]
+            "requested_players": ["player_112"],
         }
 
-        response = self.client.post("/api/v1/trades", json=trade_data)
+        response = authenticated_client.post("/api/v1/trades", json=trade_data)
 
         assert response.status_code == 400
         data = response.json()
@@ -69,7 +66,7 @@ class TestTradesPostContract:
         assert "error" in data
         assert "team" in data["message"].lower()
 
-    def test_propose_trade_with_same_team_returns_400(self):
+    def test_propose_trade_with_same_team_returns_400(self, authenticated_client):
         """
         Contract Test: Trade with same from/to team returns 400.
 
@@ -79,10 +76,10 @@ class TestTradesPostContract:
             "from_team_id": "team_123",
             "to_team_id": "team_123",
             "offered_players": ["player_789"],
-            "requested_players": ["player_112"]
+            "requested_players": ["player_112"],
         }
 
-        response = self.client.post("/api/v1/trades", json=trade_data)
+        response = authenticated_client.post("/api/v1/trades", json=trade_data)
 
         assert response.status_code == 400
         data = response.json()
@@ -90,7 +87,7 @@ class TestTradesPostContract:
         assert "error" in data
         assert "same team" in data["message"].lower()
 
-    def test_propose_trade_includes_fairness_evaluation(self):
+    def test_propose_trade_includes_fairness_evaluation(self, authenticated_client):
         """
         Contract Test: Trade proposal includes automatic fairness evaluation.
 
@@ -100,10 +97,10 @@ class TestTradesPostContract:
             "from_team_id": "team_123",
             "to_team_id": "team_456",
             "offered_players": ["player_789"],
-            "requested_players": ["player_112"]
+            "requested_players": ["player_112"],
         }
 
-        response = self.client.post("/api/v1/trades", json=trade_data)
+        response = authenticated_client.post("/api/v1/trades", json=trade_data)
 
         assert response.status_code == 201
         data = response.json()
@@ -113,7 +110,7 @@ class TestTradesPostContract:
         assert isinstance(data["evaluation_score"], (int, float))
         assert data["fairness_rating"] in ["fair", "slightly_unfair", "very_unfair"]
 
-    def test_propose_trade_sends_notifications(self):
+    def test_propose_trade_sends_notifications(self, authenticated_client):
         """
         Contract Test: Trade proposal sends notifications to target team.
 
@@ -123,12 +120,15 @@ class TestTradesPostContract:
             "from_team_id": "team_123",
             "to_team_id": "team_456",
             "offered_players": ["player_789"],
-            "requested_players": ["player_112"]
+            "requested_players": ["player_112"],
         }
 
-        response = self.client.post("/api/v1/trades", json=trade_data)
+        response = authenticated_client.post("/api/v1/trades", json=trade_data)
 
         assert response.status_code == 201
 
         # Should include notification headers
-        assert "X-Notification-Sent" in response.headers or "X-Event-Published" in response.headers
+        assert (
+            "X-Notification-Sent" in response.headers
+            or "X-Event-Published" in response.headers
+        )

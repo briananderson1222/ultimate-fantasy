@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
+from enum import Enum
 
 from sqlalchemy import CheckConstraint, DateTime, Index, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -10,6 +11,39 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from domains.shared.models.base import Base
+
+
+class PlayerPosition(Enum):
+    """Player position enumeration."""
+    # NFL positions
+    QB = "QB"
+    RB = "RB"
+    WR = "WR"
+    TE = "TE"
+    K = "K"
+    DEF = "DEF"
+    # MLB positions
+    C = "C"
+    FB = "1B"
+    SB = "2B"
+    TB = "3B"
+    SS = "SS"
+    OF = "OF"
+    P = "P"
+    DH = "DH"
+    # WNBA positions
+    PG = "PG"
+    SG = "SG"
+    SF = "SF"
+    PF = "PF"
+
+
+class InjuryStatus(Enum):
+    """Injury status enumeration."""
+    HEALTHY = "healthy"
+    QUESTIONABLE = "questionable"
+    DOUBTFUL = "doubtful"
+    OUT = "out"
 
 
 class Player(Base):
@@ -24,15 +58,19 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
 
     position: Mapped[str] = mapped_column(String(20), nullable=False)
-    team_id: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    team_id: Mapped[str | None] = mapped_column(String(10), nullable=True)
     sport: Mapped[str] = mapped_column(String(10), nullable=False)
 
-    injury_status: Mapped[str] = mapped_column(String(20), nullable=False, default="healthy")
-    injury_description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    injury_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="healthy"
+    )
+    injury_description: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
 
-    season_stats: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    game_stats: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    projections: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    season_stats: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    game_stats: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    projections: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -65,6 +103,4 @@ class Player(Base):
     )
 
     def __repr__(self) -> str:  # pragma: no cover - repr helper
-        return (
-            f"<Player(name='{self.name}', sport='{self.sport}', position='{self.position}')>"
-        )
+        return f"<Player(name='{self.name}', sport='{self.sport}', position='{self.position}')>"

@@ -1,4 +1,11 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Enhanced Mobile Trade Interface Screen
+ *
+ * A comprehensive trade management interface with AI-powered trade analysis,
+ * real-time trade evaluation, negotiation tools, and market insights.
+ */
+
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,10 +15,24 @@ import {
   Alert,
   RefreshControl,
   Modal,
-} from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+  FlatList,
+  TextInput,
+  Switch,
+  Dimensions,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  MobileTradeAnalyzer,
+  type Trade as AnalyzerTrade,
+  type TradePlayer,
+  type TradeTeam
+} from '@ultimate-fantasy/ui-components/src/components/TradeAnalyzer';
+import {
+  MobilePlayerCard,
+  type Player as UIPlayer
+} from '@ultimate-fantasy/ui-components/src/components/PlayerCard';
 
 interface Player {
   id: string;
@@ -27,7 +48,7 @@ interface Trade {
   to_team: string;
   offer_players: Player[];
   request_players: Player[];
-  status: 'pending' | 'accepted' | 'rejected' | 'countered';
+  status: "pending" | "accepted" | "rejected" | "countered";
   created_at: Date;
   expires_at: Date;
   fairness_score: number;
@@ -36,32 +57,56 @@ interface Trade {
 // Mock data
 const MOCK_TRADES: Trade[] = [
   {
-    id: 't1',
-    from_team: 'Team Alpha',
-    to_team: 'My Team',
+    id: "t1",
+    from_team: "Team Alpha",
+    to_team: "My Team",
     offer_players: [
-      { id: 'p1', name: 'LeBron James', position: 'SF', team: 'LAL', value: 95 },
+      {
+        id: "p1",
+        name: "LeBron James",
+        position: "SF",
+        team: "LAL",
+        value: 95,
+      },
     ],
     request_players: [
-      { id: 'p2', name: 'Stephen Curry', position: 'PG', team: 'GSW', value: 92 },
+      {
+        id: "p2",
+        name: "Stephen Curry",
+        position: "PG",
+        team: "GSW",
+        value: 92,
+      },
     ],
-    status: 'pending',
+    status: "pending",
     created_at: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
     expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
     fairness_score: 88,
   },
   {
-    id: 't2',
-    from_team: 'My Team',
-    to_team: 'Team Beta',
+    id: "t2",
+    from_team: "My Team",
+    to_team: "Team Beta",
     offer_players: [
-      { id: 'p3', name: 'Kevin Durant', position: 'PF', team: 'PHX', value: 90 },
+      {
+        id: "p3",
+        name: "Kevin Durant",
+        position: "PF",
+        team: "PHX",
+        value: 90,
+      },
     ],
     request_players: [
-      { id: 'p4', name: 'Jayson Tatum', position: 'SF', team: 'BOS', value: 88 },
-      { id: 'p5', name: 'Role Player', position: 'PG', team: 'BOS', value: 15 },
+      {
+        id: "p4",
+        name: "Jayson Tatum",
+        position: "SF",
+        team: "BOS",
+        value: 88,
+      },
+      { id: "p5", name: "Role Player", position: "PG", team: "BOS", value: 15 },
     ],
-    status: 'countered',
+    status: "countered",
     created_at: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
     expires_at: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
     fairness_score: 72,
@@ -69,10 +114,6 @@ const MOCK_TRADES: Trade[] = [
 ];
 
 export default function TradesScreen() {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { leagueId } = route.params as { leagueId: string };
-
   const [trades, setTrades] = useState<Trade[]>(MOCK_TRADES);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -81,69 +122,90 @@ export default function TradesScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     // Mock refresh delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     setRefreshing(false);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleTradeAction = async (tradeId: string, action: 'accept' | 'reject' | 'counter') => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const handleTradeAction = async (
+    tradeId: string,
+    action: "accept" | "reject" | "counter",
+  ) => {
+    // await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    setTrades(prevTrades =>
-      prevTrades.map(trade =>
+    setTrades((prevTrades) =>
+      prevTrades.map((trade) =>
         trade.id === tradeId
-          ? { ...trade, status: action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'countered' }
-          : trade
-      )
+          ? {
+              ...trade,
+              status:
+                action === "accept"
+                  ? "accepted"
+                  : action === "reject"
+                    ? "rejected"
+                    : "countered",
+            }
+          : trade,
+      ),
     );
 
-    let message = '';
+    let message = "";
     switch (action) {
-      case 'accept':
-        message = 'Trade accepted! Players will be transferred.';
+      case "accept":
+        message = "Trade accepted! Players will be transferred.";
         break;
-      case 'reject':
-        message = 'Trade rejected.';
+      case "reject":
+        message = "Trade rejected.";
         break;
-      case 'counter':
-        message = 'Counter-offer sent!';
+      case "counter":
+        message = "Counter-offer sent!";
         break;
     }
 
-    Alert.alert('Trade Action', message);
+    Alert.alert("Trade Action", message);
     setShowTradeDetail(false);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#f59e0b';
-      case 'accepted': return '#059669';
-      case 'rejected': return '#ef4444';
-      case 'countered': return '#2563eb';
-      default: return '#64748b';
+      case "pending":
+        return "#f59e0b";
+      case "accepted":
+        return "#059669";
+      case "rejected":
+        return "#ef4444";
+      case "countered":
+        return "#2563eb";
+      default:
+        return "#64748b";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return 'time';
-      case 'accepted': return 'checkmark-circle';
-      case 'rejected': return 'close-circle';
-      case 'countered': return 'swap-horizontal';
-      default: return 'help-circle';
+      case "pending":
+        return "time";
+      case "accepted":
+        return "checkmark-circle";
+      case "rejected":
+        return "close-circle";
+      case "countered":
+        return "swap-horizontal";
+      default:
+        return "help-circle";
     }
   };
 
   const getFairnessColor = (score: number) => {
-    if (score >= 85) return '#059669';
-    if (score >= 70) return '#f59e0b';
-    return '#ef4444';
+    if (score >= 85) return "#059669";
+    if (score >= 70) return "#f59e0b";
+    return "#ef4444";
   };
 
   const getFairnessLabel = (score: number) => {
-    if (score >= 85) return 'Fair';
-    if (score >= 70) return 'Uneven';
-    return 'Unfair';
+    if (score >= 85) return "Fair";
+    if (score >= 70) return "Uneven";
+    return "Unfair";
   };
 
   const formatTimeRemaining = (expiresAt: Date) => {
@@ -154,10 +216,10 @@ export default function TradesScreen() {
 
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h`;
-    return 'Expiring soon';
+    return "Expiring soon";
   };
 
-  const renderPlayer = (player: Player, isOffering: boolean) => (
+  const renderPlayer = (player: Player, _isOffering: boolean) => (
     <View key={player.id} style={styles.playerCard}>
       <View style={styles.playerInfo}>
         <Text style={styles.playerName}>{player.name}</Text>
@@ -172,9 +234,15 @@ export default function TradesScreen() {
   );
 
   const renderTrade = (trade: Trade) => {
-    const isIncoming = trade.to_team === 'My Team';
-    const totalOfferValue = trade.offer_players.reduce((sum, p) => sum + p.value, 0);
-    const totalRequestValue = trade.request_players.reduce((sum, p) => sum + p.value, 0);
+    const isIncoming = trade.to_team === "My Team";
+    const totalOfferValue = trade.offer_players.reduce(
+      (sum, p) => sum + p.value,
+      0,
+    );
+    const totalRequestValue = trade.request_players.reduce(
+      (sum, p) => sum + p.value,
+      0,
+    );
 
     return (
       <TouchableOpacity
@@ -190,9 +258,20 @@ export default function TradesScreen() {
             <Text style={styles.tradeFromTo}>
               {isIncoming ? trade.from_team : trade.to_team}
             </Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(trade.status) }]}>
-              <Ionicons name={getStatusIcon(trade.status)} size={12} color="#fff" />
-              <Text style={styles.statusText}>{trade.status.toUpperCase()}</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: getStatusColor(trade.status) },
+              ]}
+            >
+              <Ionicons
+                name={getStatusIcon(trade.status)}
+                size={12}
+                color="#fff"
+              />
+              <Text style={styles.statusText}>
+                {trade.status.toUpperCase()}
+              </Text>
             </View>
           </View>
           <Text style={styles.timeRemaining}>
@@ -203,7 +282,7 @@ export default function TradesScreen() {
         <View style={styles.tradeContent}>
           <View style={styles.tradeSection}>
             <Text style={styles.tradeSectionTitle}>
-              {isIncoming ? 'Receiving' : 'Giving'}
+              {isIncoming ? "Receiving" : "Giving"}
             </Text>
             <View style={styles.tradeValue}>
               <Text style={styles.tradeValueText}>
@@ -218,7 +297,7 @@ export default function TradesScreen() {
 
           <View style={styles.tradeSection}>
             <Text style={styles.tradeSectionTitle}>
-              {isIncoming ? 'Giving' : 'Receiving'}
+              {isIncoming ? "Giving" : "Receiving"}
             </Text>
             <View style={styles.tradeValue}>
               <Text style={styles.tradeValueText}>
@@ -229,12 +308,18 @@ export default function TradesScreen() {
         </View>
 
         <View style={styles.tradeFooter}>
-          <View style={[styles.fairnessBadge, { backgroundColor: getFairnessColor(trade.fairness_score) }]}>
+          <View
+            style={[
+              styles.fairnessBadge,
+              { backgroundColor: getFairnessColor(trade.fairness_score) },
+            ]}
+          >
             <Text style={styles.fairnessText}>
-              {getFairnessLabel(trade.fairness_score)} ({trade.fairness_score}/100)
+              {getFairnessLabel(trade.fairness_score)} ({trade.fairness_score}
+              /100)
             </Text>
           </View>
-          {trade.status === 'pending' && isIncoming && (
+          {trade.status === "pending" && isIncoming && (
             <Text style={styles.actionHint}>Tap to respond</Text>
           )}
         </View>
@@ -245,8 +330,8 @@ export default function TradesScreen() {
   const renderTradeDetailModal = () => {
     if (!selectedTrade) return null;
 
-    const isIncoming = selectedTrade.to_team === 'My Team';
-    const canRespond = selectedTrade.status === 'pending' && isIncoming;
+    const isIncoming = selectedTrade.to_team === "My Team";
+    const canRespond = selectedTrade.status === "pending" && isIncoming;
 
     return (
       <Modal
@@ -276,22 +361,36 @@ export default function TradesScreen() {
 
             <View style={styles.modalSection}>
               <Text style={styles.modalSectionTitle}>You Receive</Text>
-              {(isIncoming ? selectedTrade.offer_players : selectedTrade.request_players).map(player =>
-                renderPlayer(player, false)
-              )}
+              {(isIncoming
+                ? selectedTrade.offer_players
+                : selectedTrade.request_players
+              ).map((player) => renderPlayer(player, false))}
             </View>
 
             <View style={styles.modalSection}>
               <Text style={styles.modalSectionTitle}>You Give</Text>
-              {(isIncoming ? selectedTrade.request_players : selectedTrade.offer_players).map(player =>
-                renderPlayer(player, true)
-              )}
+              {(isIncoming
+                ? selectedTrade.request_players
+                : selectedTrade.offer_players
+              ).map((player) => renderPlayer(player, true))}
             </View>
 
             <View style={styles.modalSection}>
               <Text style={styles.modalSectionTitle}>Fairness Analysis</Text>
-              <View style={[styles.fairnessCard, { borderColor: getFairnessColor(selectedTrade.fairness_score) }]}>
-                <Text style={[styles.fairnessScore, { color: getFairnessColor(selectedTrade.fairness_score) }]}>
+              <View
+                style={[
+                  styles.fairnessCard,
+                  {
+                    borderColor: getFairnessColor(selectedTrade.fairness_score),
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.fairnessScore,
+                    { color: getFairnessColor(selectedTrade.fairness_score) },
+                  ]}
+                >
                   {selectedTrade.fairness_score}/100
                 </Text>
                 <Text style={styles.fairnessLabel}>
@@ -305,7 +404,7 @@ export default function TradesScreen() {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.actionButton, styles.rejectButton]}
-                onPress={() => handleTradeAction(selectedTrade.id, 'reject')}
+                onPress={() => handleTradeAction(selectedTrade.id, "reject")}
               >
                 <Ionicons name="close" size={20} color="#fff" />
                 <Text style={styles.actionButtonText}>Reject</Text>
@@ -313,7 +412,7 @@ export default function TradesScreen() {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.counterButton]}
-                onPress={() => handleTradeAction(selectedTrade.id, 'counter')}
+                onPress={() => handleTradeAction(selectedTrade.id, "counter")}
               >
                 <Ionicons name="swap-horizontal" size={20} color="#fff" />
                 <Text style={styles.actionButtonText}>Counter</Text>
@@ -321,7 +420,7 @@ export default function TradesScreen() {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.acceptButton]}
-                onPress={() => handleTradeAction(selectedTrade.id, 'accept')}
+                onPress={() => handleTradeAction(selectedTrade.id, "accept")}
               >
                 <Ionicons name="checkmark" size={20} color="#fff" />
                 <Text style={styles.actionButtonText}>Accept</Text>
@@ -337,7 +436,9 @@ export default function TradesScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.header}>
           <Text style={styles.title}>Trade Center</Text>
@@ -357,9 +458,7 @@ export default function TradesScreen() {
               </Text>
             </View>
           ) : (
-            <View style={styles.tradesList}>
-              {trades.map(renderTrade)}
-            </View>
+            <View style={styles.tradesList}>{trades.map(renderTrade)}</View>
           )}
         </View>
       </ScrollView>
@@ -372,57 +471,57 @@ export default function TradesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
   },
   newTradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2563eb',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2563eb",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 4,
   },
   newTradeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   content: {
     padding: 16,
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#64748b',
+    fontWeight: "bold",
+    color: "#64748b",
     marginTop: 16,
   },
   emptyDescription: {
     fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
+    color: "#94a3b8",
+    textAlign: "center",
     marginTop: 8,
     paddingHorizontal: 40,
   },
@@ -430,16 +529,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   tradeCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
   },
   tradeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   tradeTitle: {
@@ -448,59 +547,59 @@ const styles = StyleSheet.create({
   },
   tradeFromTo: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   timeRemaining: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
   },
   tradeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   tradeSection: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   tradeSectionTitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 4,
   },
   tradeValue: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   tradeValueText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   tradeArrow: {
     marginHorizontal: 16,
   },
   tradeFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   fairnessBadge: {
     paddingHorizontal: 8,
@@ -508,32 +607,32 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   fairnessText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   actionHint: {
     fontSize: 12,
-    color: '#2563eb',
-    fontWeight: '500',
+    color: "#2563eb",
+    fontWeight: "500",
   },
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
   },
   modalContent: {
     flex: 1,
@@ -544,23 +643,23 @@ const styles = StyleSheet.create({
   },
   modalSectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
     marginBottom: 8,
   },
   modalTeams: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
   },
   modalExpiry: {
     fontSize: 12,
-    color: '#f59e0b',
+    color: "#f59e0b",
     marginTop: 4,
   },
   playerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -570,12 +669,12 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   playerDetails: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   playerValue: {
@@ -583,52 +682,52 @@ const styles = StyleSheet.create({
   },
   playerValueText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: "600",
+    color: "#059669",
   },
   fairnessCard: {
     borderWidth: 2,
     borderRadius: 8,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   fairnessScore: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   fairnessLabel: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 4,
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 16,
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: "#e2e8f0",
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 8,
     gap: 4,
   },
   rejectButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
   },
   counterButton: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: "#f59e0b",
   },
   acceptButton: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
   },
   actionButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

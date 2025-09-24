@@ -8,27 +8,77 @@ This monorepo is organized into applications, shared packages, and supporting se
 
 ### 🎯 Applications
 
--   **`./apps/web`**: Feature-rich web application built with Next.js, React, and Tailwind CSS. Provides the main user interface for managing leagues, teams, and players.
-    -   [**Web App README**](./apps/web/README.md)
+- **`./apps/web`**: Feature-rich web application built with Next.js, React, and Tailwind CSS. Provides the main user interface for managing leagues, teams, and players.
+  - [**Web App README**](./apps/web/README.md)
 
--   **`./apps/mobile`**: React Native mobile application consuming shared packages for a native mobile experience.
-    -   [**Mobile App README**](./apps/mobile/README.md)
+- **`./apps/mobile`**: React Native mobile application consuming shared packages for a native mobile experience.
+  - [**Mobile App README**](./apps/mobile/README.md)
 
--   **`./apps/landing`**: Static landing page designed to attract new users and capture emails for a waitlist. Built with HTML, CSS, and JavaScript.
-    -   [**Landing Page README**](./apps/landing/README.md)
+- **`./apps/landing`**: Static landing page designed to attract new users and capture emails for a waitlist. Built with HTML, CSS, and JavaScript.
+  - [**Landing Page README**](./apps/landing/README.md)
 
 ### 🧱 Shared Packages
 
--   **`./packages/`**: Cross-platform shared packages enabling code reuse between web and mobile applications.
-    -   [**Packages Overview**](./packages/README.md)
-    -   [`@ultimate-fantasy/shared-logic`](./packages/shared-logic/) - Business logic, state management, utilities
-    -   [`@ultimate-fantasy/api-client`](./packages/api-client/) - HTTP client and API services
-    -   [`@ultimate-fantasy/ui-components`](./packages/ui-components/) - Cross-platform UI component library
+- **`./packages/`**: Cross-platform shared packages enabling code reuse between web and mobile applications.
+  - [**Packages Overview**](./packages/README.md)
+  - [`@ultimate-fantasy/shared-logic`](./packages/shared-logic/) - Business logic, state management, utilities
+  - [`@ultimate-fantasy/api-client`](./packages/api-client/) - HTTP client and API services
+  - [`@ultimate-fantasy/ui-components`](./packages/ui-components/) - Cross-platform UI component library
 
 ### ⚙️ Backend Services
 
--   **`./apps/api`**: Robust backend API built with Python, FastAPI, and SQLAlchemy. Handles all business logic, data persistence, and user authentication.
-    -   [**API README**](./apps/api/README.md)
+- **`./apps/api`**: Robust backend API built with Python, FastAPI, and SQLAlchemy. Handles all business logic, data persistence, and user authentication.
+  - [**API README**](./apps/api/README.md)
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- Python 3.11+
+- uv (Python package manager)
+- Docker (optional, for PostgreSQL)
+
+### Run Everything Locally
+
+#### Option 1: Simple Script (Foreground)
+
+```bash
+./scripts/start-local.sh
+```
+
+This single command starts all services in the foreground:
+
+- 🗄️ Database (PostgreSQL via Docker, or SQLite fallback)
+- 🔧 API Backend (http://localhost:8000)
+- 🎨 Web Frontend (http://localhost:3000)
+- 📱 Mobile App (Expo development server)
+- 🌐 Landing Page (http://localhost:3001)
+
+#### Option 2: Tmux Development Environment (Recommended)
+
+```bash
+./scripts/start-with-tmux.sh
+```
+
+This creates a tmux session with separate windows for each service:
+
+- **Window 1**: Live status dashboard (auto-refreshing)
+- **Window 2**: Database monitoring & management
+- **Window 3**: FastAPI backend (port 8000)
+- **Window 4**: Next.js frontend (port 3000)
+- **Window 5**: Expo mobile app
+- **Window 6**: Static landing page (port 3001)
+
+**Benefits:**
+
+- Real-time monitoring of all services
+- Dedicated database management window
+- Auto-refreshing status dashboard
+- Easy switching between service logs
+- Persistent session (detach with Ctrl+B, D)
+
+**📖 For detailed setup instructions, see [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md) and [Tmux Guide](./TMUX_README.md)**
 
 ## Getting Started
 
@@ -36,7 +86,7 @@ The fastest and most reliable way to get the entire platform running on your loc
 
 ### Prerequisites
 
--   [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
+- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Run with Docker
 
@@ -56,18 +106,27 @@ The fastest and most reliable way to get the entire platform running on your loc
     ```
 
 3.  **Access the applications:**
-
-    -   **Web App**: [http://localhost:3000](http://localhost:3000)
-    -   **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+    - **Web App**: [http://localhost:3000](http://localhost:3000)
+    - **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 To run the services in the background, use `docker-compose up -d --build`.
 
 ### Local Development without Docker
 
-If you prefer to run the services directly on your machine, you can use the provided shell script which will set up and start both the backend and frontend.
+If you prefer to run the services directly on your machine, you have two options:
 
--   **Prerequisites**: Python 3.11+, Node.js 20+, and a running PostgreSQL instance.
--   **Run**: `./start-local.sh`
+#### Option 1: Simple Script
+
+- **Prerequisites**: Python 3.11+, Node.js 20+, and optionally Docker for PostgreSQL.
+- **Run**: `./scripts/start-local.sh`
+- **Best for**: Quick testing and simple development
+
+#### Option 2: Tmux Development Environment (Recommended)
+
+- **Prerequisites**: Python 3.11+, Node.js 20+, tmux, and optionally Docker.
+- **Run**: `./scripts/start-with-tmux.sh`
+- **Best for**: Full development workflow with monitoring and management
+- **Features**: Live status dashboard, database management, service monitoring
 
 For detailed manual setup instructions, please refer to the README files in the `apps/api` and `apps/web` directories.
 
@@ -93,57 +152,61 @@ ultimate-fantasy/
 
 ### Development Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev:web` | Start Next.js web app development server |
-| `npm run dev:mobile` | Start React Native mobile app development |
-| `npm run dev:api` | Start FastAPI backend development server |
-| `npm run dev:landing` | Start landing page development server |
-| `npm run build:packages` | Build all shared packages |
-| `npm run test:packages` | Test all shared packages |
-| `npm run build` | Build all applications |
-| `npm run test` | Run all tests |
-| `npm run lint` | Lint all projects |
+| Command                  | Description                               |
+| ------------------------ | ----------------------------------------- |
+| `npm run dev:web`        | Start Next.js web app development server  |
+| `npm run dev:mobile`     | Start React Native mobile app development |
+| `npm run dev:api`        | Start FastAPI backend development server  |
+| `npm run dev:landing`    | Start landing page development server     |
+| `npm run build:packages` | Build all shared packages                 |
+| `npm run test:packages`  | Test all shared packages                  |
+| `npm run build`          | Build all applications                    |
+| `npm run test`           | Run all tests                             |
+| `npm run lint`           | Lint all projects                         |
 
 #### Package-Level Scripts
 
 All packages follow consistent naming conventions:
 
-| Script | Description |
-|--------|-------------|
-| `npm run build` | Build the package |
-| `npm run dev` | Development mode with watch |
-| `npm run test` | Run tests |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run typecheck` | TypeScript type checking |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint issues automatically |
-| `npm run format` | Format code with Prettier |
-| `npm run format:check` | Check code formatting |
-| `npm run clean` | Clean build artifacts |
+| Script                 | Description                     |
+| ---------------------- | ------------------------------- |
+| `npm run build`        | Build the package               |
+| `npm run dev`          | Development mode with watch     |
+| `npm run test`         | Run tests                       |
+| `npm run test:watch`   | Run tests in watch mode         |
+| `npm run typecheck`    | TypeScript type checking        |
+| `npm run lint`         | Run ESLint                      |
+| `npm run lint:fix`     | Fix ESLint issues automatically |
+| `npm run format`       | Format code with Prettier       |
+| `npm run format:check` | Check code formatting           |
+| `npm run clean`        | Clean build artifacts           |
 
 ### Detailed Documentation
 
 For comprehensive information on each component:
 
 #### Applications
--   [**Web Development**](./apps/web/README.md) - Next.js web application
--   [**Mobile Development**](./apps/mobile/README.md) - React Native mobile app
--   [**Landing Page Development**](./apps/landing/README.md) - Static marketing site
+
+- [**Web Development**](./apps/web/README.md) - Next.js web application
+- [**Mobile Development**](./apps/mobile/README.md) - React Native mobile app
+- [**Landing Page Development**](./apps/landing/README.md) - Static marketing site
 
 #### Backend & Infrastructure
--   [**API Development**](./apps/api/README.md) - FastAPI backend services
+
+- [**API Development**](./apps/api/README.md) - FastAPI backend services
 
 #### Shared Packages
--   [**Packages Overview**](./packages/README.md) - Cross-platform shared packages
--   [**Deployment Guide**](./DEPLOYMENT.md) - Production deployment instructions
--   [**Contributing Guide**](./CONTRIBUTING.md) - Development guidelines
+
+- [**Packages Overview**](./packages/README.md) - Cross-platform shared packages
+- [**Deployment Guide**](./DEPLOYMENT.md) - Production deployment instructions
+- [**Contributing Guide**](./CONTRIBUTING.md) - Development guidelines
 
 ## Project Health & Quality
 
 This project maintains high standards for code quality, consistency, and reliability:
 
 ### ✅ Current Status
+
 - **TypeScript Compilation**: ✅ Zero errors across all packages
 - **Linting (ESLint)**: ✅ Modern flat config, consistent across packages
 - **Testing**: ✅ 100% test success rate (54/54 tests passing)
@@ -152,6 +215,7 @@ This project maintains high standards for code quality, consistency, and reliabi
 - **Cross-Platform Compatibility**: ✅ Shared packages work on web and mobile
 
 ### 🔧 Development Infrastructure
+
 - **Monorepo**: npm workspaces with consistent structure
 - **TypeScript**: Strict mode enabled with comprehensive type checking
 - **ESLint**: Modern flat configuration with cross-platform compatibility
@@ -162,19 +226,19 @@ This project maintains high standards for code quality, consistency, and reliabi
 
 The platform includes a comprehensive suite of tests to ensure quality and stability.
 
--   **API**: The backend includes unit, integration, contract, and performance tests that can be run with `pytest`. See the [API README](./apps/api/README.md#testing-and-quality) for more details.
+- **API**: The backend includes unit, integration, contract, and performance tests that can be run with `pytest`. See the [API README](./apps/api/README.md#testing-and-quality) for more details.
 
--   **Web**: The frontend has unit tests (Vitest), end-to-end tests (Playwright), and visual regression tests. See the [web README](./apps/web/README.md#testing) for instructions.
+- **Web**: The frontend has unit tests (Vitest), end-to-end tests (Playwright), and visual regression tests. See the [web README](./apps/web/README.md#testing) for instructions.
 
--   **Validation Script**: A validation script is provided to check that all parts of the system are correctly configured and running.
+- **Validation Script**: A validation script is provided to check that all parts of the system are correctly configured and running.
 
-    ```bash
-    ./validate-setup.sh
-    ```
+  ```bash
+  ./scripts/validate-setup.sh
+  ```
 
 ## API Documentation
 
 When the backend service is running, interactive API documentation is available through Swagger UI and ReDoc:
 
--   **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
--   **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)

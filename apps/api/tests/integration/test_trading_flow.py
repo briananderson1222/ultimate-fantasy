@@ -32,7 +32,7 @@ class TestTradingFlow:
             "to_team_id": "team_2",
             "offered_players": ["player_1", "player_2"],
             "requested_players": ["player_3", "player_4"],
-            "message": "Fair trade for both teams"
+            "message": "Fair trade for both teams",
         }
 
         proposal_response = self.client.post("/api/v1/trades", json=trade_data)
@@ -46,7 +46,9 @@ class TestTradingFlow:
 
         # Accept trade
         accept_data = {"action": "accept"}
-        accept_response = self.client.patch(f"/api/v1/trades/{trade_id}", json=accept_data)
+        accept_response = self.client.patch(
+            f"/api/v1/trades/{trade_id}", json=accept_data
+        )
         assert accept_response.status_code == 200
 
         accept_result = accept_response.json()
@@ -64,7 +66,7 @@ class TestTradingFlow:
             "from_team_id": "team_1",
             "to_team_id": "team_2",
             "offered_players": ["player_1"],
-            "requested_players": ["player_3"]
+            "requested_players": ["player_3"],
         }
 
         proposal_response = self.client.post("/api/v1/trades", json=trade_data)
@@ -72,6 +74,8 @@ class TestTradingFlow:
 
         # Reject trade
         reject_data = {"action": "reject", "reason": "Not interested"}
-        reject_response = self.client.patch(f"/api/v1/trades/{trade_id}", json=reject_data)
+        reject_response = self.client.patch(
+            f"/api/v1/trades/{trade_id}", json=reject_data
+        )
         assert reject_response.status_code == 200
         assert reject_response.json()["status"] == "rejected"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -29,48 +29,55 @@ class User(Base):
     )
     username: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    cognito_sub: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, unique=True)
+    cognito_sub: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, unique=True
+    )
 
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    email_verification_token: Mapped[Optional[str]] = mapped_column(
+    is_email_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    email_verification_token: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
-    password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    password_reset_expires: Mapped[Optional[datetime]] = mapped_column(
+    password_reset_token: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    password_reset_expires: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
-    first_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    last_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    display_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    bio: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bio: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    phone_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
-    country: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_premium: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    premium_expires_at: Mapped[Optional[datetime]] = mapped_column(
+    premium_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
-    preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    preferences: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True, default=dict
     )
-    notification_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    notification_settings: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True, default=dict
     )
-    privacy_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    privacy_settings: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True, default=dict
     )
 
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+    last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    last_active_at: Mapped[Optional[datetime]] = mapped_column(
+    last_active_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -157,7 +164,7 @@ class User(Base):
             self.preferences = {}
         self.preferences[key] = value
 
-    def update_preferences(self, new_preferences: Dict[str, Any]) -> None:
+    def update_preferences(self, new_preferences: dict[str, Any]) -> None:
         if self.preferences is None:
             self.preferences = {}
         self.preferences.update(new_preferences)
@@ -189,7 +196,7 @@ class User(Base):
             return self.display_name
         return self.username
 
-    def get_display_data(self, include_private: bool = False) -> Dict[str, Any]:
+    def get_display_data(self, include_private: bool = False) -> dict[str, Any]:
         data = {
             "id": str(self.user_id),
             "username": self.username,
@@ -199,9 +206,9 @@ class User(Base):
             "bio": self.bio,
             "is_premium": self.is_premium_active(),
             "created_at": self.created_at.isoformat(),
-            "last_active_at": self.last_active_at.isoformat()
-            if self.last_active_at
-            else None,
+            "last_active_at": (
+                self.last_active_at.isoformat() if self.last_active_at else None
+            ),
         }
 
         if include_private:
@@ -218,16 +225,16 @@ class User(Base):
                     "notification_settings": self.notification_settings,
                     "privacy_settings": self.privacy_settings,
                     "login_count": self.login_count,
-                    "last_login_at": self.last_login_at.isoformat()
-                    if self.last_login_at
-                    else None,
+                    "last_login_at": (
+                        self.last_login_at.isoformat() if self.last_login_at else None
+                    ),
                 }
             )
 
         return data
 
     @classmethod
-    def get_default_preferences(cls) -> Dict[str, Any]:
+    def get_default_preferences(cls) -> dict[str, Any]:
         return {
             "theme": "light",
             "language": "en",
@@ -241,7 +248,7 @@ class User(Base):
         }
 
     @classmethod
-    def get_default_notification_settings(cls) -> Dict[str, Any]:
+    def get_default_notification_settings(cls) -> dict[str, Any]:
         return {
             "email_enabled": True,
             "push_enabled": True,
@@ -256,7 +263,7 @@ class User(Base):
         }
 
     @classmethod
-    def get_default_privacy_settings(cls) -> Dict[str, Any]:
+    def get_default_privacy_settings(cls) -> dict[str, Any]:
         return {
             "profile_visibility": "public",
             "email_visibility": "private",

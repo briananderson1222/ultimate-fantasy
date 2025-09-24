@@ -11,46 +11,46 @@ export {
   ApiError,
   isApiError,
   handleApiError,
-} from './client/http';
+} from "./client/http";
 
 // Models - specific exports to avoid conflicts
 export {
   ApiService,
   ApiServiceBuilder,
   ApiServiceSchema,
-  type ApiServiceData
-} from './models/ApiService';
+  type ApiServiceData,
+} from "./models/ApiService";
 
 export {
   Endpoint,
   EndpointSchema,
   type EndpointData,
-  type HttpMethod
-} from './models/Endpoint';
+  type HttpMethod,
+} from "./models/Endpoint";
 
 // Services
-export * from './services/leagues';
-export * from './services/scoreboard';
-export * from './services/waivers';
-export * from './services/lineups';
+export * from "./services/leagues";
+export * from "./services/scoreboard";
+export * from "./services/waivers";
+export * from "./services/lineups";
 
 // Ultimate Fantasy API Types
 export interface League {
   id: string;
   name: string;
   settings: LeagueSettings;
-  status: 'setup' | 'drafting' | 'active' | 'completed';
+  status: "setup" | "drafting" | "active" | "completed";
   created_at: string;
   updated_at: string;
 }
 
 export interface LeagueSettings {
   max_teams: number;
-  scoring_type: 'standard' | 'ppr' | 'half_ppr';
+  scoring_type: "standard" | "ppr" | "half_ppr";
   roster_size: number;
   playoff_teams: number;
   trade_deadline?: string;
-  waiver_type: 'rolling' | 'faab';
+  waiver_type: "rolling" | "faab";
 }
 
 export interface Player {
@@ -59,7 +59,7 @@ export interface Player {
   name: string;
   position: string;
   team: string;
-  injury_status: 'healthy' | 'questionable' | 'doubtful' | 'out' | 'ir';
+  injury_status: "healthy" | "questionable" | "doubtful" | "out" | "ir";
   projected_points: number;
   season_stats: Record<string, number>;
   game_stats: Record<string, number>;
@@ -83,7 +83,7 @@ export interface Team {
 export interface Draft {
   id: string;
   league_id: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: "pending" | "in_progress" | "completed";
   current_pick: number;
   picks: DraftPick[];
   timer_seconds: number;
@@ -105,7 +105,7 @@ export interface Trade {
   receiving_team_id: string;
   proposed_players: string[];
   requested_players: string[];
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  status: "pending" | "accepted" | "rejected" | "expired";
   evaluation_score: number;
   expires_at: string;
   created_at: string;
@@ -137,7 +137,7 @@ export interface WaiverBid {
   bid_amount: number;
   drop_player_id?: string;
   priority: number;
-  status: 'pending' | 'successful' | 'failed';
+  status: "pending" | "successful" | "failed";
   processed_at?: string;
   created_at: string;
 }
@@ -158,7 +158,7 @@ export interface User {
 export interface ApiResponse<T> {
   data: T;
   message?: string;
-  status: 'success' | 'error';
+  status: "success" | "error";
 }
 
 export interface PaginatedResponse<T> {
@@ -174,7 +174,7 @@ export interface PaginatedResponse<T> {
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
-  token_type: 'Bearer';
+  token_type: "Bearer";
   expires_in: number;
   user: User;
 }
@@ -213,21 +213,27 @@ export interface ProposeTradeRequest {
 export interface TradeEvaluation {
   score: number;
   analysis: string;
-  fairness: 'heavily_favors_team_a' | 'favors_team_a' | 'fair' | 'favors_team_b' | 'heavily_favors_team_b';
+  fairness:
+    | "heavily_favors_team_a"
+    | "favors_team_a"
+    | "fair"
+    | "favors_team_b"
+    | "heavily_favors_team_b";
   recommendations: string[];
 }
 
 // Factory function to create configured HTTP client for Ultimate Fantasy
-export function createUltimateFantasyClient(baseUrl?: string): HttpClient {
-  return createHttpClient({
-    baseUrl: baseUrl || '/api/v1',
+export function createUltimateFantasyClient(baseUrl?: string) {
+  const httpModule = require("./client/http");
+  return httpModule.createHttpClient({
+    baseUrl: baseUrl || "/api/v1",
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000,
     enableTokenRefresh: true,
-    refreshTokenEndpoint: '/auth/refresh',
+    refreshTokenEndpoint: "/auth/refresh",
     defaultHeaders: {
-      'Accept': 'application/json',
+      Accept: "application/json",
     },
   });
 }

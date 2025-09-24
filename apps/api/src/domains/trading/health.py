@@ -84,14 +84,10 @@ async def trading_detailed_health_check(
 
     try:
         # Check for pending waivers
+        from infrastructure.database.sql_utils import HEALTH_QUERIES
+
         pending_waivers = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM waivers
-            WHERE status = 'pending'
-            AND process_date <= NOW()
-        """
-            )
+            text(HEALTH_QUERIES["pending_waivers"]())
         ).scalar()
 
         detailed_status["checks"]["pending_waivers"] = {
@@ -101,12 +97,7 @@ async def trading_detailed_health_check(
 
         # Check for recent trading activity
         recent_transactions = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM transactions
-            WHERE created_at > NOW() - INTERVAL '24 hours'
-        """
-            )
+            text(HEALTH_QUERIES["recent_waivers"]())
         ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {

@@ -6,16 +6,15 @@ with fantasy sports specific trace attributes and context propagation.
 """
 
 import os
-from typing import Optional, Dict, Any
 
 from opentelemetry import trace
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
 
 
 class FantasyTracingConfig:
@@ -26,8 +25,8 @@ class FantasyTracingConfig:
         service_name: str = "ultimate-fantasy-api",
         service_version: str = "1.0.0",
         environment: str = "development",
-        jaeger_endpoint: Optional[str] = None,
-        sample_rate: float = 1.0
+        jaeger_endpoint: str | None = None,
+        sample_rate: float = 1.0,
     ):
         """
         Initialize tracing configuration.
@@ -53,7 +52,7 @@ class FantasyTracingConfig:
             "service.version": service_version,
             "deployment.environment": environment,
             "fantasy.platform": "ultimate-fantasy",
-            "fantasy.domain": "fantasy-sports"
+            "fantasy.domain": "fantasy-sports",
         }
 
     def setup_tracing(self) -> trace.Tracer:
@@ -91,7 +90,7 @@ class FantasyTracingConfig:
         FastAPIInstrumentor.instrument_app(
             app,
             tracer_provider=trace.get_tracer_provider(),
-            excluded_urls="/health,/metrics,/docs,/openapi.json"
+            excluded_urls="/health,/metrics,/docs,/openapi.json",
         )
 
     def instrument_sqlalchemy(self, engine) -> None:
@@ -108,8 +107,8 @@ class FantasyTracingConfig:
             commenter_options={
                 "db_driver": True,
                 "db_framework": True,
-                "opentelemetry_values": True
-            }
+                "opentelemetry_values": True,
+            },
         )
 
     def instrument_httpx(self) -> None:
@@ -161,13 +160,14 @@ class FantasySpanContext:
 
 # Convenience functions for fantasy sports tracing
 
+
 def trace_fantasy_operation(
     tracer: trace.Tracer,
     operation_name: str,
-    league_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    player_id: Optional[str] = None,
-    **kwargs
+    league_id: str | None = None,
+    user_id: str | None = None,
+    player_id: str | None = None,
+    **kwargs,
 ) -> FantasySpanContext:
     """
     Create a traced context for fantasy sports operations.
@@ -205,8 +205,8 @@ def trace_draft_operation(
     tracer: trace.Tracer,
     draft_id: str,
     operation: str,
-    pick_number: Optional[int] = None,
-    team_id: Optional[str] = None
+    pick_number: int | None = None,
+    team_id: str | None = None,
 ) -> FantasySpanContext:
     """
     Create a traced context for draft operations.
@@ -221,10 +221,7 @@ def trace_draft_operation(
     Returns:
         Span context manager
     """
-    attributes = {
-        "fantasy.draft.id": draft_id,
-        "fantasy.draft.operation": operation
-    }
+    attributes = {"fantasy.draft.id": draft_id, "fantasy.draft.operation": operation}
 
     if pick_number is not None:
         attributes["fantasy.draft.pick_number"] = pick_number
@@ -238,8 +235,8 @@ def trace_trade_operation(
     tracer: trace.Tracer,
     trade_id: str,
     operation: str,
-    from_team_id: Optional[str] = None,
-    to_team_id: Optional[str] = None
+    from_team_id: str | None = None,
+    to_team_id: str | None = None,
 ) -> FantasySpanContext:
     """
     Create a traced context for trade operations.
@@ -254,10 +251,7 @@ def trace_trade_operation(
     Returns:
         Span context manager
     """
-    attributes = {
-        "fantasy.trade.id": trade_id,
-        "fantasy.trade.operation": operation
-    }
+    attributes = {"fantasy.trade.id": trade_id, "fantasy.trade.operation": operation}
 
     if from_team_id:
         attributes["fantasy.trade.from_team_id"] = from_team_id
@@ -268,7 +262,7 @@ def trace_trade_operation(
 
 
 # Global tracer instance
-_tracer: Optional[trace.Tracer] = None
+_tracer: trace.Tracer | None = None
 
 
 def get_tracer() -> trace.Tracer:

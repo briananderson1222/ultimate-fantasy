@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 try:
     from src.main import app
+
     client = TestClient(app)
 except ImportError:
     client = None
@@ -38,10 +39,12 @@ class TestWaiverSystemFlow:
             "team_id": team_data["team_id"],
             "player_id": free_agent_id,
             "bid_amount": 25,
-            "drop_player_id": bench_player_id
+            "drop_player_id": bench_player_id,
         }
 
-        bid_response = client.post("/api/v1/waivers/bids", json=bid_data, headers=team_headers)
+        bid_response = client.post(
+            "/api/v1/waivers/bids", json=bid_data, headers=team_headers
+        )
         assert bid_response.status_code == 201
 
         bid = bid_response.json()
@@ -53,7 +56,7 @@ class TestWaiverSystemFlow:
         process_response = client.post(
             "/api/v1/admin/waivers/process",
             json={"league_id": league_id},
-            headers=admin_headers
+            headers=admin_headers,
         )
         assert process_response.status_code == 200
 
@@ -69,17 +72,25 @@ class TestWaiverSystemFlow:
     def _setup_league_with_team(self):
         """Helper to set up league with a team"""
         # Create user and league
-        user_data = {"email": "waiver@test.com", "password": "password123", "name": "Waiver Test"}
+        user_data = {
+            "email": "waiver@test.com",
+            "password": "password123",
+            "name": "Waiver Test",
+        }
         user_response = client.post("/api/v1/auth/register", json=user_data)
         token = user_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         league_data = {"name": "Waiver League", "sport": "mlb", "max_teams": 8}
-        league_response = client.post("/api/v1/leagues", json=league_data, headers=headers)
+        league_response = client.post(
+            "/api/v1/leagues", json=league_data, headers=headers
+        )
         league_id = league_response.json()["league_id"]
 
         # Get team data
-        teams_response = client.get(f"/api/v1/leagues/{league_id}/teams", headers=headers)
+        teams_response = client.get(
+            f"/api/v1/leagues/{league_id}/teams", headers=headers
+        )
         team_data = teams_response.json()[0]
 
         return league_id, headers, team_data
@@ -87,7 +98,11 @@ class TestWaiverSystemFlow:
     def _get_admin_headers(self):
         """Helper to get admin authorization"""
         # In a real implementation, this would authenticate as admin
-        admin_data = {"email": "admin@test.com", "password": "admin123", "role": "admin"}
+        admin_data = {
+            "email": "admin@test.com",
+            "password": "admin123",
+            "role": "admin",
+        }
         admin_response = client.post("/api/v1/auth/admin-login", json=admin_data)
         token = admin_response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}

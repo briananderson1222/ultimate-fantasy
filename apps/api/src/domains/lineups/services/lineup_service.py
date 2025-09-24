@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import builtins
 import logging
 import uuid as _uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Union
 
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import and_, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,21 +17,18 @@ from domains.leagues.models.team import Team
 from domains.lineups.models.lineup import Lineup
 from domains.shared.events.publisher import DomainEventPublisher
 from domains.shared.exceptions import (
-    DeadlinePassedError,
     InsufficientPermissionsError,
-    InvalidRosterError,
     LeagueNotFoundError,
     LineupLockedError,
     LineupNotFoundError,
     LineupValidationError,
     OptimisticLockError,
-    PlayerNotFoundError,
     UserNotFoundError,
 )
 from domains.shared.interfaces.lineup_service import LineupServiceInterface
+from domains.shared.models.notification import Notification
 from domains.sports.models.player import Player
 from infrastructure.events.dispatcher import get_event_dispatcher
-from models.notification import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +49,10 @@ class LineupValidation:
     """Lineup validation result."""
 
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
-    missing_positions: List[str]
-    invalid_players: List[str]
+    errors: list[str]
+    warnings: list[str]
+    missing_positions: list[str]
+    invalid_players: list[str]
 
 
 @dataclass
@@ -63,7 +61,7 @@ class LineupOptimization:
 
     current_projected_points: float
     optimized_projected_points: float
-    suggested_changes: List[Dict[str, str]]
+    suggested_changes: list[dict[str, str]]
     improvement_percentage: float
 
 
@@ -93,9 +91,9 @@ class LineupService(LineupServiceInterface):
         return _uuid.UUID(str(value))
 
     def _normalize_lineup_players(
-        self, players: Iterable[LineupPlayer | Dict[str, Any]]
-    ) -> List[LineupPlayer]:
-        normalized: List[LineupPlayer] = []
+        self, players: Iterable[LineupPlayer | dict[str, Any]]
+    ) -> builtins.list[LineupPlayer]:
+        normalized: list[LineupPlayer] = []
         for entry in players:
             if isinstance(entry, LineupPlayer):
                 normalized.append(entry)
@@ -114,7 +112,7 @@ class LineupService(LineupServiceInterface):
         return normalized
 
     @staticmethod
-    def _resolve_week(game_day: Optional[date], fallback: int = 1) -> int:
+    def _resolve_week(game_day: date | None, fallback: int = 1) -> int:
         if not game_day:
             return fallback
         # ISO calendar week keeps behaviour predictable without schedule data
@@ -128,9 +126,9 @@ class LineupService(LineupServiceInterface):
         *,
         team_id: str,
         week: int,
-        game_day: Optional[date] = None,
-        user_id: Optional[str] = None,
-        db: Optional[Session] = None,
+        game_day: date | None = None,
+        user_id: str | None = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
@@ -177,9 +175,9 @@ class LineupService(LineupServiceInterface):
         *,
         team_id: str | _uuid.UUID,
         week: int,
-        game_day: Optional[date] = None,
-        db: Optional[Session] = None,
-    ) -> Optional[Lineup]:
+        game_day: date | None = None,
+        db: Session | None = None,
+    ) -> Lineup | None:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         return (
@@ -195,25 +193,21 @@ class LineupService(LineupServiceInterface):
         )
 
     def get_lineup_by_id(
-        self, lineup_id: str, db: Optional[Session] = None
-    ) -> Optional[Lineup]:
+        self, lineup_id: str, db: Session | None = None
+    ) -> Lineup | None:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        return (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        return session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
 
     def list(
         self,
         *,
         team_id: UUIDLike,
-        game_day: Optional[date] = None,
+        game_day: date | None = None,
         limit: int = 50,
         offset: int = 0,
-        db: Optional[Session] = None,
-    ) -> List[Lineup]:
+        db: Session | None = None,
+    ) -> builtins.list[Lineup]:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         query = session.query(Lineup).filter(Lineup.team_id == team_uuid)
@@ -230,11 +224,11 @@ class LineupService(LineupServiceInterface):
         *,
         team_id: UUIDLike,
         game_day: date,
-        players: Iterable[LineupPlayer | Dict[str, Any]],
-        user_id: Optional[UUIDLike] = None,
-        week: Optional[int] = None,
-        expected_version: Optional[int] = None,
-        db: Optional[Session] = None,
+        players: Iterable[LineupPlayer | dict[str, Any]],
+        user_id: UUIDLike | None = None,
+        week: int | None = None,
+        expected_version: int | None = None,
+        db: Session | None = None,
     ) -> Lineup:
         """Create or update a lineup for the given day."""
 
@@ -330,16 +324,14 @@ class LineupService(LineupServiceInterface):
                 "lineup_id": str(lineup.lineup_id),
                 "team_id": str(lineup.team_id),
                 "week": lineup.week,
-                "game_day": lineup.game_day.isoformat()
-                if lineup.game_day
-                else None,
+                "game_day": lineup.game_day.isoformat() if lineup.game_day else None,
                 "player_count": len(lineup.players or []),
                 "version": lineup.version,
             },
         )
         return lineup
 
-    def get_team(self, team_id: str, db: Optional[Session] = None) -> Optional[Team]:
+    def get_team(self, team_id: str, db: Session | None = None) -> Team | None:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         return session.query(Team).filter(Team.team_id == team_uuid).first()
@@ -350,16 +342,12 @@ class LineupService(LineupServiceInterface):
         lineup_id: str,
         lineup_players: Iterable[LineupPlayer],
         user_id: str,
-        expected_version: Optional[int] = None,
-        db: Optional[Session] = None,
+        expected_version: int | None = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
 
@@ -408,9 +396,7 @@ class LineupService(LineupServiceInterface):
                 "lineup_id": str(lineup.lineup_id),
                 "team_id": str(lineup.team_id),
                 "week": lineup.week,
-                "game_day": lineup.game_day.isoformat()
-                if lineup.game_day
-                else None,
+                "game_day": lineup.game_day.isoformat() if lineup.game_day else None,
                 "player_count": len(lineup.players or []),
                 "version": lineup.version,
             },
@@ -424,19 +410,15 @@ class LineupService(LineupServiceInterface):
         player_id: str,
         position: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
 
-        lineup_dict: Dict[str, str] = {
+        lineup_dict: dict[str, str] = {
             player_data["position"]: player_data["player_id"]
             for player_data in (lineup.players or [])
         }
@@ -460,15 +442,11 @@ class LineupService(LineupServiceInterface):
         player1_id: str,
         player2_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
 
@@ -507,28 +485,26 @@ class LineupService(LineupServiceInterface):
     # Analysis & optimization
     # ------------------------------------------------------------------
     def get_lineup_analysis(
-        self, *, lineup_id: str, db: Optional[Session] = None
-    ) -> Dict[str, Any]:
+        self, *, lineup_id: str, db: Session | None = None
+    ) -> dict[str, Any]:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
 
         team = session.query(Team).filter(Team.team_id == lineup.team_id).first()
         if not team:
             raise LineupValidationError("Team not found")
-        league = session.query(League).filter(League.league_id == team.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == team.league_id).first()
+        )
         if not league:
             raise LeagueNotFoundError("League not found")
 
         player_details = []
         total_projected_points = 0.0
-        for player_data in (lineup.players or []):
+        for player_data in lineup.players or []:
             player = (
                 session.query(Player)
                 .filter(Player.player_id == player_data["player_id"])
@@ -553,8 +529,8 @@ class LineupService(LineupServiceInterface):
                 }
             )
 
-        position_distribution: Dict[str, int] = {}
-        for player_data in (lineup.players or []):
+        position_distribution: dict[str, int] = {}
+        for player_data in lineup.players or []:
             pos = player_data["position"]
             position_distribution[pos] = position_distribution.get(pos, 0) + 1
 
@@ -584,15 +560,11 @@ class LineupService(LineupServiceInterface):
         }
 
     def suggest_lineup_optimization(
-        self, *, lineup_id: str, db: Optional[Session] = None
+        self, *, lineup_id: str, db: Session | None = None
     ) -> LineupOptimization:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
 
@@ -613,21 +585,20 @@ class LineupService(LineupServiceInterface):
         lineup_positions = current_analysis["position_distribution"].keys()
         best_combination = list(lineup.players or [])
         best_projected = current_projected
-        suggestions: List[Dict[str, str]] = []
+        suggestions: list[dict[str, str]] = []
 
         for player in roster_players:
             eligible_positions = self._get_player_eligible_positions(
-                player, session.query(League).filter(League.league_id == team.league_id).first()
+                player,
+                session.query(League)
+                .filter(League.league_id == team.league_id)
+                .first(),
             )
             for position in eligible_positions:
                 if position not in lineup_positions:
                     continue
                 current_player = next(
-                    (
-                        p
-                        for p in (lineup.players or [])
-                        if p["position"] == position
-                    ),
+                    (p for p in (lineup.players or []) if p["position"] == position),
                     None,
                 )
                 current_points = 0.0
@@ -641,14 +612,22 @@ class LineupService(LineupServiceInterface):
                         current_points = current_projection.projections.get(
                             "fantasy_points", 0.0
                         )
-                new_points = player.projections.get("fantasy_points", 0.0) if player.projections else 0.0
+                new_points = (
+                    player.projections.get("fantasy_points", 0.0)
+                    if player.projections
+                    else 0.0
+                )
                 if new_points > current_points:
                     improvement = new_points - current_points
                     if best_projected + improvement > best_projected:
                         best_projected = current_projected + improvement
                         suggestions.append(
                             {
-                                "out": current_player["player_id"] if current_player else "",
+                                "out": (
+                                    current_player["player_id"]
+                                    if current_player
+                                    else ""
+                                ),
                                 "in": str(player.player_id),
                                 "position": position,
                             }
@@ -672,60 +651,56 @@ class LineupService(LineupServiceInterface):
         *,
         team_id: str,
         lineup_players: Iterable[LineupPlayer],
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> LineupValidation:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         team = session.query(Team).filter(Team.team_id == team_uuid).first()
         if not team:
             raise LineupValidationError("Team not found")
-        league = session.query(League).filter(League.league_id == team.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == team.league_id).first()
+        )
         if not league:
             raise LeagueNotFoundError("League not found")
 
-        errors: List[str] = []
-        warnings: List[str] = []
-        missing_positions: List[str] = []
-        invalid_players: List[str] = []
+        errors: list[str] = []
+        warnings: list[str] = []
+        missing_positions: list[str] = []
+        invalid_players: list[str] = []
         player_ids_used: set[str] = set()
-        positions_filled: Dict[str, int] = {}
+        positions_filled: dict[str, int] = {}
 
         roster_settings = league.roster_settings or {}
-        required_positions: List[str] = roster_settings.get(
-            "starting_positions", []
-        )
+        required_positions: list[str] = roster_settings.get("starting_positions", [])
 
         for lineup_player in lineup_players:
             if lineup_player.player_id in player_ids_used:
-                errors.append(
-                    f"Player {lineup_player.player_id} used multiple times"
-                )
+                errors.append(f"Player {lineup_player.player_id} used multiple times")
             player_ids_used.add(lineup_player.player_id)
 
             try:
-                player_uuid = _uuid.UUID(lineup_player.player_id) if isinstance(lineup_player.player_id, str) else lineup_player.player_id
+                player_uuid = (
+                    _uuid.UUID(lineup_player.player_id)
+                    if isinstance(lineup_player.player_id, str)
+                    else lineup_player.player_id
+                )
             except ValueError:
                 invalid_players.append(lineup_player.player_id)
                 errors.append(f"Invalid player ID format: {lineup_player.player_id}")
                 continue
 
             player = (
-                session.query(Player)
-                .filter(Player.player_id == player_uuid)
-                .first()
+                session.query(Player).filter(Player.player_id == player_uuid).first()
             )
             if not player:
                 invalid_players.append(lineup_player.player_id)
-                errors.append(
-                    f"Player {lineup_player.player_id} not found"
-                )
+                errors.append(f"Player {lineup_player.player_id} not found")
                 continue
 
             if lineup_player.player_id not in (team.roster or []):
                 invalid_players.append(lineup_player.player_id)
-                errors.append(
-                    f"Player {player.name} not on team roster"
-                )
+                errors.append(f"Player {player.name} not on team roster")
                 continue
 
             eligible_positions = self._get_player_eligible_positions(player, league)
@@ -763,7 +738,7 @@ class LineupService(LineupServiceInterface):
 
     def _get_player_eligible_positions(
         self, player: Player, league: League
-    ) -> List[str]:
+    ) -> builtins.list[str]:
         eligible = [player.position]
         if league.sport == "nfl":
             if player.position in {"RB", "WR", "TE"}:
@@ -777,16 +752,10 @@ class LineupService(LineupServiceInterface):
     # ------------------------------------------------------------------
     # Locking and reminders
     # ------------------------------------------------------------------
-    def lock_lineup(
-        self, *, lineup_id: str, db: Optional[Session] = None
-    ) -> Lineup:
+    def lock_lineup(self, *, lineup_id: str, db: Session | None = None) -> Lineup:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
         lineup.is_locked = True
@@ -799,19 +768,17 @@ class LineupService(LineupServiceInterface):
         *,
         lineup_id: str,
         commissioner_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         lineup_uuid = self._as_uuid(lineup_id)
-        lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == lineup_uuid)
-            .first()
-        )
+        lineup = session.query(Lineup).filter(Lineup.lineup_id == lineup_uuid).first()
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
         team = session.query(Team).filter(Team.team_id == lineup.team_id).first()
-        league = session.query(League).filter(League.league_id == team.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == team.league_id).first()
+        )
         if str(league.commissioner_id) != str(commissioner_id):
             raise InsufficientPermissionsError("Only commissioner can unlock lineups")
         lineup.is_locked = False
@@ -823,12 +790,14 @@ class LineupService(LineupServiceInterface):
         self,
         *,
         league_id: str,
-        lock_time: Optional[datetime] = None,
-        db: Optional[Session] = None,
+        lock_time: datetime | None = None,
+        db: Session | None = None,
     ) -> int:
         session = db or self.session
         if not lock_time:
-            lock_time = datetime.utcnow() + timedelta(hours=self.default_lock_time_hours)
+            lock_time = datetime.utcnow() + timedelta(
+                hours=self.default_lock_time_hours
+            )
         league_uuid = self._as_uuid(league_id)
         teams = session.query(Team).filter(Team.league_id == league_uuid).all()
         team_ids = [team.team_id for team in teams]
@@ -856,8 +825,8 @@ class LineupService(LineupServiceInterface):
         *,
         league_id: str,
         reminder_hours: int = 24,
-        db: Optional[Session] = None,
-    ) -> List[str]:
+        db: Session | None = None,
+    ) -> builtins.list[str]:
         # TODO: implement schedule-based reminders
         return []
 
@@ -866,7 +835,7 @@ class LineupService(LineupServiceInterface):
         *,
         league_id: str,
         week: int,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> int:
         session = db or self.session
         teams_needing_reminders = self.get_lineup_reminders(
@@ -905,16 +874,14 @@ class LineupService(LineupServiceInterface):
         *,
         source_lineup_id: str,
         target_week: int,
-        target_game_day: Optional[date] = None,
+        target_game_day: date | None = None,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         source_uuid = self._as_uuid(source_lineup_id)
         source_lineup = (
-            session.query(Lineup)
-            .filter(Lineup.lineup_id == source_uuid)
-            .first()
+            session.query(Lineup).filter(Lineup.lineup_id == source_uuid).first()
         )
         if not source_lineup:
             raise LineupNotFoundError("Source lineup not found")
@@ -962,14 +929,16 @@ class LineupService(LineupServiceInterface):
         *,
         team_id: str,
         week: int,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Lineup:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         team = session.query(Team).filter(Team.team_id == team_uuid).first()
         if not team:
             raise LineupValidationError("Team not found")
-        league = session.query(League).filter(League.league_id == team.league_id).first()
+        league = (
+            session.query(League).filter(League.league_id == team.league_id).first()
+        )
         if not league:
             raise LeagueNotFoundError("League not found")
 
@@ -985,11 +954,11 @@ class LineupService(LineupServiceInterface):
         if lineup.is_locked:
             raise LineupLockedError("Lineup is locked")
 
-        roster_players = session.query(Player).filter(
-            Player.player_id.in_(team.roster or [])
-        ).all()
+        roster_players = (
+            session.query(Player).filter(Player.player_id.in_(team.roster or [])).all()
+        )
 
-        selected: Dict[str, str] = {}
+        selected: dict[str, str] = {}
         for player in roster_players:
             eligible_positions = self._get_player_eligible_positions(player, league)
             for position in eligible_positions:
@@ -998,8 +967,7 @@ class LineupService(LineupServiceInterface):
                     break
 
         players = [
-            LineupPlayer(player_id=pid, position=pos)
-            for pos, pid in selected.items()
+            LineupPlayer(player_id=pid, position=pos) for pos, pid in selected.items()
         ]
         return self.update_lineup(
             lineup_id=str(lineup.lineup_id),
@@ -1015,8 +983,8 @@ class LineupService(LineupServiceInterface):
         team_id: str,
         limit: int = 10,
         offset: int = 0,
-        db: Optional[Session] = None,
-    ) -> List[Dict[str, Any]]:
+        db: Session | None = None,
+    ) -> builtins.list[dict[str, Any]]:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         lineups = (
@@ -1027,15 +995,15 @@ class LineupService(LineupServiceInterface):
             .limit(limit)
             .all()
         )
-        history: List[Dict[str, Any]] = []
+        history: list[dict[str, Any]] = []
         for lineup in lineups:
             history.append(
                 {
                     "lineup_id": str(lineup.lineup_id),
                     "week": lineup.week,
-                    "game_day": lineup.game_day.isoformat()
-                    if lineup.game_day
-                    else None,
+                    "game_day": (
+                        lineup.game_day.isoformat() if lineup.game_day else None
+                    ),
                     "points_scored": lineup.points_scored,
                     "is_locked": lineup.is_locked,
                     "player_count": len(lineup.players or []),
@@ -1048,9 +1016,9 @@ class LineupService(LineupServiceInterface):
         self,
         *,
         league_id: str,
-        week: Optional[int] = None,
-        db: Optional[Session] = None,
-    ) -> List[Lineup]:
+        week: int | None = None,
+        db: Session | None = None,
+    ) -> builtins.list[Lineup]:
         session = db or self.session
         league_uuid = self._as_uuid(league_id)
         teams = session.query(Team).filter(Team.league_id == league_uuid).all()
@@ -1064,8 +1032,8 @@ class LineupService(LineupServiceInterface):
         self,
         *,
         team_id: str,
-        db: Optional[Session] = None,
-    ) -> Dict[str, Any]:
+        db: Session | None = None,
+    ) -> dict[str, Any]:
         session = db or self.session
         team_uuid = self._as_uuid(team_id)
         lineups = (
@@ -1128,17 +1096,15 @@ class LineupService(LineupServiceInterface):
 
     async def get_lineups_by_league(
         self, league_id: str
-    ) -> List[Lineup]:  # type: ignore[override]
+    ) -> builtins.list[Lineup]:  # type: ignore[override]
         return self.get_league_lineups(league_id=league_id)
 
-    async def is_lineup_active(
-        self, lineup_id: str
-    ) -> bool:  # type: ignore[override]
+    async def is_lineup_active(self, lineup_id: str) -> bool:  # type: ignore[override]
         return self.get_lineup_by_id(lineup_id, self.session) is not None
 
     async def get_lineup_slots(
         self, lineup_id: str
-    ) -> List[Dict[str, Any]]:  # type: ignore[override]
+    ) -> builtins.list[dict[str, Any]]:  # type: ignore[override]
         lineup = self.get_lineup_by_id(lineup_id, self.session)
         if not lineup:
             raise LineupNotFoundError("Lineup not found")
@@ -1148,7 +1114,7 @@ class LineupService(LineupServiceInterface):
     # Private helpers
     # ------------------------------------------------------------------
     def _publish_event(
-        self, event: str, entity_id: str, payload: Dict[str, Any]
+        self, event: str, entity_id: str, payload: dict[str, Any]
     ) -> None:
         if not self.event_publisher:
             return

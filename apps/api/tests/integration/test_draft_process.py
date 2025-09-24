@@ -16,6 +16,7 @@ import time
 # Import will fail initially - this is expected for TDD
 try:
     from src.main import app
+
     client = TestClient(app)
 except ImportError:
     client = None
@@ -33,15 +34,10 @@ class TestDraftProcessFlow:
         league_id, commissioner_headers, user2_headers = self._setup_league_with_teams()
 
         # Step 1: Start draft (commissioner only)
-        draft_data = {
-            "draft_type": "snake",
-            "pick_timer": 60
-        }
+        draft_data = {"draft_type": "snake", "pick_timer": 60}
 
         draft_response = client.post(
-            f"/api/v1/draft/{league_id}",
-            json=draft_data,
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", json=draft_data, headers=commissioner_headers
         )
         assert draft_response.status_code == 201
 
@@ -53,8 +49,7 @@ class TestDraftProcessFlow:
 
         # Verify draft status changed
         draft_status_response = client.get(
-            f"/api/v1/draft/{league_id}",
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", headers=commissioner_headers
         )
         assert draft_status_response.status_code == 200
 
@@ -72,14 +67,12 @@ class TestDraftProcessFlow:
 
         mike_trout_id = self._find_player_by_name(players, "Mike Trout")
 
-        pick1_data = {
-            "player_id": mike_trout_id
-        }
+        pick1_data = {"player_id": mike_trout_id}
 
         pick1_response = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json=pick1_data,
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert pick1_response.status_code == 201
 
@@ -91,8 +84,7 @@ class TestDraftProcessFlow:
 
         # Step 3: Verify draft state after first pick
         draft_status_response = client.get(
-            f"/api/v1/draft/{league_id}",
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", headers=commissioner_headers
         )
         draft_status = draft_status_response.json()
         assert draft_status["current_pick"] == 2
@@ -102,14 +94,10 @@ class TestDraftProcessFlow:
         # Step 4: Second pick (user2's turn)
         aaron_judge_id = self._find_player_by_name(players, "Aaron Judge")
 
-        pick2_data = {
-            "player_id": aaron_judge_id
-        }
+        pick2_data = {"player_id": aaron_judge_id}
 
         pick2_response = client.post(
-            f"/api/v1/draft/{league_id}/pick",
-            json=pick2_data,
-            headers=user2_headers
+            f"/api/v1/draft/{league_id}/pick", json=pick2_data, headers=user2_headers
         )
         assert pick2_response.status_code == 201
 
@@ -119,8 +107,7 @@ class TestDraftProcessFlow:
 
         # Step 5: Verify snake order (user2 should pick again in round 2)
         draft_status_response = client.get(
-            f"/api/v1/draft/{league_id}",
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", headers=commissioner_headers
         )
         draft_status = draft_status_response.json()
         assert draft_status["current_pick"] == 3
@@ -129,43 +116,42 @@ class TestDraftProcessFlow:
         current_team_id = draft_status["current_team_id"]
 
         # Get team info to verify it's user2's team
-        teams_response = client.get(f"/api/v1/leagues/{league_id}/teams", headers=commissioner_headers)
+        teams_response = client.get(
+            f"/api/v1/leagues/{league_id}/teams", headers=commissioner_headers
+        )
         teams = teams_response.json()
         user2_team = next(team for team in teams if team["team_id"] == current_team_id)
 
         # Verify it's user2's turn by making the pick
-        third_player_id = self._find_available_player(players, [mike_trout_id, aaron_judge_id])
+        third_player_id = self._find_available_player(
+            players, [mike_trout_id, aaron_judge_id]
+        )
 
-        pick3_data = {
-            "player_id": third_player_id
-        }
+        pick3_data = {"player_id": third_player_id}
 
         pick3_response = client.post(
-            f"/api/v1/draft/{league_id}/pick",
-            json=pick3_data,
-            headers=user2_headers
+            f"/api/v1/draft/{league_id}/pick", json=pick3_data, headers=user2_headers
         )
         assert pick3_response.status_code == 201
 
         # Step 6: Continue draft until completion
         # Pick 4 should be commissioner's turn
-        fourth_player_id = self._find_available_player(players, [mike_trout_id, aaron_judge_id, third_player_id])
+        fourth_player_id = self._find_available_player(
+            players, [mike_trout_id, aaron_judge_id, third_player_id]
+        )
 
-        pick4_data = {
-            "player_id": fourth_player_id
-        }
+        pick4_data = {"player_id": fourth_player_id}
 
         pick4_response = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json=pick4_data,
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert pick4_response.status_code == 201
 
         # Step 7: Verify final draft state
         final_draft_response = client.get(
-            f"/api/v1/draft/{league_id}",
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", headers=commissioner_headers
         )
         final_draft = final_draft_response.json()
 
@@ -189,15 +175,10 @@ class TestDraftProcessFlow:
         league_id, commissioner_headers, _ = self._setup_league_with_teams()
 
         # Start draft with short timer for testing
-        draft_data = {
-            "draft_type": "snake",
-            "pick_timer": 5  # 5 seconds for testing
-        }
+        draft_data = {"draft_type": "snake", "pick_timer": 5}  # 5 seconds for testing
 
         draft_response = client.post(
-            f"/api/v1/draft/{league_id}",
-            json=draft_data,
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", json=draft_data, headers=commissioner_headers
         )
         assert draft_response.status_code == 201
 
@@ -206,8 +187,7 @@ class TestDraftProcessFlow:
 
         # Check if auto-pick occurred
         draft_status_response = client.get(
-            f"/api/v1/draft/{league_id}",
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", headers=commissioner_headers
         )
         draft_status = draft_status_response.json()
 
@@ -223,31 +203,22 @@ class TestDraftProcessFlow:
         league_id, commissioner_headers, user2_headers = self._setup_league_with_teams()
 
         # Try to start draft as non-commissioner
-        draft_data = {
-            "draft_type": "snake",
-            "pick_timer": 60
-        }
+        draft_data = {"draft_type": "snake", "pick_timer": 60}
 
         unauthorized_draft_response = client.post(
-            f"/api/v1/draft/{league_id}",
-            json=draft_data,
-            headers=user2_headers
+            f"/api/v1/draft/{league_id}", json=draft_data, headers=user2_headers
         )
         assert unauthorized_draft_response.status_code == 403
 
         # Start draft as commissioner
         draft_response = client.post(
-            f"/api/v1/draft/{league_id}",
-            json=draft_data,
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", json=draft_data, headers=commissioner_headers
         )
         assert draft_response.status_code == 201
 
         # Try to start draft again (should fail)
         duplicate_draft_response = client.post(
-            f"/api/v1/draft/{league_id}",
-            json=draft_data,
-            headers=commissioner_headers
+            f"/api/v1/draft/{league_id}", json=draft_data, headers=commissioner_headers
         )
         assert duplicate_draft_response.status_code == 400
 
@@ -256,14 +227,12 @@ class TestDraftProcessFlow:
         players = players_response.json()
         player_id = players[0]["player_id"]
 
-        wrong_turn_pick = {
-            "player_id": player_id
-        }
+        wrong_turn_pick = {"player_id": player_id}
 
         wrong_turn_response = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json=wrong_turn_pick,
-            headers=user2_headers  # User2 picking when it's commissioner's turn
+            headers=user2_headers,  # User2 picking when it's commissioner's turn
         )
         assert wrong_turn_response.status_code == 400
 
@@ -271,7 +240,7 @@ class TestDraftProcessFlow:
         valid_pick = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json=wrong_turn_pick,
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert valid_pick.status_code == 201
 
@@ -279,7 +248,7 @@ class TestDraftProcessFlow:
         duplicate_pick_response = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json=wrong_turn_pick,
-            headers=user2_headers
+            headers=user2_headers,
         )
         assert duplicate_pick_response.status_code == 400
 
@@ -292,13 +261,15 @@ class TestDraftProcessFlow:
 
         # Start draft
         draft_data = {"draft_type": "snake", "pick_timer": 60}
-        client.post(f"/api/v1/draft/{league_id}", json=draft_data, headers=commissioner_headers)
+        client.post(
+            f"/api/v1/draft/{league_id}", json=draft_data, headers=commissioner_headers
+        )
 
         # Pause draft
         pause_response = client.patch(
             f"/api/v1/draft/{league_id}",
             json={"action": "pause"},
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert pause_response.status_code == 200
 
@@ -312,7 +283,7 @@ class TestDraftProcessFlow:
         pick_while_paused = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json={"player_id": player_id},
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert pick_while_paused.status_code == 400
 
@@ -320,7 +291,7 @@ class TestDraftProcessFlow:
         resume_response = client.patch(
             f"/api/v1/draft/{league_id}",
             json={"action": "resume"},
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert resume_response.status_code == 200
 
@@ -331,7 +302,7 @@ class TestDraftProcessFlow:
         pick_after_resume = client.post(
             f"/api/v1/draft/{league_id}/pick",
             json={"player_id": player_id},
-            headers=commissioner_headers
+            headers=commissioner_headers,
         )
         assert pick_after_resume.status_code == 201
 
@@ -341,9 +312,11 @@ class TestDraftProcessFlow:
         commissioner_data = {
             "email": "commissioner@test.com",
             "password": "password123",
-            "name": "Test Commissioner"
+            "name": "Test Commissioner",
         }
-        commissioner_response = client.post("/api/v1/auth/register", json=commissioner_data)
+        commissioner_response = client.post(
+            "/api/v1/auth/register", json=commissioner_data
+        )
         commissioner_token = commissioner_response.json()["access_token"]
         commissioner_headers = {"Authorization": f"Bearer {commissioner_token}"}
 
@@ -353,9 +326,11 @@ class TestDraftProcessFlow:
             "sport": "mlb",
             "league_type": "head_to_head",
             "season": "2025",
-            "max_teams": 8
+            "max_teams": 8,
         }
-        league_response = client.post("/api/v1/leagues", json=league_data, headers=commissioner_headers)
+        league_response = client.post(
+            "/api/v1/leagues", json=league_data, headers=commissioner_headers
+        )
         league = league_response.json()
         league_id = league["league_id"]
 
@@ -363,17 +338,16 @@ class TestDraftProcessFlow:
         user2_data = {
             "email": "user2@test.com",
             "password": "password123",
-            "name": "Test User 2"
+            "name": "Test User 2",
         }
         user2_response = client.post("/api/v1/auth/register", json=user2_data)
         user2_token = user2_response.json()["access_token"]
         user2_headers = {"Authorization": f"Bearer {user2_token}"}
 
-        join_data = {
-            "team_name": "Test Team 2",
-            "invite_code": league["invite_code"]
-        }
-        client.post(f"/api/v1/leagues/{league_id}/join", json=join_data, headers=user2_headers)
+        join_data = {"team_name": "Test Team 2", "invite_code": league["invite_code"]}
+        client.post(
+            f"/api/v1/leagues/{league_id}/join", json=join_data, headers=user2_headers
+        )
 
         return league_id, commissioner_headers, user2_headers
 

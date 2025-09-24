@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import uuid as _uuid
-
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -33,12 +32,22 @@ class League(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="setup")
     invite_code: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)
 
-    scoring_rules: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    roster_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    draft_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    waiver_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    trade_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    playoff_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    scoring_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    roster_settings: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    draft_settings: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    waiver_settings: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    trade_settings: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    playoff_settings: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -59,9 +68,7 @@ class League(Base):
             "status IN ('setup', 'drafting', 'active', 'completed')",
             name="valid_league_status",
         ),
-        CheckConstraint(
-            "max_teams >= 2 AND max_teams <= 20", name="valid_max_teams"
-        ),
+        CheckConstraint("max_teams >= 2 AND max_teams <= 20", name="valid_max_teams"),
         Index("idx_commissioner_id", "commissioner_id"),
         Index("idx_sport_season", "sport", "season"),
         Index("idx_status", "status"),
@@ -80,7 +87,7 @@ class League(Base):
     def is_full(self, current_team_count: int) -> bool:
         return current_team_count >= self.max_teams
 
-    def get_default_scoring_rules(self) -> Dict[str, Any]:
+    def get_default_scoring_rules(self) -> dict[str, Any]:
         defaults = {
             "mlb": {
                 "hits": 1,
@@ -129,7 +136,7 @@ class League(Base):
         }
         return defaults.get(self.sport, {})
 
-    def get_default_roster_settings(self) -> Dict[str, Any]:
+    def get_default_roster_settings(self) -> dict[str, Any]:
         defaults = {
             "mlb": {
                 "starting_positions": [
@@ -178,8 +185,8 @@ class League(Base):
         }
         return defaults.get(self.sport, {})
 
-    def get_default_draft_settings(self) -> Dict[str, Any]:
+    def get_default_draft_settings(self) -> dict[str, Any]:
         return {"type": "snake", "timer_seconds": 90}
 
-    def get_default_trade_settings(self) -> Dict[str, Any]:
+    def get_default_trade_settings(self) -> dict[str, Any]:
         return {"review_period_hours": 48, "veto_threshold": 0.5}

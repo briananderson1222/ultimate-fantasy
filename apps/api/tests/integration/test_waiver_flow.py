@@ -31,7 +31,7 @@ class TestWaiverFlow:
             "team_id": "team_1",
             "player_id": "free_agent_1",
             "bid_amount": 25,
-            "drop_player_id": "bench_player_1"
+            "drop_player_id": "bench_player_1",
         }
 
         bid_response = self.client.post("/api/v1/waivers/bids", json=bid_data)

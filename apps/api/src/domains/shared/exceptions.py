@@ -140,42 +140,72 @@ class InvalidWaiverError(DomainError):
     """Invalid waiver request."""
 
 
+class WaiverExpiredError(DomainError):
+    """Waiver claim has expired."""
+
+
+class WaiverAlreadyProcessedError(DomainError):
+    """Waiver claim has already been processed."""
+
+
+class InsufficientFundsError(DomainError):
+    """Insufficient FAAB budget for waiver claim."""
+
+
+class RosterFullError(DomainError):
+    """Roster is full and no drop player specified."""
+
+
+class PlayerNotAvailableError(DomainError):
+    """Player is not available on the waiver wire."""
+
+
+class WaiverPeriodClosedError(DomainError):
+    """Waiver period is currently closed."""
+
+
 class RateLimitExceededError(DomainError):
     """Operation exceeds configured rate limit."""
 
 
 __all__ = [
-    "DomainError",
-    "AuthenticationError",
-    "TokenExpiredError",
-    "InvalidTokenError",
     "AccountDisabledError",
-    "TooManyAttemptsError",
-    "WeakPasswordError",
-    "EmailAlreadyExistsError",
-    "UsernameAlreadyExistsError",
-    "UserNotFoundError",
-    "LeagueError",
-    "LeagueNotFoundError",
-    "LeagueFullError",
-    "LeagueValidationError",
-    "InvalidInviteCodeError",
     "AlreadyInLeagueError",
+    "AuthenticationError",
     "CommissionerOnlyError",
-    "InsufficientPermissionsError",
     "DeadlinePassedError",
+    "DomainError",
+    "EmailAlreadyExistsError",
+    "InsufficientFundsError",
+    "InsufficientPermissionsError",
+    "InvalidInviteCodeError",
+    "InvalidRosterError",
+    "InvalidTokenError",
+    "InvalidTradeError",
+    "InvalidWaiverError",
+    "LeagueError",
+    "LeagueFullError",
+    "LeagueNotFoundError",
+    "LeagueValidationError",
     "LineupNotFoundError",
     "LineupValidationError",
     "OptimisticLockError",
-    "InvalidRosterError",
+    "PlayerNotAvailableError",
     "PlayerNotFoundError",
     "ProviderError",
-    "ValidationError",
-    "TradeNotFoundError",
-    "InvalidTradeError",
-    "TradeExpiredError",
-    "TradeAlreadyProcessedError",
-    "WaiverNotFoundError",
-    "InvalidWaiverError",
     "RateLimitExceededError",
+    "RosterFullError",
+    "TokenExpiredError",
+    "TooManyAttemptsError",
+    "TradeAlreadyProcessedError",
+    "TradeExpiredError",
+    "TradeNotFoundError",
+    "UserNotFoundError",
+    "UsernameAlreadyExistsError",
+    "ValidationError",
+    "WaiverAlreadyProcessedError",
+    "WaiverExpiredError",
+    "WaiverNotFoundError",
+    "WaiverPeriodClosedError",
+    "WeakPasswordError",
 ]

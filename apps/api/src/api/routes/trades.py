@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 import uuid as _uuid
 from datetime import datetime
-from typing import List, Optional
-
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, validator
@@ -38,15 +36,17 @@ class ProposeTradeRequest(BaseModel):
     league_id: _uuid.UUID
     from_team_id: _uuid.UUID
     to_team_id: _uuid.UUID
-    offered_players: List[TradePlayerPayload]
-    requested_players: List[TradePlayerPayload]
-    message: Optional[str] = Field(None, max_length=500)
-    expiration_hours: Optional[int] = Field(
+    offered_players: list[TradePlayerPayload]
+    requested_players: list[TradePlayerPayload]
+    message: str | None = Field(None, max_length=500)
+    expiration_hours: int | None = Field(
         None, description="Custom expiration window in hours"
     )
 
     @validator("offered_players", "requested_players")
-    def ensure_not_empty(cls, value: List[TradePlayerPayload]) -> List[TradePlayerPayload]:
+    def ensure_not_empty(
+        cls, value: list[TradePlayerPayload]
+    ) -> list[TradePlayerPayload]:
         if not value:
             raise ValueError("At least one player must be included")
         return value
@@ -54,7 +54,7 @@ class ProposeTradeRequest(BaseModel):
 
 class RespondToTradeRequest(BaseModel):
     action: str = Field(..., description="accept or reject")
-    rejection_reason: Optional[str] = Field(None, max_length=500)
+    rejection_reason: str | None = Field(None, max_length=500)
 
     @validator("action")
     def validate_action(cls, value: str) -> str:
@@ -70,18 +70,18 @@ class TradeResponse(BaseModel):
     offering_team_id: _uuid.UUID
     receiving_team_id: _uuid.UUID
     status: str
-    offered_players: List[str]
-    requested_players: List[str]
-    message: Optional[str]
-    rejection_reason: Optional[str]
-    expires_at: Optional[datetime]
-    processed_at: Optional[datetime]
+    offered_players: list[str]
+    requested_players: list[str]
+    message: str | None
+    rejection_reason: str | None
+    expires_at: datetime | None
+    processed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
 
 class TradeListResponse(BaseModel):
-    items: List[TradeResponse]
+    items: list[TradeResponse]
 
 
 class TradeEvaluationResponse(BaseModel):
@@ -215,10 +215,14 @@ def get_trade(
         raise  # pragma: no cover - never reached
 
     try:
-        ownership_count = trading_service.session.query(Team).filter(
-            Team.team_id.in_([trade.offering_team_id, trade.receiving_team_id]),
-            Team.user_id == uuid.UUID(str(current_user_id)),
-        ).count()
+        ownership_count = (
+            trading_service.session.query(Team)
+            .filter(
+                Team.team_id.in_([trade.offering_team_id, trade.receiving_team_id]),
+                Team.user_id == uuid.UUID(str(current_user_id)),
+            )
+            .count()
+        )
     except Exception:  # pragma: no cover - defensive
         ownership_count = 0
 
@@ -234,8 +238,8 @@ def get_trade(
 @router.get("", response_model=TradeListResponse)
 def list_trades(
     league_id: _uuid.UUID = Query(...),
-    team_id: Optional[_uuid.UUID] = Query(None),
-    status_filter: Optional[str] = Query(None, description="Filter by status"),
+    team_id: _uuid.UUID | None = Query(None),
+    status_filter: str | None = Query(None, description="Filter by status"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     trading_service: TradingService = Depends(get_trading_service),
@@ -243,15 +247,22 @@ def list_trades(
 ) -> TradeListResponse:
     try:
         # Ensure user participates in league before listing
-        is_eligible = trading_service.session.query(Team).filter(
-            Team.league_id == uuid.UUID(str(league_id)),
-            Team.user_id == uuid.UUID(str(current_user_id)),
-        ).count() > 0
+        is_eligible = (
+            trading_service.session.query(Team)
+            .filter(
+                Team.league_id == uuid.UUID(str(league_id)),
+                Team.user_id == uuid.UUID(str(current_user_id)),
+            )
+            .count()
+            > 0
+        )
     except Exception:  # pragma: no cover - defensive fallback
         is_eligible = False
 
     if not is_eligible:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
 
     try:
         trades = trading_service.list_league_trades(

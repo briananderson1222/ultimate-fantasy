@@ -13,6 +13,7 @@ import json
 
 try:
     from src.main import app
+
     client = TestClient(app)
 except ImportError:
     client = None
@@ -30,7 +31,9 @@ class TestRealTimeFeaturesFlow:
         league_id, headers = self._setup_league()
 
         # Test WebSocket connection
-        with client.websocket_connect(f"/api/v1/real-time/connect?league_id={league_id}") as websocket:
+        with client.websocket_connect(
+            f"/api/v1/real-time/connect?league_id={league_id}"
+        ) as websocket:
             # Should establish connection successfully
             assert websocket
 
@@ -39,7 +42,7 @@ class TestRealTimeFeaturesFlow:
                 "type": "draft_pick",
                 "pick_number": 3,
                 "player": {"player_id": "123", "name": "Test Player"},
-                "team": {"team_id": "456", "name": "Test Team"}
+                "team": {"team_id": "456", "name": "Test Team"},
             }
 
             # Simulate server sending message
@@ -55,7 +58,7 @@ class TestRealTimeFeaturesFlow:
                 "type": "score_update",
                 "player_id": "123",
                 "points": 12.5,
-                "stats": {"hits": 2, "runs": 1}
+                "stats": {"hits": 2, "runs": 1},
             }
 
             websocket.send_json(score_update_message)
@@ -74,17 +77,19 @@ class TestRealTimeFeaturesFlow:
         draft_response = client.post(
             f"/api/v1/draft/{league_id}",
             json={"draft_type": "snake", "pick_timer": 60},
-            headers=headers
+            headers=headers,
         )
         assert draft_response.status_code == 201
 
         # Connect to WebSocket
-        with client.websocket_connect(f"/api/v1/real-time/connect?league_id={league_id}") as websocket:
+        with client.websocket_connect(
+            f"/api/v1/real-time/connect?league_id={league_id}"
+        ) as websocket:
             # Make a draft pick (should trigger WebSocket message)
             pick_response = client.post(
                 f"/api/v1/draft/{league_id}/pick",
                 json={"player_id": "test-player-123"},
-                headers=headers
+                headers=headers,
             )
 
             if pick_response.status_code == 201:
@@ -96,13 +101,19 @@ class TestRealTimeFeaturesFlow:
 
     def _setup_league(self):
         """Helper to set up a basic league"""
-        user_data = {"email": "realtime@test.com", "password": "password123", "name": "RT Test"}
+        user_data = {
+            "email": "realtime@test.com",
+            "password": "password123",
+            "name": "RT Test",
+        }
         user_response = client.post("/api/v1/auth/register", json=user_data)
         token = user_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         league_data = {"name": "RT League", "sport": "mlb", "max_teams": 8}
-        league_response = client.post("/api/v1/leagues", json=league_data, headers=headers)
+        league_response = client.post(
+            "/api/v1/leagues", json=league_data, headers=headers
+        )
         league_id = league_response.json()["league_id"]
 
         return league_id, headers

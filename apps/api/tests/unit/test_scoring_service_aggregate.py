@@ -35,11 +35,11 @@ def make_session() -> Session:
     importlib.import_module("domains.scoring.models.score")
     importlib.import_module("domains.shared.models.achievement")
     importlib.import_module("domains.sports.models.player")
-    importlib.import_module("models.notification")  # Central models still exist
-    importlib.import_module("models.preset")
-    importlib.import_module("models.roster")
-    importlib.import_module("models.rule")
-    importlib.import_module("models.schedule")
+    importlib.import_module("domains.shared.models.notification")  # Central models still exist
+    importlib.import_module("domains.shared.models.preset")
+    importlib.import_module("domains.shared.models.roster")
+    importlib.import_module("domains.shared.models.rule")
+    importlib.import_module("domains.shared.models.schedule")
 
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -96,7 +96,12 @@ def seed_lineup(
 
 def seed_score(session: Session, *, player_id: _uuid.UUID, game_day: date, points: int):
     Score = importlib.import_module("domains.scoring.models.score").Score
-    sc = Score(player_id=player_id, game_day=game_day, stat_values={"points": points}, fantasy_points=float(points))
+    sc = Score(
+        player_id=player_id,
+        game_day=game_day,
+        stat_values={"points": points},
+        fantasy_points=float(points),
+    )
     session.add(sc)
     session.flush()
     return sc

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import uuid as _uuid
-
 from datetime import datetime
-from typing import Dict, List, Optional
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -27,7 +33,7 @@ class Team(Base):
     )
 
     team_name: Mapped[str] = mapped_column(String(120), nullable=False)
-    logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     wins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     losses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -38,7 +44,9 @@ class Team(Base):
     waiver_priority: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     faab_budget: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
 
-    roster: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True, default=list)
+    roster: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True, default=list
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -64,9 +72,7 @@ class Team(Base):
     )
 
     def __repr__(self) -> str:  # pragma: no cover - repr helper
-        return (
-            f"<Team(team_name='{self.team_name}', wins={self.wins}, losses={self.losses})>"
-        )
+        return f"<Team(team_name='{self.team_name}', wins={self.wins}, losses={self.losses})>"
 
     @property
     def win_percentage(self) -> float:
@@ -99,8 +105,10 @@ class Team(Base):
     def is_roster_full(self, max_roster_size: int = 15) -> bool:
         return bool(self.roster) and len(self.roster) >= max_roster_size
 
-    def get_roster_count_by_position(self, player_positions: Dict[str, str]) -> Dict[str, int]:
-        counts: Dict[str, int] = {}
+    def get_roster_count_by_position(
+        self, player_positions: dict[str, str]
+    ) -> dict[str, int]:
+        counts: dict[str, int] = {}
         for player_id in self.roster or []:
             position = player_positions.get(player_id, "UNKNOWN")
             counts[position] = counts.get(position, 0) + 1

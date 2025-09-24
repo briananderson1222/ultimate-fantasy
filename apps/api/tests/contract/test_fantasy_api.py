@@ -18,6 +18,7 @@ import json
 # Import will fail initially - this is expected for TDD
 try:
     from src.main import app
+
     client = TestClient(app)
 except ImportError:
     client = None
@@ -26,7 +27,7 @@ except ImportError:
 class TestDraftEndpoints:
     """Test draft-related API endpoints against fantasy-api.yaml contract"""
 
-    def test_get_draft_status_contract(self):
+    def test_get_draft_status_contract(self, authenticated_client):
         """Test GET /api/v1/draft/{leagueId} contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -48,21 +49,15 @@ class TestDraftEndpoints:
             assert "picks" in data
             assert "pick_timer" in data
 
-    def test_start_draft_contract(self):
+    def test_start_draft_contract(self, authenticated_client):
         """Test POST /api/v1/draft/{leagueId} contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         league_id = str(uuid4())
-        draft_request = {
-            "draft_type": "snake",
-            "pick_timer": 60
-        }
+        draft_request = {"draft_type": "snake", "pick_timer": 60}
 
-        response = client.post(
-            f"/api/v1/draft/{league_id}",
-            json=draft_request
-        )
+        response = client.post(f"/api/v1/draft/{league_id}", json=draft_request)
 
         # Contract expects 201 for successful draft start
         assert response.status_code == 201
@@ -73,21 +68,15 @@ class TestDraftEndpoints:
         assert "status" in data
         assert data["status"] == "active"
 
-    def test_make_draft_pick_contract(self):
+    def test_make_draft_pick_contract(self, authenticated_client):
         """Test POST /api/v1/draft/{leagueId}/pick contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         league_id = str(uuid4())
-        pick_request = {
-            "player_id": str(uuid4()),
-            "team_id": str(uuid4())
-        }
+        pick_request = {"player_id": str(uuid4()), "team_id": str(uuid4())}
 
-        response = client.post(
-            f"/api/v1/draft/{league_id}/pick",
-            json=pick_request
-        )
+        response = client.post(f"/api/v1/draft/{league_id}/pick", json=pick_request)
 
         # Contract expects 201 for successful pick
         assert response.status_code == 201
@@ -103,7 +92,7 @@ class TestDraftEndpoints:
 class TestTradeEndpoints:
     """Test trade-related API endpoints against fantasy-api.yaml contract"""
 
-    def test_get_trades_contract(self):
+    def test_get_trades_contract(self, authenticated_client):
         """Test GET /api/v1/trades contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -127,7 +116,7 @@ class TestTradeEndpoints:
             assert "requested_players" in trade
             assert "status" in trade
 
-    def test_create_trade_contract(self):
+    def test_create_trade_contract(self, authenticated_client):
         """Test POST /api/v1/trades contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -137,7 +126,7 @@ class TestTradeEndpoints:
             "receiving_team_id": str(uuid4()),
             "proposed_players": [str(uuid4())],
             "requested_players": [str(uuid4())],
-            "message": "Fair trade proposal"
+            "message": "Fair trade proposal",
         }
 
         response = client.post("/api/v1/trades", json=trade_request)
@@ -151,15 +140,13 @@ class TestTradeEndpoints:
         assert data["status"] == "pending"
         assert "evaluation_score" in data
 
-    def test_accept_trade_contract(self):
+    def test_accept_trade_contract(self, authenticated_client):
         """Test PATCH /api/v1/trades/{trade_id} contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         trade_id = str(uuid4())
-        action_request = {
-            "action": "accept"
-        }
+        action_request = {"action": "accept"}
 
         response = client.patch(f"/api/v1/trades/{trade_id}", json=action_request)
 
@@ -175,7 +162,7 @@ class TestTradeEndpoints:
 class TestLeagueEndpoints:
     """Test league-related API endpoints against fantasy-api.yaml contract"""
 
-    def test_get_leagues_contract(self):
+    def test_get_leagues_contract(self, authenticated_client):
         """Test GET /api/v1/leagues contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -199,7 +186,7 @@ class TestLeagueEndpoints:
             assert "max_teams" in league
             assert "status" in league
 
-    def test_create_league_contract(self):
+    def test_create_league_contract(self, authenticated_client):
         """Test POST /api/v1/leagues contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -211,7 +198,7 @@ class TestLeagueEndpoints:
             "season": "2025",
             "max_teams": 8,
             "scoring_rules": {"hits": 1, "home_runs": 4, "rbis": 1},
-            "draft_settings": {"type": "snake", "pick_timer": 60}
+            "draft_settings": {"type": "snake", "pick_timer": 60},
         }
 
         response = client.post("/api/v1/leagues", json=league_request)
@@ -225,16 +212,13 @@ class TestLeagueEndpoints:
         assert "status" in data
         assert data["status"] == "setup"
 
-    def test_join_league_contract(self):
+    def test_join_league_contract(self, authenticated_client):
         """Test POST /api/v1/leagues/{league_id}/join contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         league_id = str(uuid4())
-        join_request = {
-            "team_name": "Test Team",
-            "invite_code": "TEST123"
-        }
+        join_request = {"team_name": "Test Team", "invite_code": "TEST123"}
 
         response = client.post(f"/api/v1/leagues/{league_id}/join", json=join_request)
 
@@ -250,7 +234,7 @@ class TestLeagueEndpoints:
 class TestContractValidation:
     """Validate that all endpoints conform to OpenAPI schema"""
 
-    def test_openapi_schema_available(self):
+    def test_openapi_schema_available(self, authenticated_client):
         """Ensure OpenAPI schema is accessible"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -266,7 +250,7 @@ class TestContractValidation:
         expected_paths = [
             "/api/v1/draft/{leagueId}",
             "/api/v1/trades",
-            "/api/v1/leagues"
+            "/api/v1/leagues",
         ]
 
         for path in expected_paths:

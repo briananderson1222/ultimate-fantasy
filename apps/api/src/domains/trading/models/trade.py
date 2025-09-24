@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -28,21 +28,23 @@ class Trade(Base):
         UUID(as_uuid=True), ForeignKey("teams.team_id"), nullable=False
     )
 
-    offered_players: Mapped[Optional[List[str]]] = mapped_column(
+    offered_players: Mapped[list[str] | None] = mapped_column(
         JSON, nullable=True, default=list
     )
-    requested_players: Mapped[Optional[List[str]]] = mapped_column(
+    requested_players: Mapped[list[str] | None] = mapped_column(
         JSON, nullable=True, default=list
     )
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    trade_message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    rejection_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    commissioner_notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
-    vetoed_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    trade_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    commissioner_notes: Mapped[str | None] = mapped_column(
+        String(1000), nullable=True
+    )
+    vetoed_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -56,7 +58,9 @@ class Trade(Base):
             "status IN ('pending', 'accepted', 'rejected', 'expired', 'vetoed', 'completed')",
             name="valid_trade_status",
         ),
-        CheckConstraint("offering_team_id != receiving_team_id", name="different_trade_teams"),
+        CheckConstraint(
+            "offering_team_id != receiving_team_id", name="different_trade_teams"
+        ),
         Index("idx_trade_league_id", "league_id"),
         Index("idx_trade_offering_team", "offering_team_id"),
         Index("idx_trade_receiving_team", "receiving_team_id"),
@@ -86,7 +90,7 @@ class Trade(Base):
             return False
         return datetime.utcnow() > self.expires_at
 
-    def get_trade_value_summary(self) -> Dict[str, Any]:
+    def get_trade_value_summary(self) -> dict[str, Any]:
         return {
             "offered_count": len(self.offered_players or []),
             "requested_count": len(self.requested_players or []),

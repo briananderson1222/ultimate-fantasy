@@ -83,13 +83,10 @@ async def scoring_detailed_health_check(
 
     try:
         # Check for recent score updates
+        from infrastructure.database.sql_utils import HEALTH_QUERIES
+
         recent_scores = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM scores
-            WHERE updated_at > NOW() - INTERVAL '1 hour'
-        """
-            )
+            text(HEALTH_QUERIES["recent_scores"]())
         ).scalar()
 
         detailed_status["checks"]["recent_score_updates"] = {
@@ -99,13 +96,7 @@ async def scoring_detailed_health_check(
 
         # Check for current week scoring
         current_week_scores = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM scores
-            WHERE week = EXTRACT(week FROM NOW())
-            AND year = EXTRACT(year FROM NOW())
-        """
-            )
+            text(HEALTH_QUERIES["current_week_scores"]())
         ).scalar()
 
         detailed_status["checks"]["current_week_scoring"] = {

@@ -17,6 +17,7 @@ from uuid import uuid4
 # Import will fail initially - this is expected for TDD
 try:
     from src.main import app
+
     client = TestClient(app)
 except ImportError:
     client = None
@@ -25,7 +26,7 @@ except ImportError:
 class TestPlayerEndpoints:
     """Test player-related API endpoints against sports-data-api.yaml contract"""
 
-    def test_search_players_contract(self):
+    def test_search_players_contract(self, authenticated_client):
         """Test GET /api/v1/sports/players contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -50,7 +51,7 @@ class TestPlayerEndpoints:
             assert "sport" in player
             assert "injury_status" in player
 
-    def test_search_players_with_filters_contract(self):
+    def test_search_players_with_filters_contract(self, authenticated_client):
         """Test GET /api/v1/sports/players with filters"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -67,7 +68,7 @@ class TestPlayerEndpoints:
         response = client.get("/api/v1/sports/players?sport=mlb&search=trout")
         assert response.status_code == 200
 
-    def test_search_players_invalid_sport(self):
+    def test_search_players_invalid_sport(self, authenticated_client):
         """Test validation of sport parameter"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -78,7 +79,7 @@ class TestPlayerEndpoints:
         error = response.json()
         assert "detail" in error
 
-    def test_search_players_missing_sport(self):
+    def test_search_players_missing_sport(self, authenticated_client):
         """Test required sport parameter"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -86,7 +87,7 @@ class TestPlayerEndpoints:
         response = client.get("/api/v1/sports/players")
         assert response.status_code == 422  # Validation error
 
-    def test_get_player_details_contract(self):
+    def test_get_player_details_contract(self, authenticated_client):
         """Test GET /api/v1/sports/players/{playerId} contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -123,17 +124,13 @@ class TestPlayerEndpoints:
 class TestStatsEndpoints:
     """Test stats-related API endpoints against sports-data-api.yaml contract"""
 
-    def test_get_player_stats_contract(self):
+    def test_get_player_stats_contract(self, authenticated_client):
         """Test GET /api/v1/sports/stats contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
         # Test with required parameters
-        params = {
-            "sport": "mlb",
-            "player_id": str(uuid4()),
-            "timeframe": "season"
-        }
+        params = {"sport": "mlb", "player_id": str(uuid4()), "timeframe": "season"}
         response = client.get("/api/v1/sports/stats", params=params)
 
         assert response.status_code in [200, 404]
@@ -150,16 +147,12 @@ class TestStatsEndpoints:
             # Validate stats structure
             assert isinstance(stats["stats"], dict)
 
-    def test_get_team_stats_contract(self):
+    def test_get_team_stats_contract(self, authenticated_client):
         """Test GET /api/v1/sports/stats with team filter"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
-        params = {
-            "sport": "mlb",
-            "team_id": "LAA",
-            "timeframe": "season"
-        }
+        params = {"sport": "mlb", "team_id": "LAA", "timeframe": "season"}
         response = client.get("/api/v1/sports/stats", params=params)
 
         assert response.status_code == 200
@@ -173,7 +166,7 @@ class TestStatsEndpoints:
             assert "player_id" in player_stats
             assert "stats" in player_stats
 
-    def test_get_weekly_stats_contract(self):
+    def test_get_weekly_stats_contract(self, authenticated_client):
         """Test GET /api/v1/sports/stats with weekly timeframe"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -182,13 +175,13 @@ class TestStatsEndpoints:
             "sport": "mlb",
             "player_id": str(uuid4()),
             "timeframe": "week",
-            "week": 1
+            "week": 1,
         }
         response = client.get("/api/v1/sports/stats", params=params)
 
         assert response.status_code in [200, 404]
 
-    def test_stats_validation_errors(self):
+    def test_stats_validation_errors(self, authenticated_client):
         """Test validation of stats endpoint parameters"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -209,7 +202,7 @@ class TestStatsEndpoints:
 class TestInjuryAndNewsEndpoints:
     """Test injury and news endpoints from sports-data-api.yaml"""
 
-    def test_get_injury_reports_contract(self):
+    def test_get_injury_reports_contract(self, authenticated_client):
         """Test GET /api/v1/sports/injuries contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -230,15 +223,12 @@ class TestInjuryAndNewsEndpoints:
             assert "expected_return" in injury
             assert "last_updated" in injury
 
-    def test_get_player_news_contract(self):
+    def test_get_player_news_contract(self, authenticated_client):
         """Test GET /api/v1/sports/news contract compliance"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
 
-        params = {
-            "sport": "mlb",
-            "player_id": str(uuid4())
-        }
+        params = {"sport": "mlb", "player_id": str(uuid4())}
         response = client.get("/api/v1/sports/news", params=params)
 
         assert response.status_code == 200
@@ -260,7 +250,7 @@ class TestInjuryAndNewsEndpoints:
 class TestSportsDataValidation:
     """Validate sports data API schema compliance"""
 
-    def test_supported_sports_enum(self):
+    def test_supported_sports_enum(self, authenticated_client):
         """Test that only supported sports are accepted"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -275,7 +265,7 @@ class TestSportsDataValidation:
         response = client.get("/api/v1/sports/players?sport=nhl")
         assert response.status_code == 400
 
-    def test_injury_status_enum(self):
+    def test_injury_status_enum(self, authenticated_client):
         """Test that injury status follows enum values"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -292,7 +282,7 @@ class TestSportsDataValidation:
                 valid_statuses = ["healthy", "questionable", "doubtful", "out"]
                 assert injury_status in valid_statuses
 
-    def test_openapi_schema_compliance(self):
+    def test_openapi_schema_compliance(self, authenticated_client):
         """Ensure sports data endpoints match OpenAPI schema"""
         if not client:
             pytest.fail("Application not implemented yet - TDD failing test")
@@ -307,7 +297,7 @@ class TestSportsDataValidation:
             "/api/v1/sports/players",
             "/api/v1/sports/stats",
             "/api/v1/sports/injuries",
-            "/api/v1/sports/news"
+            "/api/v1/sports/news",
         ]
 
         for path in expected_paths:

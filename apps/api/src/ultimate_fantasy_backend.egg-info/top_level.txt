@@ -1,5 +1,5 @@
 api
 domains
 infrastructure
-models
 services
+src

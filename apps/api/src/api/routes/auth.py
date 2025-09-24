@@ -3,29 +3,34 @@ Authentication API endpoints for Ultimate Fantasy Platform
 Provides REST API for user registration, login, password reset, and account management
 """
 
-from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, EmailStr, validator
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, EmailStr, Field, validator
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 
-from ...infrastructure.database.session_factory import get_db_session
-from ...domains.users.services.user_service import UserService
-from ...domains.shared.exceptions import (
-    UserNotFoundError, AuthenticationError, EmailAlreadyExistsError,
-    UsernameAlreadyExistsError, InvalidTokenError, TokenExpiredError,
-    WeakPasswordError, AccountDisabledError, TooManyAttemptsError
+from api.deps import get_user_service
+from api.middleware.auth import get_current_user
+from api.models.response import APIResponse
+from domains.shared.exceptions import (
+    AccountDisabledError,
+    AuthenticationError,
+    EmailAlreadyExistsError,
+    InvalidTokenError,
+    TokenExpiredError,
+    TooManyAttemptsError,
+    UsernameAlreadyExistsError,
+    UserNotFoundError,
+    WeakPasswordError,
 )
-from ...api.deps import get_user_service
-from ..middleware.auth import get_current_user, get_optional_current_user
-from ..models.response import APIResponse, ErrorResponse
-from ...domains.users.models.user import User
+from domains.users.services.user_service import UserService
+from infrastructure.database.session_factory import get_db_session
 
-
-router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
+router = APIRouter(prefix="/v1/auth", tags=["auth"])
 security = HTTPBearer(auto_error=False)
+
 
 # Pydantic Models for Request/Response
 class RegisterRequest(BaseModel):
@@ -34,16 +39,18 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, description="Password")
     first_name: str = Field(..., min_length=1, max_length=50, description="First name")
     last_name: str = Field(..., min_length=1, max_length=50, description="Last name")
-    date_of_birth: Optional[datetime] = Field(None, description="Date of birth")
+    date_of_birth: datetime | None = Field(None, description="Date of birth")
     timezone: str = Field(default="UTC", description="User timezone")
 
-    @validator('username')
+    @validator("username")
     def validate_username(cls, v):
-        if not v.isalnum() and '_' not in v:
-            raise ValueError("Username can only contain letters, numbers, and underscores")
+        if not v.isalnum() and "_" not in v:
+            raise ValueError(
+                "Username can only contain letters, numbers, and underscores"
+            )
         return v.lower()
 
-    @validator('password')
+    @validator("password")
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
@@ -74,7 +81,7 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., description="Password reset token")
     new_password: str = Field(..., min_length=8, description="New password")
 
-    @validator('new_password')
+    @validator("new_password")
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
@@ -91,7 +98,7 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., description="Current password")
     new_password: str = Field(..., min_length=8, description="New password")
 
-    @validator('new_password')
+    @validator("new_password")
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
@@ -105,11 +112,11 @@ class ChangePasswordRequest(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
-    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    email: Optional[EmailStr] = None
-    timezone: Optional[str] = None
-    preferences: Optional[Dict[str, Any]] = None
+    first_name: str | None = Field(None, min_length=1, max_length=50)
+    last_name: str | None = Field(None, min_length=1, max_length=50)
+    email: EmailStr | None = None
+    timezone: str | None = None
+    preferences: dict[str, Any] | None = None
 
 
 class TokenResponse(BaseModel):
@@ -129,9 +136,9 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
-    last_login: Optional[datetime]
+    last_login: datetime | None
     timezone: str
-    preferences: Dict[str, Any]
+    preferences: dict[str, Any]
 
     class Config:
         from_attributes = True
@@ -144,7 +151,7 @@ class LoginActivityResponse(BaseModel):
     login_time: datetime
     last_activity: datetime
     is_current: bool
-    location: Optional[str]
+    location: str | None
 
     class Config:
         from_attributes = True
@@ -168,7 +175,7 @@ async def register(
             last_name=request.last_name,
             date_of_birth=request.date_of_birth,
             timezone=request.timezone,
-            db=db
+            db=db,
         )
 
         # Generate tokens
@@ -179,39 +186,33 @@ async def register(
         user_service.log_user_activity(
             user_id=str(user.user_id),
             activity_type="registration",
-            ip_address=client_request.client.host,
+            ip_address=client_request.client.host if client_request.client else None,
             user_agent=client_request.headers.get("user-agent"),
-            db=db
+            db=db,
         )
 
         token_data = TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=3600,  # 1 hour
-            user_id=str(user.user_id)
+            user_id=str(user.user_id),
         )
 
         return APIResponse(
-            success=True,
-            data=token_data,
-            message="Account created successfully"
+            success=True, data=token_data, message="Account created successfully"
         )
 
     except EmailAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email address is already registered"
+            detail="Email address is already registered",
         )
     except UsernameAlreadyExistsError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username is already taken"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken"
         )
     except WeakPasswordError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/login", response_model=APIResponse[TokenResponse])
@@ -226,50 +227,46 @@ async def login(
         user = user_service.authenticate_user(
             username_or_email=request.username_or_email,
             password=request.password,
-            db=db
+            db=db,
         )
 
         # Generate tokens
         expires_in = 7 * 24 * 3600 if request.remember_me else 3600  # 7 days or 1 hour
-        access_token = user_service.create_access_token(str(user.user_id), expires_in=expires_in)
+        access_token = user_service.create_access_token(
+            str(user.user_id), expires_in=expires_in
+        )
         refresh_token = user_service.create_refresh_token(str(user.user_id))
 
         # Log the login
         user_service.log_user_activity(
             user_id=str(user.user_id),
             activity_type="login",
-            ip_address=client_request.client.host,
+            ip_address=client_request.client.host if client_request.client else None,
             user_agent=client_request.headers.get("user-agent"),
-            db=db
+            db=db,
         )
 
         token_data = TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=expires_in,
-            user_id=str(user.user_id)
+            user_id=str(user.user_id),
         )
 
-        return APIResponse(
-            success=True,
-            data=token_data,
-            message="Login successful"
-        )
+        return APIResponse(success=True, data=token_data, message="Login successful")
 
-    except AuthenticationError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
     except AccountDisabledError:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled"
         )
     except TooManyAttemptsError:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many login attempts. Please try again later."
+            detail="Too many login attempts. Please try again later.",
+        )
+    except AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
 
 
@@ -284,20 +281,16 @@ async def refresh_token(
         token_data = user_service.refresh_access_token(request.refresh_token, db)
 
         return APIResponse(
-            success=True,
-            data=token_data,
-            message="Token refreshed successfully"
+            success=True, data=token_data, message="Token refreshed successfully"
         )
 
     except InvalidTokenError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
     except TokenExpiredError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token has expired"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has expired"
         )
 
 
@@ -314,26 +307,16 @@ async def logout(
             user_service.invalidate_token(credentials.credentials, db)
 
         user_service.log_user_activity(
-            user_id=current_user["user_id"],
-            activity_type="logout",
-            db=db
+            user_id=current_user["user_id"], activity_type="logout", db=db
         )
 
-        return APIResponse(
-            success=True,
-            data=None,
-            message="Logout successful"
-        )
+        return APIResponse(success=True, data=None, message="Logout successful")
 
     except InvalidTokenError:
         # Token already invalid, still return success
         pass
 
-    return APIResponse(
-        success=True,
-        data=None,
-        message="Logout successful"
-    )
+    return APIResponse(success=True, data=None, message="Logout successful")
 
 
 # Password Management
@@ -351,7 +334,7 @@ async def forgot_password(
         return APIResponse(
             success=True,
             data=None,
-            message="If an account exists with this email, a reset link has been sent"
+            message="If an account exists with this email, a reset link has been sent",
         )
 
     except UserNotFoundError:
@@ -359,7 +342,7 @@ async def forgot_password(
         return APIResponse(
             success=True,
             data=None,
-            message="If an account exists with this email, a reset link has been sent"
+            message="If an account exists with this email, a reset link has been sent",
         )
 
 
@@ -372,32 +355,24 @@ async def reset_password(
     """Reset password using token from email"""
     try:
         user_service.reset_password(
-            token=request.token,
-            new_password=request.new_password,
-            db=db
+            token=request.token, new_password=request.new_password, db=db
         )
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="Password reset successfully"
+            success=True, data=None, message="Password reset successfully"
         )
 
     except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
+            detail="Invalid or expired reset token",
         )
     except TokenExpiredError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reset token has expired"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Reset token has expired"
         )
     except WeakPasswordError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/change-password")
@@ -413,25 +388,20 @@ async def change_password(
             user_id=current_user["user_id"],
             current_password=request.current_password,
             new_password=request.new_password,
-            db=db
+            db=db,
         )
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="Password changed successfully"
+            success=True, data=None, message="Password changed successfully"
         )
 
     except AuthenticationError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
+            detail="Current password is incorrect",
         )
     except WeakPasswordError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # Profile Management
@@ -448,13 +418,12 @@ async def get_profile(
         return APIResponse(
             success=True,
             data=UserResponse.from_orm(user),
-            message="Profile retrieved successfully"
+            message="Profile retrieved successfully",
         )
 
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
 
@@ -469,26 +438,23 @@ async def update_profile(
     try:
         update_data = request.dict(exclude_unset=True)
         user = user_service.update_user_profile(
-            user_id=current_user["user_id"],
-            updates=update_data,
-            db=db
+            user_id=current_user["user_id"], updates=update_data, db=db
         )
 
         return APIResponse(
             success=True,
             data=UserResponse.from_orm(user),
-            message="Profile updated successfully"
+            message="Profile updated successfully",
         )
 
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     except EmailAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email address is already in use"
+            detail="Email address is already in use",
         )
 
 
@@ -502,26 +468,20 @@ async def delete_account(
     """Delete user account (requires password confirmation)"""
     try:
         user_service.delete_user_account(
-            user_id=current_user["user_id"],
-            password=password,
-            db=db
+            user_id=current_user["user_id"], password=password, db=db
         )
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="Account deleted successfully"
+            success=True, data=None, message="Account deleted successfully"
         )
 
     except AuthenticationError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password is incorrect"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Password is incorrect"
         )
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
 
@@ -536,16 +496,11 @@ async def resend_verification_email(
     try:
         user_service.resend_verification_email(current_user["user_id"], db)
 
-        return APIResponse(
-            success=True,
-            data=None,
-            message="Verification email sent"
-        )
+        return APIResponse(success=True, data=None, message="Verification email sent")
 
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
 
@@ -560,25 +515,22 @@ async def verify_email(
         user_service.verify_email(token, db)
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="Email verified successfully"
+            success=True, data=None, message="Email verified successfully"
         )
 
     except InvalidTokenError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid verification token"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token"
         )
     except TokenExpiredError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification token has expired"
+            detail="Verification token has expired",
         )
 
 
 # Session Management
-@router.get("/sessions", response_model=APIResponse[List[LoginActivityResponse]])
+@router.get("/sessions", response_model=APIResponse[list[LoginActivityResponse]])
 async def get_active_sessions(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db_session),
@@ -591,13 +543,12 @@ async def get_active_sessions(
         return APIResponse(
             success=True,
             data=[LoginActivityResponse(**session) for session in sessions],
-            message="Active sessions retrieved successfully"
+            message="Active sessions retrieved successfully",
         )
 
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
 
@@ -611,21 +562,16 @@ async def revoke_session(
     """Revoke a specific session"""
     try:
         user_service.revoke_session(
-            user_id=current_user["user_id"],
-            session_id=session_id,
-            db=db
+            user_id=current_user["user_id"], session_id=session_id, db=db
         )
 
         return APIResponse(
-            success=True,
-            data=None,
-            message="Session revoked successfully"
+            success=True, data=None, message="Session revoked successfully"
         )
 
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
 
@@ -642,28 +588,25 @@ async def revoke_all_sessions(
         return APIResponse(
             success=True,
             data={"revoked_sessions": revoked_count},
-            message="All other sessions revoked successfully"
+            message="All other sessions revoked successfully",
         )
 
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
 
 # Token Validation
 @router.get("/validate")
-async def validate_token(
-    current_user: dict = Depends(get_current_user)
-):
+async def validate_token(current_user: dict = Depends(get_current_user)):
     """Validate current token and return user info"""
     return APIResponse(
         success=True,
         data={
             "user_id": current_user["user_id"],
             "username": current_user["username"],
-            "is_valid": True
+            "is_valid": True,
         },
-        message="Token is valid"
+        message="Token is valid",
     )

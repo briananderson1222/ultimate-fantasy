@@ -4,28 +4,28 @@ import logging
 import secrets
 import string
 import uuid as _uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from domains.leagues.models.league import League
 from domains.leagues.models.team import Team
+from domains.shared.events.publisher import DomainEventPublisher
 from domains.shared.exceptions import (
     AlreadyInLeagueError,
     CommissionerOnlyError,
     InsufficientPermissionsError,
     InvalidInviteCodeError,
-    LeagueError,
     LeagueFullError,
     LeagueNotFoundError,
     LeagueValidationError,
     UserNotFoundError,
 )
-from domains.shared.events.publisher import DomainEventPublisher
 from domains.shared.interfaces.league_service import LeagueServiceInterface
 from domains.users.models.user import User
 from infrastructure.events.dispatcher import get_event_dispatcher
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,16 +58,14 @@ class LeagueService(LeagueServiceInterface):
         league_type: str,
         season: str,
         max_teams: int = 12,
-        custom_settings: Optional[Dict[str, Any]] = None,
-        db: Optional[Session] = None,
+        custom_settings: dict[str, Any] | None = None,
+        db: Session | None = None,
     ) -> League:
         session = db or self.session
         commissioner_uuid = _uuid.UUID(str(commissioner_id))
 
         commissioner = (
-            session.query(User)
-            .filter(User.user_id == commissioner_uuid)
-            .one_or_none()
+            session.query(User).filter(User.user_id == commissioner_uuid).one_or_none()
         )
         if not commissioner:
             default_username = f"user_{str(commissioner_uuid)[:8]}"
@@ -102,9 +100,7 @@ class LeagueService(LeagueServiceInterface):
             max_teams=max_teams,
             invite_code=invite_code,
         )
-        league.scoring_rules = self._get_default_scoring_rules(
-            sport, custom_settings
-        )
+        league.scoring_rules = self._get_default_scoring_rules(sport, custom_settings)
         league.roster_settings = self._get_default_roster_settings(
             sport, custom_settings
         )
@@ -173,8 +169,8 @@ class LeagueService(LeagueServiceInterface):
         *,
         league_id: str,
         user_id: str,
-        updates: Dict[str, Any],
-        db: Optional[Session] = None,
+        updates: dict[str, Any],
+        db: Session | None = None,
     ) -> League:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -183,7 +179,9 @@ class LeagueService(LeagueServiceInterface):
             raise InsufficientPermissionsError("Only commissioner can update settings")
 
         if league.status != "setup":
-            raise LeagueValidationError("Settings can only be updated during setup phase")
+            raise LeagueValidationError(
+                "Settings can only be updated during setup phase"
+            )
 
         allowed_fields = {
             "name",
@@ -201,7 +199,9 @@ class LeagueService(LeagueServiceInterface):
                 setattr(league, field, value)
 
         session.commit()
-        logger.info("League settings updated", extra={"league_id": str(league.league_id)})
+        logger.info(
+            "League settings updated", extra={"league_id": str(league.league_id)}
+        )
         return league
 
     def delete_league(
@@ -209,7 +209,7 @@ class LeagueService(LeagueServiceInterface):
         *,
         league_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -227,7 +227,7 @@ class LeagueService(LeagueServiceInterface):
         league_id: str,
         user_id: str,
         new_status: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> League:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -244,20 +244,18 @@ class LeagueService(LeagueServiceInterface):
     # ------------------------------------------------------------------
     # Queries
     # ------------------------------------------------------------------
-    def get_league(self, league_id: str, db: Optional[Session] = None) -> League:
+    def get_league(self, league_id: str, db: Session | None = None) -> League:
         session = db or self.session
         league_uuid = _uuid.UUID(str(league_id))
         league = (
-            session.query(League)
-            .filter(League.league_id == league_uuid)
-            .one_or_none()
+            session.query(League).filter(League.league_id == league_uuid).one_or_none()
         )
         if not league:
             raise LeagueNotFoundError("League not found")
         return league
 
     def get_league_by_invite_code(
-        self, invite_code: str, db: Optional[Session] = None
+        self, invite_code: str, db: Session | None = None
     ) -> League:
         session = db or self.session
         league = (
@@ -273,10 +271,10 @@ class LeagueService(LeagueServiceInterface):
         self,
         *,
         user_id: str,
-        sport: Optional[str] = None,
-        status: Optional[str] = None,
-        db: Optional[Session] = None,
-    ) -> List[League]:
+        sport: str | None = None,
+        status: str | None = None,
+        db: Session | None = None,
+    ) -> list[League]:
         session = db or self.session
         user_uuid = _uuid.UUID(str(user_id))
 
@@ -295,12 +293,12 @@ class LeagueService(LeagueServiceInterface):
     def get_public_leagues(
         self,
         *,
-        sport: Optional[str] = None,
-        league_type: Optional[str] = None,
+        sport: str | None = None,
+        league_type: str | None = None,
         limit: int = 20,
         offset: int = 0,
-        db: Optional[Session] = None,
-    ) -> List[League]:
+        db: Session | None = None,
+    ) -> list[League]:
         session = db or self.session
         query = session.query(League).filter(League.status == "recruiting")
         if sport:
@@ -308,15 +306,12 @@ class LeagueService(LeagueServiceInterface):
         if league_type:
             query = query.filter(League.league_type == league_type)
         return (
-            query.order_by(League.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
+            query.order_by(League.created_at.desc()).offset(offset).limit(limit).all()
         )
 
     def list_by_user(
-        self, *, user_id: _uuid.UUID, db: Optional[Session] = None
-    ) -> List[Dict[str, Any]]:
+        self, *, user_id: _uuid.UUID, db: Session | None = None
+    ) -> list[dict[str, Any]]:
         session = db or self.session
         results = (
             session.query(Team, League)
@@ -324,7 +319,7 @@ class LeagueService(LeagueServiceInterface):
             .filter(Team.user_id == user_id)
             .all()
         )
-        items: List[Dict[str, Any]] = []
+        items: list[dict[str, Any]] = []
         for team, league in results:
             items.append(
                 {
@@ -337,32 +332,24 @@ class LeagueService(LeagueServiceInterface):
         return items
 
     def list_league_members(
-        self, *, league_id: str, db: Optional[Session] = None
-    ) -> List[User]:
+        self, *, league_id: str, db: Session | None = None
+    ) -> list[User]:
         session = db or self.session
         league_uuid = _uuid.UUID(str(league_id))
-        teams = (
-            session.query(Team)
-            .filter(Team.league_id == league_uuid)
-            .all()
-        )
+        teams = session.query(Team).filter(Team.league_id == league_uuid).all()
         user_ids = [team.user_id for team in teams]
         if not user_ids:
             return []
-        return (
-            session.query(User)
-            .filter(User.user_id.in_(user_ids))
-            .all()
-        )
+        return session.query(User).filter(User.user_id.in_(user_ids)).all()
 
     def get_league_members(
-        self, *, league_id: str, db: Optional[Session] = None
-    ) -> List[User]:
+        self, *, league_id: str, db: Session | None = None
+    ) -> list[User]:
         return self.list_league_members(league_id=league_id, db=db)
 
     def get_league_teams(
-        self, *, league_id: str, db: Optional[Session] = None
-    ) -> List[Team]:
+        self, *, league_id: str, db: Session | None = None
+    ) -> list[Team]:
         session = db or self.session
         league_uuid = _uuid.UUID(str(league_id))
         return (
@@ -373,15 +360,11 @@ class LeagueService(LeagueServiceInterface):
         )
 
     def list_members(
-        self, *, league_id: _uuid.UUID, db: Optional[Session] = None
-    ) -> List[Dict[str, str]]:
+        self, *, league_id: _uuid.UUID, db: Session | None = None
+    ) -> list[dict[str, str]]:
         session = db or self.session
-        teams = (
-            session.query(Team)
-            .filter(Team.league_id == league_id)
-            .all()
-        )
-        items: List[Dict[str, str]] = []
+        teams = session.query(Team).filter(Team.league_id == league_id).all()
+        items: list[dict[str, str]] = []
         for team in teams:
             items.append(
                 {
@@ -399,10 +382,10 @@ class LeagueService(LeagueServiceInterface):
         self,
         *,
         user_id: str,
-        invite_code: Optional[str] = None,
-        league_id: Optional[str] = None,
-        team_name: Optional[str] = None,
-        db: Optional[Session] = None,
+        invite_code: str | None = None,
+        league_id: str | None = None,
+        team_name: str | None = None,
+        db: Session | None = None,
     ) -> Team:
         session = db or self.session
         if invite_code:
@@ -437,9 +420,7 @@ class LeagueService(LeagueServiceInterface):
             raise AlreadyInLeagueError("User already has team in league")
 
         current_team_count = (
-            session.query(Team)
-            .filter(Team.league_id == league.league_id)
-            .count()
+            session.query(Team).filter(Team.league_id == league.league_id).count()
         )
         if league.is_full(current_team_count):
             raise LeagueFullError("League is full")
@@ -490,7 +471,7 @@ class LeagueService(LeagueServiceInterface):
         *,
         user_id: _uuid.UUID,
         league_id: _uuid.UUID,
-        team_name: Optional[str] = None,
+        team_name: str | None = None,
     ) -> Team:
         return self.join_league(
             user_id=str(user_id), league_id=str(league_id), team_name=team_name
@@ -501,7 +482,7 @@ class LeagueService(LeagueServiceInterface):
         *,
         league_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -529,7 +510,7 @@ class LeagueService(LeagueServiceInterface):
         league_id: str,
         requester_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -556,8 +537,8 @@ class LeagueService(LeagueServiceInterface):
         self,
         *,
         team_id: str,
-        updates: Dict[str, Any],
-        db: Optional[Session] = None,
+        updates: dict[str, Any],
+        db: Session | None = None,
     ) -> Team:
         session = db or self.session
         team = (
@@ -580,7 +561,7 @@ class LeagueService(LeagueServiceInterface):
         *,
         league_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> Team:
         session = db or self.session
         team = (
@@ -599,13 +580,13 @@ class LeagueService(LeagueServiceInterface):
     # Commissioner utilities
     # ------------------------------------------------------------------
     def is_commissioner(
-        self, *, league_id: str, user_id: str, db: Optional[Session] = None
+        self, *, league_id: str, user_id: str, db: Session | None = None
     ) -> bool:
         league = self.get_league(league_id, db)
         return str(league.commissioner_id) == str(user_id)
 
     def is_user_in_league(
-        self, *, league_id: str, user_id: str, db: Optional[Session] = None
+        self, *, league_id: str, user_id: str, db: Session | None = None
     ) -> bool:
         session = db or self.session
         return (
@@ -624,7 +605,7 @@ class LeagueService(LeagueServiceInterface):
         league_id: str,
         current_commissioner_id: str,
         new_commissioner_user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> None:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -647,7 +628,7 @@ class LeagueService(LeagueServiceInterface):
         *,
         league_id: str,
         user_id: str,
-        db: Optional[Session] = None,
+        db: Session | None = None,
     ) -> str:
         session = db or self.session
         league = self.get_league(league_id, session)
@@ -659,8 +640,8 @@ class LeagueService(LeagueServiceInterface):
         return league.invite_code
 
     def get_league_standings(
-        self, *, league_id: str, db: Optional[Session] = None
-    ) -> Dict[str, Any]:
+        self, *, league_id: str, db: Session | None = None
+    ) -> dict[str, Any]:
         session = db or self.session
         league = self.get_league(league_id, session)
         teams = (
@@ -692,7 +673,7 @@ class LeagueService(LeagueServiceInterface):
     # ------------------------------------------------------------------
     # Interface Implementations
     # ------------------------------------------------------------------
-    async def get_league_members(self, league_id: str) -> List[User]:  # type: ignore[override]
+    async def get_league_members(self, league_id: str) -> list[User]:  # type: ignore[override]
         return self.list_league_members(league_id=league_id)
 
     async def validate_league_access(
@@ -721,9 +702,7 @@ class LeagueService(LeagueServiceInterface):
                 for _ in range(self.invite_code_length)
             )
             exists = (
-                session.query(League)
-                .filter(League.invite_code == code)
-                .one_or_none()
+                session.query(League).filter(League.invite_code == code).one_or_none()
             )
             if not exists:
                 return code
@@ -735,9 +714,9 @@ class LeagueService(LeagueServiceInterface):
         return user
 
     def _get_default_scoring_rules(
-        self, sport: str, custom_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        defaults: Dict[str, Any] = {
+        self, sport: str, custom_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        defaults: dict[str, Any] = {
             "mlb": {
                 "hitting": {
                     "hits": 1,
@@ -809,9 +788,9 @@ class LeagueService(LeagueServiceInterface):
         return rules
 
     def _get_default_roster_settings(
-        self, sport: str, custom_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        defaults: Dict[str, Any] = {
+        self, sport: str, custom_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        defaults: dict[str, Any] = {
             "mlb": {
                 "starting_positions": [
                     "C",
@@ -866,8 +845,8 @@ class LeagueService(LeagueServiceInterface):
         return roster
 
     def _get_default_draft_settings(
-        self, custom_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, custom_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         defaults = {
             "draft_type": "snake",
             "pick_timer_seconds": 90,
@@ -881,8 +860,8 @@ class LeagueService(LeagueServiceInterface):
         return defaults
 
     def _get_default_waiver_settings(
-        self, custom_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, custom_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         defaults = {
             "waiver_type": "rolling",
             "waiver_period_hours": 24,
@@ -897,8 +876,8 @@ class LeagueService(LeagueServiceInterface):
         return defaults
 
     def _get_default_trade_settings(
-        self, custom_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, custom_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         defaults = {
             "trade_deadline_week": 13,
             "trade_review_period_hours": 48,
@@ -914,8 +893,8 @@ class LeagueService(LeagueServiceInterface):
         return defaults
 
     def _get_default_playoff_settings(
-        self, custom_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, custom_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         defaults = {
             "playoff_teams": 6,
             "playoff_start_week": 15,
@@ -929,14 +908,16 @@ class LeagueService(LeagueServiceInterface):
             self._deep_merge_dict(defaults, custom_settings["playoff_settings"])
         return defaults
 
-    def _deep_merge_dict(self, base: Dict[str, Any], override: Dict[str, Any]) -> None:
+    def _deep_merge_dict(self, base: dict[str, Any], override: dict[str, Any]) -> None:
         for key, value in override.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                 self._deep_merge_dict(base[key], value)
             else:
                 base[key] = value
 
-    def _publish_event(self, event: str, entity_id: str, payload: Dict[str, Any]) -> None:
+    def _publish_event(
+        self, event: str, entity_id: str, payload: dict[str, Any]
+    ) -> None:
         if not self.event_publisher:
             return
         import asyncio

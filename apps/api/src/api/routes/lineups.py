@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -34,18 +34,20 @@ class LineupPlayerPayload(BaseModel):
 class SetLineupRequest(BaseModel):
     team_id: _uuid.UUID
     game_day: date
-    players: List[LineupPlayerPayload]
-    expected_version: Optional[int] = Field(None, description="Optimistic locking version")
+    players: list[LineupPlayerPayload]
+    expected_version: int | None = Field(
+        None, description="Optimistic locking version"
+    )
 
 
 class ValidateLineupRequest(BaseModel):
     team_id: _uuid.UUID
-    players: List[LineupPlayerPayload]
+    players: list[LineupPlayerPayload]
 
 
 class CopyLineupRequest(BaseModel):
     target_week: int = Field(..., ge=1)
-    target_game_day: Optional[date] = None
+    target_game_day: date | None = None
 
 
 class AutoSetRequest(BaseModel):
@@ -62,47 +64,47 @@ class LineupOut(BaseModel):
     lineup_id: str
     team_id: str
     week: int
-    game_day: Optional[date]
+    game_day: date | None
     version: int
     is_locked: bool
     points_scored: float
-    players: List[LineupPlayerOut]
+    players: list[LineupPlayerOut]
 
 
 class LineupListResponse(BaseModel):
-    items: List[LineupOut]
+    items: list[LineupOut]
 
 
 class ValidationResult(BaseModel):
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
-    missing_positions: List[str]
-    invalid_players: List[str]
+    errors: list[str]
+    warnings: list[str]
+    missing_positions: list[str]
+    invalid_players: list[str]
 
 
 class LineupAnalysisResponse(BaseModel):
     lineup_id: str
-    team_name: Optional[str]
+    team_name: str | None
     week: int
     is_locked: bool
     version: int
     total_projected_points: float
     player_count: int
-    players: List[Dict[str, Any]]
-    position_distribution: Dict[str, int]
+    players: list[dict[str, Any]]
+    position_distribution: dict[str, int]
     validation: ValidationResult
 
 
 class LineupOptimizationResponse(BaseModel):
     current_projected_points: float
     optimized_projected_points: float
-    suggested_changes: List[Dict[str, str]]
+    suggested_changes: list[dict[str, str]]
     improvement_percentage: float
 
 
-def _serialize_players(lineup: Lineup) -> List[LineupPlayerOut]:
-    players: List[Dict[str, Any]] = lineup.players or []
+def _serialize_players(lineup: Lineup) -> list[LineupPlayerOut]:
+    players: list[dict[str, Any]] = lineup.players or []
     return [
         LineupPlayerOut(
             player_id=str(player.get("player_id")),
@@ -134,7 +136,9 @@ def _handle_lineup_exception(exc: Exception) -> None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     if isinstance(exc, OptimisticLockError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
-    if isinstance(exc, (LineupValidationError, InvalidRosterError, LeagueNotFoundError)):
+    if isinstance(
+        exc, (LineupValidationError, InvalidRosterError, LeagueNotFoundError)
+    ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if isinstance(exc, DeadlinePassedError):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -166,7 +170,7 @@ def set_lineup(
 @router.get("", response_model=LineupListResponse)
 def list_lineups(
     team_id: _uuid.UUID = Query(..., description="Team identifier"),
-    game_day: Optional[date] = Query(None, description="Filter by game day"),
+    game_day: date | None = Query(None, description="Filter by game day"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     lineup_service: LineupService = Depends(get_lineup_service),
@@ -191,12 +195,16 @@ async def get_lineup(
 ) -> LineupOut:
     lineup = lineup_service.get_lineup_by_id(str(lineup_id))
     if not lineup:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lineup not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lineup not found"
+        )
     owns_lineup = await lineup_service.validate_lineup_ownership(
         str(lineup_id), str(current_user_id)
     )
     if not owns_lineup:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
     return _to_lineup_out(lineup)
 
 
@@ -210,7 +218,9 @@ async def get_lineup_analysis(
         str(lineup_id), str(current_user_id)
     )
     if not owns_lineup:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
     try:
         analysis = lineup_service.get_lineup_analysis(lineup_id=str(lineup_id))
         return LineupAnalysisResponse(
@@ -237,9 +247,13 @@ def validate_lineup(
 ) -> ValidationResult:
     team = lineup_service.get_team(str(payload.team_id))
     if not team:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Team not found"
+        )
     if str(team.user_id) != str(current_user_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this team")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this team"
+        )
 
     lineup_players = [
         LineupPlayer(player_id=str(player.player_id), position=player.position)
@@ -264,7 +278,9 @@ async def optimize_lineup(
         str(lineup_id), str(current_user_id)
     )
     if not owns_lineup:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
     try:
         optimization = lineup_service.suggest_lineup_optimization(
             lineup_id=str(lineup_id)
@@ -284,7 +300,9 @@ async def lock_lineup(
         str(lineup_id), str(current_user_id)
     )
     if not owns_lineup:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
     try:
         lineup = lineup_service.lock_lineup(lineup_id=str(lineup_id))
         return _to_lineup_out(lineup)
@@ -318,7 +336,9 @@ async def copy_lineup(
         str(lineup_id), str(current_user_id)
     )
     if not owns_lineup:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
     try:
         lineup = lineup_service.copy_lineup(
             source_lineup_id=str(lineup_id),
@@ -339,9 +359,13 @@ def auto_set_lineup(
 ) -> LineupOut:
     team = lineup_service.get_team(str(payload.team_id))
     if not team:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Team not found"
+        )
     if str(team.user_id) != str(current_user_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this team")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this team"
+        )
     try:
         lineup = lineup_service.auto_set_lineup(
             team_id=str(payload.team_id),

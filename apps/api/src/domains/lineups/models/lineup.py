@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import date, datetime
-from typing import Dict, List, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+)
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -23,9 +31,9 @@ class Lineup(Base):
     )
 
     week: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    game_day: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    game_day: Mapped[date | None] = mapped_column(Date, nullable=True)
 
-    players: Mapped[Optional[List[Dict[str, str]]]] = mapped_column(
+    players: Mapped[list[dict[str, str]] | None] = mapped_column(
         JSON, nullable=True, default=list
     )
     points_scored: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
@@ -40,7 +48,13 @@ class Lineup(Base):
     )
 
     __table_args__ = (
-        Index("idx_unique_lineup_per_team_week", "team_id", "week", "game_day", unique=True),
+        Index(
+            "idx_unique_lineup_per_team_week",
+            "team_id",
+            "week",
+            "game_day",
+            unique=True,
+        ),
         CheckConstraint("week > 0", name="positive_week"),
         CheckConstraint("points_scored >= 0", name="non_negative_points"),
         CheckConstraint("version > 0", name="positive_version"),

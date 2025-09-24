@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -14,7 +14,16 @@ class APIResponse(BaseModel, Generic[T]):
 
     success: bool
     data: T
-    message: Optional[str] = None
+    message: str | None = None
 
 
-__all__ = ["APIResponse"]
+class ErrorResponse(BaseModel):
+    """Standard error response format."""
+
+    success: bool = False
+    error: str
+    message: str
+    details: dict | None = None
+
+
+__all__ = ["APIResponse", "ErrorResponse"]

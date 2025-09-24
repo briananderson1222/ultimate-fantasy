@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -31,17 +31,17 @@ class Achievement(Base):
     user_id: Mapped[_uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
     )
-    league_id: Mapped[Optional[_uuid.UUID]] = mapped_column(
+    league_id: Mapped[_uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("leagues.league_id"), nullable=True
     )
-    team_id: Mapped[Optional[_uuid.UUID]] = mapped_column(
+    team_id: Mapped[_uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teams.team_id"), nullable=True
     )
 
     achievement_type: Mapped[str] = mapped_column(String(50), nullable=False)
     achievement_name: Mapped[str] = mapped_column(String(100), nullable=False)
     achievement_description: Mapped[str] = mapped_column(String(500), nullable=False)
-    achievement_icon: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    achievement_icon: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     rarity: Mapped[str] = mapped_column(String(15), nullable=False, default="common")
     points_value: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
@@ -51,10 +51,10 @@ class Achievement(Base):
     progress_current: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     progress_target: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
-    achievement_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    achievement_data: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True, default=dict
     )
-    unlock_conditions: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    unlock_conditions: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True, default=dict
     )
 
@@ -62,10 +62,10 @@ class Achievement(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    unlocked_at: Mapped[Optional[datetime]] = mapped_column(
+    unlocked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    season: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    season: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -187,7 +187,7 @@ class Achievement(Base):
             self.achievement_data = {}
         self.achievement_data[key] = value
 
-    def update_data(self, new_data: Dict[str, Any]) -> None:
+    def update_data(self, new_data: dict[str, Any]) -> None:
         if self.achievement_data is None:
             self.achievement_data = {}
         self.achievement_data.update(new_data)
@@ -215,7 +215,7 @@ class Achievement(Base):
     def get_total_points(self) -> int:
         return int(self.points_value * self.get_rarity_multiplier())
 
-    def get_display_data(self) -> Dict[str, Any]:
+    def get_display_data(self) -> dict[str, Any]:
         return {
             "id": str(self.achievement_id),
             "user_id": str(self.user_id),
@@ -233,9 +233,7 @@ class Achievement(Base):
             "progress_percentage": self.calculate_progress_percentage(),
             "is_visible": self.is_visible,
             "is_featured": self.is_featured,
-            "unlocked_at": self.unlocked_at.isoformat()
-            if self.unlocked_at
-            else None,
+            "unlocked_at": self.unlocked_at.isoformat() if self.unlocked_at else None,
             "season": self.season,
             "league_id": str(self.league_id) if self.league_id else None,
             "team_id": str(self.team_id) if self.team_id else None,

@@ -93,13 +93,10 @@ async def leagues_detailed_health_check(
         }
 
         # Check for leagues with recent activity
+        from infrastructure.database.sql_utils import HEALTH_QUERIES
+
         recent_leagues = db.execute(
-            text(
-                """
-            SELECT COUNT(*) FROM leagues
-            WHERE updated_at > NOW() - INTERVAL '24 hours'
-        """
-            )
+            text(HEALTH_QUERIES["recent_leagues"]())
         ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {

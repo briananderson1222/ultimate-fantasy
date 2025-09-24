@@ -40,7 +40,9 @@ def app_client() -> TestClient:
     reset_session_factory = importlib.import_module(
         "infrastructure.database.session_factory"
     ).reset_session_factory
-    connect_args = {"check_same_thread": False} if str(database_url).startswith("sqlite") else {}
+    connect_args = (
+        {"check_same_thread": False} if str(database_url).startswith("sqlite") else {}
+    )
     engine = create_engine(database_url, future=True, connect_args=connect_args)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

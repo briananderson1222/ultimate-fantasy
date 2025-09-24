@@ -20,27 +20,13 @@ export * from './utils/fantasy';
 export * from './state/StateManager';
 
 // Validation
-export * from './validation/FormValidator';
 export * from './validation/league';
 export * from './validation/fantasy';
 
 // Re-export types for convenience
-export type {
-  WidgetKey,
-  WidgetSizes,
-  WidgetSettings,
-  StorageAdapter
-} from './utils/dashboard';
+export type { WidgetKey, WidgetSizes, WidgetSettings, StorageAdapter } from './utils/dashboard';
 
-export type {
-  StateStore,
-  StateManagerConfig
-} from './state/StateManager';
-
-export type {
-  ValidationResult,
-  FieldValidationResult
-} from './validation/FormValidator';
+export type { StateStore, StateManagerConfig } from './state/StateManager';
 
 export type {
   League,
@@ -49,30 +35,20 @@ export type {
   UpdateLeague,
   DraftSettings,
   ScoringSettings,
-  RosterSettings
+  RosterSettings,
 } from './validation/league';
 
 export type {
-  ValidationResult,
+  ValidationResult as FantasyValidationResult,
   PlayerValidation,
   LineupValidation,
-  TradeValidation
+  TradeValidation,
 } from './validation/fantasy';
 
-export type {
-  Player,
-  TeamStats
-} from './utils/fantasy';
+export type { Player, TeamStats } from './utils/fantasy';
 
 // Store types are not re-exported from the root to prevent importing store modules.
 
-export type {
-  PlayerStats,
-  PlayerInfo
-} from './hooks/usePlayerStats';
+export type { PlayerStats, PlayerInfo } from './hooks/usePlayerStats';
 
-export type {
-  SharedHookData,
-  HookParameter,
-  HookReturn
-} from './models/SharedHook';
+export type { SharedHookData, HookParameter, HookReturn } from './models/SharedHook';

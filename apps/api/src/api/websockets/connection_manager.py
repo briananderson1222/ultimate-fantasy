@@ -7,29 +7,29 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Any, Callable
-from enum import Enum
-from dataclasses import dataclass, asdict
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
 import redis.asyncio as redis
 from fastapi import WebSocket, WebSocketDisconnect
-from sqlalchemy.orm import Session
 
-from ...infrastructure.database.session_factory import get_db_session
-from ...domains.leagues.services.league_service import LeagueService
-from ...domains.users.services.user_service import UserService
-from ...domains.shared.exceptions import (
-    AuthenticationError, LeagueNotFoundError, UserNotFoundError
+from domains.leagues.services.league_service import LeagueService
+from domains.shared.exceptions import (
+    AuthenticationError,
+    LeagueNotFoundError,
 )
-
+from domains.users.services.user_service import UserService
+from infrastructure.database.session_factory import get_db_session
 
 logger = logging.getLogger(__name__)
 
 
 class ConnectionType(Enum):
     """Types of WebSocket connections"""
+
     DRAFT = "draft"
     SCORES = "scores"
     TRADES = "trades"
@@ -40,6 +40,7 @@ class ConnectionType(Enum):
 
 class MessageType(Enum):
     """Types of real-time messages"""
+
     # Draft messages
     DRAFT_STARTED = "draft_started"
     DRAFT_PICK = "draft_pick"
@@ -77,27 +78,29 @@ class MessageType(Enum):
 @dataclass
 class Connection:
     """Represents a WebSocket connection"""
+
     connection_id: str
     websocket: WebSocket
     user_id: str
     username: str
-    league_id: Optional[str]
-    connection_types: Set[ConnectionType]
+    league_id: str | None
+    connection_types: set[ConnectionType]
     connected_at: datetime
     last_ping: datetime
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
 class Message:
     """Real-time message structure"""
+
     type: MessageType
-    data: Dict[str, Any]
-    league_id: Optional[str] = None
-    user_id: Optional[str] = None
-    target_users: Optional[List[str]] = None
-    timestamp: Optional[datetime] = None
-    correlation_id: Optional[str] = None
+    data: dict[str, Any]
+    league_id: str | None = None
+    user_id: str | None = None
+    target_users: list[str] | None = None
+    timestamp: datetime | None = None
+    correlation_id: str | None = None
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -109,26 +112,24 @@ class Message:
 class ConnectionManager:
     """Manages WebSocket connections and message broadcasting"""
 
-    def __init__(self, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: redis.Redis | None = None):
         """Initialize connection manager with optional Redis client"""
-        self.active_connections: Dict[str, Connection] = {}
-        self.league_connections: Dict[str, Set[str]] = defaultdict(set)
-        self.user_connections: Dict[str, Set[str]] = defaultdict(set)
-        self.type_connections: Dict[ConnectionType, Set[str]] = defaultdict(set)
+        self.active_connections: dict[str, Connection] = {}
+        self.league_connections: dict[str, set[str]] = defaultdict(set)
+        self.user_connections: dict[str, set[str]] = defaultdict(set)
+        self.type_connections: dict[ConnectionType, set[str]] = defaultdict(set)
 
         # Redis for cross-instance communication
         self.redis_client = redis_client
         self.redis_channel = "fantasy_realtime"
 
-        # Services
-        self.league_service = LeagueService()
-        self.user_service = UserService()
+        # Services - initialize with session when needed
 
         # Heartbeat and cleanup
         self.heartbeat_interval = 30  # seconds
         self.connection_timeout = 300  # 5 minutes
-        self._cleanup_task: Optional[asyncio.Task] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._cleanup_task: asyncio.Task | None = None
+        self._heartbeat_task: asyncio.Task | None = None
 
     async def start(self):
         """Start the connection manager and background tasks"""
@@ -159,8 +160,8 @@ class ConnectionManager:
         self,
         websocket: WebSocket,
         user_id: str,
-        league_id: Optional[str] = None,
-        connection_types: Optional[List[str]] = None
+        league_id: str | None = None,
+        connection_types: list[str] | None = None,
     ) -> str:
         """
         Establish a new WebSocket connection
@@ -183,13 +184,17 @@ class ConnectionManager:
 
             # Validate user and league
             with get_db_session() as db:
-                user = self.user_service.get_user_sync(user_id, db)
+                user_service = UserService(db)
+                user = user_service.get_user_sync(user_id)
                 if not user or not user.is_active:
-                    await websocket.close(code=1008, reason="User not found or inactive")
+                    await websocket.close(
+                        code=1008, reason="User not found or inactive"
+                    )
                     raise AuthenticationError("Invalid user")
 
                 if league_id:
-                    if not self.league_service.is_user_in_league(league_id, user_id, db):
+                    league_service = LeagueService(db)
+                    if not league_service.is_user_in_league(league_id, user_id):
                         await websocket.close(code=1008, reason="Not a league member")
                         raise LeagueNotFoundError("User not in league")
 
@@ -206,7 +211,7 @@ class ConnectionManager:
                 connection_types=types,
                 connected_at=datetime.utcnow(),
                 last_ping=datetime.utcnow(),
-                metadata={}
+                metadata={},
             )
 
             # Store connection
@@ -219,7 +224,9 @@ class ConnectionManager:
             for conn_type in types:
                 self.type_connections[conn_type].add(connection_id)
 
-            logger.info(f"WebSocket connected: {connection_id} (user: {user.username}, league: {league_id})")
+            logger.info(
+                f"WebSocket connected: {connection_id} (user: {user.username}, league: {league_id})"
+            )
 
             # Notify league members of user joining
             if league_id:
@@ -230,11 +237,11 @@ class ConnectionManager:
                         data={
                             "user_id": user_id,
                             "username": user.username,
-                            "connection_types": [t.value for t in types]
+                            "connection_types": [t.value for t in types],
                         },
-                        league_id=league_id
+                        league_id=league_id,
                     ),
-                    exclude_users=[user_id]
+                    exclude_users=[user_id],
                 )
 
             return connection_id
@@ -284,11 +291,11 @@ class ConnectionManager:
                     data={
                         "user_id": connection.user_id,
                         "username": connection.username,
-                        "reason": reason
+                        "reason": reason,
                     },
-                    league_id=connection.league_id
+                    league_id=connection.league_id,
                 ),
-                exclude_users=[connection.user_id]
+                exclude_users=[connection.user_id],
             )
 
     async def send_to_connection(self, connection_id: str, message: Message) -> bool:
@@ -311,7 +318,7 @@ class ConnectionManager:
                 "type": message.type.value,
                 "data": message.data,
                 "timestamp": message.timestamp.isoformat(),
-                "correlation_id": message.correlation_id
+                "correlation_id": message.correlation_id,
             }
 
             if message.league_id:
@@ -352,8 +359,8 @@ class ConnectionManager:
         self,
         league_id: str,
         message: Message,
-        connection_types: Optional[List[ConnectionType]] = None,
-        exclude_users: Optional[List[str]] = None
+        connection_types: list[ConnectionType] | None = None,
+        exclude_users: list[str] | None = None,
     ) -> int:
         """
         Broadcast message to all connections in a league
@@ -382,7 +389,9 @@ class ConnectionManager:
 
             # Filter by connection types if specified
             if connection_types:
-                if not any(ct in connection.connection_types for ct in connection_types):
+                if not any(
+                    ct in connection.connection_types for ct in connection_types
+                ):
                     continue
 
             if await self.send_to_connection(connection_id, message):
@@ -390,7 +399,9 @@ class ConnectionManager:
 
         # Also publish to Redis for other instances
         if self.redis_client:
-            await self._publish_to_redis(league_id, message, connection_types, exclude_users)
+            await self._publish_to_redis(
+                league_id, message, connection_types, exclude_users
+            )
 
         return sent_count
 
@@ -398,7 +409,7 @@ class ConnectionManager:
         self,
         connection_type: ConnectionType,
         message: Message,
-        league_id: Optional[str] = None
+        league_id: str | None = None,
     ) -> int:
         """
         Broadcast message to all connections of a specific type
@@ -453,8 +464,11 @@ class ConnectionManager:
                     connection_id,
                     Message(
                         type=MessageType.HEARTBEAT,
-                        data={"type": "pong", "timestamp": datetime.utcnow().isoformat()}
-                    )
+                        data={
+                            "type": "pong",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                    ),
                 )
 
             elif message_type == "join_league":
@@ -479,15 +493,12 @@ class ConnectionManager:
             logger.error(f"Invalid JSON from connection {connection_id}: {message}")
             await self.send_to_connection(
                 connection_id,
-                Message(
-                    type=MessageType.ERROR,
-                    data={"error": "Invalid JSON format"}
-                )
+                Message(type=MessageType.ERROR, data={"error": "Invalid JSON format"}),
             )
         except Exception as e:
             logger.error(f"Error handling message from {connection_id}: {e}")
 
-    async def get_connection_stats(self) -> Dict[str, Any]:
+    async def get_connection_stats(self) -> dict[str, Any]:
         """Get statistics about active connections"""
         return {
             "total_connections": len(self.active_connections),
@@ -500,7 +511,7 @@ class ConnectionManager:
                 for conn_type, connections in self.type_connections.items()
             },
             "unique_users": len(self.user_connections),
-            "uptime": datetime.utcnow().isoformat()
+            "uptime": datetime.utcnow().isoformat(),
         }
 
     # Private methods
@@ -514,13 +525,16 @@ class ConnectionManager:
         try:
             # Verify user can join league
             with get_db_session() as db:
-                if not self.league_service.is_user_in_league(league_id, connection.user_id, db):
+                league_service = LeagueService(db)
+                if not league_service.is_user_in_league(
+                    league_id, connection.user_id
+                ):
                     await self.send_to_connection(
                         connection_id,
                         Message(
                             type=MessageType.ERROR,
-                            data={"error": "Not a league member"}
-                        )
+                            data={"error": "Not a league member"},
+                        ),
                     )
                     return
 
@@ -539,11 +553,11 @@ class ConnectionManager:
                     type=MessageType.USER_JOINED,
                     data={
                         "user_id": connection.user_id,
-                        "username": connection.username
+                        "username": connection.username,
                     },
-                    league_id=league_id
+                    league_id=league_id,
                 ),
-                exclude_users=[connection.user_id]
+                exclude_users=[connection.user_id],
             )
 
         except Exception as e:
@@ -564,15 +578,12 @@ class ConnectionManager:
             league_id,
             Message(
                 type=MessageType.USER_LEFT,
-                data={
-                    "user_id": connection.user_id,
-                    "username": connection.username
-                },
-                league_id=league_id
-            )
+                data={"user_id": connection.user_id, "username": connection.username},
+                league_id=league_id,
+            ),
         )
 
-    async def _handle_chat_message(self, connection_id: str, data: Dict[str, Any]):
+    async def _handle_chat_message(self, connection_id: str, data: dict[str, Any]):
         """Handle incoming chat message"""
         connection = self.active_connections.get(connection_id)
         if not connection or not connection.league_id:
@@ -589,16 +600,14 @@ class ConnectionManager:
                 "user_id": connection.user_id,
                 "username": connection.username,
                 "content": message_content,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
-            league_id=connection.league_id
+            league_id=connection.league_id,
         )
 
         # Broadcast to league
         await self.broadcast_to_league(
-            connection.league_id,
-            chat_message,
-            connection_types=[ConnectionType.CHAT]
+            connection.league_id, chat_message, connection_types=[ConnectionType.CHAT]
         )
 
     async def _cleanup_stale_connections(self):
@@ -611,7 +620,8 @@ class ConnectionManager:
                 timeout_threshold = now - timedelta(seconds=self.connection_timeout)
 
                 stale_connections = [
-                    conn_id for conn_id, conn in self.active_connections.items()
+                    conn_id
+                    for conn_id, conn in self.active_connections.items()
                     if conn.last_ping < timeout_threshold
                 ]
 
@@ -619,7 +629,9 @@ class ConnectionManager:
                     await self.disconnect(connection_id, "Connection timeout")
 
                 if stale_connections:
-                    logger.info(f"Cleaned up {len(stale_connections)} stale connections")
+                    logger.info(
+                        f"Cleaned up {len(stale_connections)} stale connections"
+                    )
 
             except asyncio.CancelledError:
                 break
@@ -634,10 +646,7 @@ class ConnectionManager:
 
                 heartbeat_message = Message(
                     type=MessageType.HEARTBEAT,
-                    data={
-                        "type": "ping",
-                        "server_time": datetime.utcnow().isoformat()
-                    }
+                    data={"type": "ping", "server_time": datetime.utcnow().isoformat()},
                 )
 
                 # Send to all connections
@@ -660,8 +669,8 @@ class ConnectionManager:
         self,
         league_id: str,
         message: Message,
-        connection_types: Optional[List[ConnectionType]] = None,
-        exclude_users: Optional[List[str]] = None
+        connection_types: list[ConnectionType] | None = None,
+        exclude_users: list[str] | None = None,
     ):
         """Publish message to Redis for cross-instance communication"""
         if not self.redis_client:
@@ -672,12 +681,11 @@ class ConnectionManager:
                 "league_id": league_id,
                 "message": asdict(message),
                 "connection_types": [ct.value for ct in (connection_types or [])],
-                "exclude_users": exclude_users or []
+                "exclude_users": exclude_users or [],
             }
 
             await self.redis_client.publish(
-                self.redis_channel,
-                json.dumps(redis_message, default=str)
+                self.redis_channel, json.dumps(redis_message, default=str)
             )
 
         except Exception as e:
@@ -698,7 +706,10 @@ class ConnectionManager:
                         data = json.loads(message["data"])
                         league_id = data["league_id"]
                         msg_data = data["message"]
-                        connection_types = [ConnectionType(ct) for ct in data.get("connection_types", [])]
+                        connection_types = [
+                            ConnectionType(ct)
+                            for ct in data.get("connection_types", [])
+                        ]
                         exclude_users = data.get("exclude_users", [])
 
                         # Reconstruct message object
@@ -709,7 +720,7 @@ class ConnectionManager:
                             user_id=msg_data.get("user_id"),
                             target_users=msg_data.get("target_users"),
                             timestamp=datetime.fromisoformat(msg_data["timestamp"]),
-                            correlation_id=msg_data.get("correlation_id")
+                            correlation_id=msg_data.get("correlation_id"),
                         )
 
                         # Broadcast to local connections

@@ -5,11 +5,10 @@ This module provides common helper functions to avoid duplication and ensure
 consistency across the fantasy sports platform.
 """
 
-import uuid as _uuid
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
 import hashlib
-import json
+import uuid as _uuid
+from datetime import date, timedelta
+from typing import Any
 
 
 def generate_invite_code(length: int = 6) -> str:
@@ -26,7 +25,7 @@ def generate_invite_code(length: int = 6) -> str:
     import string
 
     chars = string.ascii_uppercase + string.digits
-    return ''.join(random.choices(chars, k=length))
+    return "".join(random.choices(chars, k=length))
 
 
 def normalize_team_name(name: str) -> str:
@@ -168,9 +167,8 @@ def safe_int(value: Any, default: int = 0) -> int:
 
 
 def merge_player_stats(
-    current_stats: Optional[Dict[str, Any]],
-    new_stats: Dict[str, Any]
-) -> Dict[str, Any]:
+    current_stats: dict[str, Any] | None, new_stats: dict[str, Any]
+) -> dict[str, Any]:
     """
     Merge player statistics dictionaries, handling nested structures.
 
@@ -232,10 +230,7 @@ def calculate_win_percentage(wins: int, losses: int, ties: int = 0) -> float:
 
 
 def is_playoff_eligible(
-    wins: int,
-    losses: int,
-    ties: int = 0,
-    min_games: int = 10
+    wins: int, losses: int, ties: int = 0, min_games: int = 10
 ) -> bool:
     """
     Determine if a team is eligible for playoffs.
@@ -280,10 +275,8 @@ def get_trade_deadline(season_start: date, sport: str = "nfl") -> date:
 
 
 def validate_roster_construction(
-    players: List[Dict[str, Any]],
-    sport: str,
-    max_players: int = 15
-) -> List[str]:
+    players: list[dict[str, Any]], sport: str, max_players: int = 15
+) -> list[str]:
     """
     Validate roster construction rules for a sport.
 
@@ -314,7 +307,15 @@ def validate_roster_construction(
                 errors.append(f"Need at least {min_count} {pos}")
 
     elif sport.lower() == "mlb":
-        required_positions = {"C": 1, "1B": 1, "2B": 1, "3B": 1, "SS": 1, "OF": 3, "P": 5}
+        required_positions = {
+            "C": 1,
+            "1B": 1,
+            "2B": 1,
+            "3B": 1,
+            "SS": 1,
+            "OF": 3,
+            "P": 5,
+        }
         for pos, min_count in required_positions.items():
             if position_counts.get(pos, 0) < min_count:
                 errors.append(f"Need at least {min_count} {pos}")

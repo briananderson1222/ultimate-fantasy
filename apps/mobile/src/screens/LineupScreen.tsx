@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   Animated,
-  PanGestureHandler,
-  State,
-} from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+
+import { Ionicons } from "@expo/vector-icons";
 
 interface Player {
   id: string;
@@ -20,7 +17,7 @@ interface Player {
   position: string;
   team: string;
   projected_points: number;
-  status: 'active' | 'injured' | 'bye';
+  status: "active" | "injured" | "bye";
 }
 
 interface LineupSlot {
@@ -31,40 +28,90 @@ interface LineupSlot {
 
 // Mock players for demo
 const MOCK_ROSTER: Player[] = [
-  { id: 'p1', name: 'LeBron James', position: 'SF', team: 'LAL', projected_points: 52.5, status: 'active' },
-  { id: 'p2', name: 'Stephen Curry', position: 'PG', team: 'GSW', projected_points: 48.2, status: 'active' },
-  { id: 'p3', name: 'Kevin Durant', position: 'PF', team: 'PHX', projected_points: 46.8, status: 'injured' },
-  { id: 'p4', name: 'Jayson Tatum', position: 'SF', team: 'BOS', projected_points: 45.7, status: 'active' },
-  { id: 'p5', name: 'Damian Lillard', position: 'PG', team: 'MIL', projected_points: 44.3, status: 'active' },
-  { id: 'p6', name: 'Anthony Davis', position: 'PF', team: 'LAL', projected_points: 48.9, status: 'bye' },
-  { id: 'p7', name: 'Nikola Jokić', position: 'C', team: 'DEN', projected_points: 52.8, status: 'active' },
-  { id: 'p8', name: 'Joel Embiid', position: 'C', team: 'PHI', projected_points: 49.4, status: 'active' },
+  {
+    id: "p1",
+    name: "LeBron James",
+    position: "SF",
+    team: "LAL",
+    projected_points: 52.5,
+    status: "active",
+  },
+  {
+    id: "p2",
+    name: "Stephen Curry",
+    position: "PG",
+    team: "GSW",
+    projected_points: 48.2,
+    status: "active",
+  },
+  {
+    id: "p3",
+    name: "Kevin Durant",
+    position: "PF",
+    team: "PHX",
+    projected_points: 46.8,
+    status: "injured",
+  },
+  {
+    id: "p4",
+    name: "Jayson Tatum",
+    position: "SF",
+    team: "BOS",
+    projected_points: 45.7,
+    status: "active",
+  },
+  {
+    id: "p5",
+    name: "Damian Lillard",
+    position: "PG",
+    team: "MIL",
+    projected_points: 44.3,
+    status: "active",
+  },
+  {
+    id: "p6",
+    name: "Anthony Davis",
+    position: "PF",
+    team: "LAL",
+    projected_points: 48.9,
+    status: "bye",
+  },
+  {
+    id: "p7",
+    name: "Nikola Jokić",
+    position: "C",
+    team: "DEN",
+    projected_points: 52.8,
+    status: "active",
+  },
+  {
+    id: "p8",
+    name: "Joel Embiid",
+    position: "C",
+    team: "PHI",
+    projected_points: 49.4,
+    status: "active",
+  },
 ];
 
 const INITIAL_LINEUP: LineupSlot[] = [
-  { position: 'PG', player: null, isRequired: true },
-  { position: 'SG', player: null, isRequired: true },
-  { position: 'SF', player: null, isRequired: true },
-  { position: 'PF', player: null, isRequired: true },
-  { position: 'C', player: null, isRequired: true },
-  { position: 'UTIL', player: null, isRequired: true },
-  { position: 'UTIL', player: null, isRequired: true },
-  { position: 'BENCH', player: null, isRequired: false },
-  { position: 'BENCH', player: null, isRequired: false },
+  { position: "PG", player: null, isRequired: true },
+  { position: "SG", player: null, isRequired: true },
+  { position: "SF", player: null, isRequired: true },
+  { position: "PF", player: null, isRequired: true },
+  { position: "C", player: null, isRequired: true },
+  { position: "UTIL", player: null, isRequired: true },
+  { position: "UTIL", player: null, isRequired: true },
+  { position: "BENCH", player: null, isRequired: false },
+  { position: "BENCH", player: null, isRequired: false },
 ];
 
 export default function LineupScreen() {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { teamId } = route.params as { teamId: string };
-
   const [lineup, setLineup] = useState<LineupSlot[]>(INITIAL_LINEUP);
   const [bench, setBench] = useState<Player[]>(MOCK_ROSTER);
-  const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null);
   const [totalProjectedPoints, setTotalProjectedPoints] = useState(0);
 
   // Animation values
-  const dragAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   React.useEffect(() => {
@@ -76,7 +123,7 @@ export default function LineupScreen() {
   }, [lineup]);
 
   const canPlayerFitPosition = (player: Player, position: string): boolean => {
-    if (position === 'BENCH' || position === 'UTIL') return true;
+    if (position === "BENCH" || position === "UTIL") return true;
     return player.position === position;
   };
 
@@ -86,19 +133,22 @@ export default function LineupScreen() {
     // Check if player can fit in this position
     if (!canPlayerFitPosition(player, targetSlot.position)) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Invalid Position', `${player.name} cannot play ${targetSlot.position}`);
+      Alert.alert(
+        "Invalid Position",
+        `${player.name} cannot play ${targetSlot.position}`,
+      );
       return;
     }
 
     // Haptic feedback for successful drop
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    setLineup(prevLineup => {
+    setLineup((prevLineup) => {
       const newLineup = [...prevLineup];
 
       // If slot is occupied, move that player to bench
       if (targetSlot.player) {
-        setBench(prevBench => [...prevBench, targetSlot.player!]);
+        setBench((prevBench) => [...prevBench, targetSlot.player!]);
       }
 
       // Place the new player in the slot
@@ -108,7 +158,7 @@ export default function LineupScreen() {
     });
 
     // Remove player from bench
-    setBench(prevBench => prevBench.filter(p => p.id !== player.id));
+    setBench((prevBench) => prevBench.filter((p) => p.id !== player.id));
 
     // Animate the successful drop
     Animated.sequence([
@@ -132,10 +182,10 @@ export default function LineupScreen() {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     // Move player back to bench
-    setBench(prevBench => [...prevBench, slot.player!]);
+    setBench((prevBench) => [...prevBench, slot.player!]);
 
     // Clear the lineup slot
-    setLineup(prevLineup => {
+    setLineup((prevLineup) => {
       const newLineup = [...prevLineup];
       newLineup[slotIndex] = { ...slot, player: null };
       return newLineup;
@@ -147,12 +197,14 @@ export default function LineupScreen() {
 
     // Simple optimization: put highest projected players in starting spots
     const availablePlayers = [...bench];
-    lineup.forEach(slot => {
+    lineup.forEach((slot) => {
       if (slot.player) availablePlayers.push(slot.player);
     });
 
     // Sort by projected points
-    const sortedPlayers = availablePlayers.sort((a, b) => b.projected_points - a.projected_points);
+    const sortedPlayers = availablePlayers.sort(
+      (a, b) => b.projected_points - a.projected_points,
+    );
 
     const newLineup = [...INITIAL_LINEUP];
     const remainingPlayers = [...sortedPlayers];
@@ -160,8 +212,9 @@ export default function LineupScreen() {
     // Fill required positions first
     newLineup.forEach((slot, index) => {
       if (slot.isRequired) {
-        const playerIndex = remainingPlayers.findIndex(p =>
-          canPlayerFitPosition(p, slot.position) && p.status === 'active'
+        const playerIndex = remainingPlayers.findIndex(
+          (p) =>
+            canPlayerFitPosition(p, slot.position) && p.status === "active",
         );
         if (playerIndex !== -1) {
           newLineup[index] = { ...slot, player: remainingPlayers[playerIndex] };
@@ -173,36 +226,55 @@ export default function LineupScreen() {
     setLineup(newLineup);
     setBench(remainingPlayers);
 
-    Alert.alert('Lineup Optimized', 'Your lineup has been optimized for maximum projected points!');
+    Alert.alert(
+      "Lineup Optimized",
+      "Your lineup has been optimized for maximum projected points!",
+    );
   };
 
   const saveLineup = async () => {
     // Check if all required positions are filled
-    const unfilledRequired = lineup.filter(slot => slot.isRequired && !slot.player);
+    const unfilledRequired = lineup.filter(
+      (slot) => slot.isRequired && !slot.player,
+    );
     if (unfilledRequired.length > 0) {
-      Alert.alert('Incomplete Lineup', 'Please fill all required positions before saving.');
+      Alert.alert(
+        "Incomplete Lineup",
+        "Please fill all required positions before saving.",
+      );
       return;
     }
 
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Lineup Saved', `Your lineup has been saved with ${totalProjectedPoints.toFixed(1)} projected points!`);
+    Alert.alert(
+      "Lineup Saved",
+      `Your lineup has been saved with ${totalProjectedPoints.toFixed(1)} projected points!`,
+    );
   };
 
   const getPlayerStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return '#059669';
-      case 'injured': return '#ef4444';
-      case 'bye': return '#f59e0b';
-      default: return '#64748b';
+      case "active":
+        return "#059669";
+      case "injured":
+        return "#ef4444";
+      case "bye":
+        return "#f59e0b";
+      default:
+        return "#64748b";
     }
   };
 
   const getPlayerStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return 'checkmark-circle';
-      case 'injured': return 'medical';
-      case 'bye': return 'time';
-      default: return 'help-circle';
+      case "active":
+        return "checkmark-circle";
+      case "injured":
+        return "medical";
+      case "bye":
+        return "time";
+      default:
+        return "help-circle";
     }
   };
 
@@ -222,7 +294,9 @@ export default function LineupScreen() {
       </View>
 
       {slot.player ? (
-        <Animated.View style={[styles.slotPlayer, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View
+          style={[styles.slotPlayer, { transform: [{ scale: scaleAnim }] }]}
+        >
           <View style={styles.playerInfo}>
             <Text style={styles.slotPlayerName}>{slot.player.name}</Text>
             <Text style={styles.slotPlayerTeam}>{slot.player.team}</Text>
@@ -253,14 +327,17 @@ export default function LineupScreen() {
       style={styles.benchPlayer}
       onPress={() => {
         // Find first compatible empty slot
-        const emptySlotIndex = lineup.findIndex(slot =>
-          !slot.player && canPlayerFitPosition(player, slot.position)
+        const emptySlotIndex = lineup.findIndex(
+          (slot) => !slot.player && canPlayerFitPosition(player, slot.position),
         );
 
         if (emptySlotIndex !== -1) {
           handlePlayerDrop(player, emptySlotIndex);
         } else {
-          Alert.alert('No Available Spots', 'No compatible positions available for this player.');
+          Alert.alert(
+            "No Available Spots",
+            "No compatible positions available for this player.",
+          );
         }
       }}
     >
@@ -285,12 +362,18 @@ export default function LineupScreen() {
       {/* Header Stats */}
       <View style={styles.header}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{totalProjectedPoints.toFixed(1)}</Text>
+          <Text style={styles.statValue}>
+            {totalProjectedPoints.toFixed(1)}
+          </Text>
           <Text style={styles.statLabel}>Projected Points</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>
-            {lineup.filter(slot => slot.player && slot.player.status === 'active').length}
+            {
+              lineup.filter(
+                (slot) => slot.player && slot.player.status === "active",
+              ).length
+            }
           </Text>
           <Text style={styles.statLabel}>Active Players</Text>
         </View>
@@ -300,7 +383,9 @@ export default function LineupScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Starting Lineup</Text>
         <View style={styles.lineupGrid}>
-          {lineup.filter(slot => slot.position !== 'BENCH').map(renderLineupSlot)}
+          {lineup
+            .filter((slot) => slot.position !== "BENCH")
+            .map(renderLineupSlot)}
         </View>
       </View>
 
@@ -308,21 +393,24 @@ export default function LineupScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Bench</Text>
         <View style={styles.benchGrid}>
-          {lineup.filter(slot => slot.position === 'BENCH').map(renderLineupSlot)}
+          {lineup
+            .filter((slot) => slot.position === "BENCH")
+            .map(renderLineupSlot)}
         </View>
       </View>
 
       {/* Available Players */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Available Players</Text>
-        <View style={styles.benchList}>
-          {bench.map(renderBenchPlayer)}
-        </View>
+        <View style={styles.benchList}>{bench.map(renderBenchPlayer)}</View>
       </View>
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.optimizeButton} onPress={optimizeLineup}>
+        <TouchableOpacity
+          style={styles.optimizeButton}
+          onPress={optimizeLineup}
+        >
           <Ionicons name="flash" size={20} color="#fff" />
           <Text style={styles.buttonText}>Optimize</Text>
         </TouchableOpacity>
@@ -339,34 +427,34 @@ export default function LineupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   content: {
     padding: 16,
     paddingBottom: 100,
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 24,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2563eb',
+    fontWeight: "bold",
+    color: "#2563eb",
   },
   statLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 4,
   },
   section: {
@@ -374,140 +462,140 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
     marginBottom: 12,
   },
   lineupGrid: {
     gap: 8,
   },
   benchGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   lineupSlot: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
     minHeight: 80,
   },
   requiredSlot: {
-    borderColor: '#2563eb',
-    borderStyle: 'dashed',
+    borderColor: "#2563eb",
+    borderStyle: "dashed",
   },
   emptySlot: {
-    borderColor: '#cbd5e1',
-    backgroundColor: '#f8fafc',
+    borderColor: "#cbd5e1",
+    backgroundColor: "#f8fafc",
   },
   slotHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   slotPosition: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#2563eb',
+    fontWeight: "bold",
+    color: "#2563eb",
   },
   requiredIndicator: {
-    color: '#ef4444',
+    color: "#ef4444",
     marginLeft: 4,
   },
   slotPlayer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   playerInfo: {
     flex: 1,
   },
   slotPlayerName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   slotPlayerTeam: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   slotPlayerProjection: {
     fontSize: 12,
-    color: '#059669',
+    color: "#059669",
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   playerStatus: {
     marginLeft: 8,
   },
   emptySlotContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     opacity: 0.6,
   },
   emptySlotText: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: "#94a3b8",
     marginTop: 4,
   },
   benchList: {
     gap: 8,
   },
   benchPlayer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
   },
   benchPlayerInfo: {
     flex: 1,
   },
   benchPlayerName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   benchPlayerDetails: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   benchPlayerStatus: {
     marginLeft: 8,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 24,
   },
   optimizeButton: {
     flex: 1,
-    backgroundColor: '#f59e0b',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#f59e0b",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#059669',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#059669",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

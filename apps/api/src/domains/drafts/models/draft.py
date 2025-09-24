@@ -2,14 +2,31 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
+from enum import Enum
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import expression, func
 
 from domains.shared.models.base import Base
+
+
+class DraftStatus(Enum):
+    """Draft status enumeration."""
+    SCHEDULED = "scheduled"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
 
 
 class Draft(Base):
@@ -33,30 +50,45 @@ class Draft(Base):
 
     current_pick: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     current_round: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    current_team_id: Mapped[Optional[_uuid.UUID]] = mapped_column(
+    current_team_id: Mapped[_uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teams.team_id"), nullable=True
     )
 
-    draft_order: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True, default=list)
-    picks: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, nullable=True, default=list)
+    draft_order: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True, default=list
+    )
+    picks: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON, nullable=True, default=list
+    )
 
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     __table_args__ = (
-        CheckConstraint("draft_type IN ('snake', 'auction', 'linear')", name="valid_draft_type"),
+        CheckConstraint(
+            "draft_type IN ('snake', 'auction', 'linear')", name="valid_draft_type"
+        ),
         CheckConstraint(
             "status IN ('scheduled', 'active', 'paused', 'completed')",
             name="valid_draft_status",
         ),
         CheckConstraint("pick_timer BETWEEN 30 AND 300", name="valid_pick_timer"),
-        CheckConstraint("pick_time_limit BETWEEN 30 AND 600", name="valid_pick_time_limit"),
+        CheckConstraint(
+            "pick_time_limit BETWEEN 30 AND 600", name="valid_pick_time_limit"
+        ),
         CheckConstraint("current_pick >= 0", name="non_negative_current_pick"),
         CheckConstraint("current_round > 0", name="positive_current_round"),
         Index("idx_draft_league_id", "league_id"),

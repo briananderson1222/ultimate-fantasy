@@ -11,14 +11,16 @@ from domains.drafts.services.draft_service import DraftService
 from domains.leagues.services.league_service import LeagueService
 from domains.lineups.services.lineup_service import LineupService
 from domains.scoring.services.scoring_service import ScoringService
+from domains.shared.models.base import Base as DomainBase
+
+# Removed legacy PlayerService import
+from domains.sports.services.sports_data_service import SportsDataService
 from domains.trading.services.trading_service import TradingService
 from domains.users.services.user_service import UserService
 from domains.waitlist.services.waitlist_service import WaitlistService
-from services.player_service import PlayerService
-from domains.sports.services.sports_data_service import SportsDataService
-from domains.shared.models.base import Base as DomainBase
 from infrastructure.database.session_factory import get_session_factory
-from models.base import Base as LegacyBase
+
+# Legacy base import removed - using domain base only
 
 
 def _ensure_sqlite_schema() -> None:
@@ -40,7 +42,6 @@ def _ensure_sqlite_schema() -> None:
     try:
         engine = session.get_bind()
         DomainBase.metadata.create_all(bind=engine)
-        LegacyBase.metadata.create_all(bind=engine)
     finally:
         session.close()
 
@@ -103,7 +104,7 @@ def get_waitlist_service(db: Session = Depends(get_db)) -> WaitlistService:
 
 
 _sports_data_service: SportsDataService | None = None
-_player_service: PlayerService | None = None
+# Removed legacy PlayerService global variable
 
 
 def get_sports_data_service() -> SportsDataService:
@@ -117,15 +118,7 @@ def get_sports_data_service() -> SportsDataService:
     return _sports_data_service
 
 
-def get_player_service() -> PlayerService:
-    """Lazy-initialize the player service with consolidated sports data provider."""
-
-    global _player_service
-    if _player_service is None:
-        # Note: PlayerService will need to be updated to work with async sports service
-        # For now, create a basic instance
-        _player_service = PlayerService()
-    return _player_service
+# Removed legacy PlayerService dependency function
 
 
 def get_current_user_id(request: Request) -> _uuid.UUID:

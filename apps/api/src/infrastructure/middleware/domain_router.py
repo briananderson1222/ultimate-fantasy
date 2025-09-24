@@ -25,20 +25,13 @@ class DomainRouterMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
         self.domain_mappings = {
-            # New API routes with prefix
+            # API routes with prefix
             "/api/leagues": "leagues",
             "/api/lineups": "lineups",
             "/api/scoreboard": "scoring",
             "/api/waivers": "trading",
             "/api/waitlist": "waitlist",
             "/api/me": "users",
-            # Legacy routes without prefix
-            "/leagues": "leagues",
-            "/lineups": "lineups",
-            "/scoreboard": "scoring",
-            "/waivers": "trading",
-            "/waitlist": "waitlist",
-            "/me": "users",
         }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
