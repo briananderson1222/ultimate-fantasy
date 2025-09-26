@@ -1,16 +1,16 @@
-import { Platform } from 'react-native';
-import PushNotification, { Importance } from 'react-native-push-notification';
-import PushNotificationIOS from '@react-native-community/push-notification-ios';
-import messaging from '@react-native-firebase/messaging';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from "react-native";
+import PushNotification, { Importance } from "react-native-push-notification";
+import PushNotificationIOS from "@react-native-community/push-notification-ios";
+import messaging from "@react-native-firebase/messaging";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface NotificationPayload {
   id: string;
   title: string;
   body: string;
   data?: Record<string, any>;
-  category: 'league' | 'trade' | 'lineup' | 'scoring' | 'social' | 'general';
-  priority: 'high' | 'normal' | 'low';
+  category: "league" | "trade" | "lineup" | "scoring" | "social" | "general";
+  priority: "high" | "normal" | "low";
   soundName?: string;
   largeIcon?: string;
   bigText?: string;
@@ -40,7 +40,7 @@ export interface NotificationSettings {
   quietHours: {
     enabled: boolean;
     start: string; // HH:MM format
-    end: string;   // HH:MM format
+    end: string; // HH:MM format
   };
   soundEnabled: boolean;
   vibrationEnabled: boolean;
@@ -70,15 +70,15 @@ export class PushNotificationService {
         lineup: true,
         scoring: true,
         social: true,
-        general: true
+        general: true,
       },
       quietHours: {
         enabled: false,
-        start: '22:00',
-        end: '08:00'
+        start: "22:00",
+        end: "08:00",
       },
       soundEnabled: true,
-      vibrationEnabled: true
+      vibrationEnabled: true,
     };
   }
 
@@ -100,30 +100,32 @@ export class PushNotificationService {
       await this.requestPermissions();
       this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize push notifications:', error);
+      console.error("Failed to initialize push notifications:", error);
     }
   }
 
   private async setupFirebase(): Promise<void> {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       await messaging().requestPermission();
     }
 
-    messaging().onMessage(async remoteMessage => {
+    messaging().onMessage(async (remoteMessage) => {
       this.handleForegroundMessage(remoteMessage);
     });
 
-    messaging().onNotificationOpenedApp(remoteMessage => {
+    messaging().onNotificationOpenedApp((remoteMessage) => {
       this.handleNotificationOpen(remoteMessage);
     });
 
-    messaging().getInitialNotification().then(remoteMessage => {
-      if (remoteMessage) {
-        this.handleNotificationOpen(remoteMessage);
-      }
-    });
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage) => {
+        if (remoteMessage) {
+          this.handleNotificationOpen(remoteMessage);
+        }
+      });
 
-    messaging().onTokenRefresh(token => {
+    messaging().onTokenRefresh((token) => {
       this.deviceToken = token;
       this.sendTokenToServer(token);
     });
@@ -136,8 +138,8 @@ export class PushNotificationService {
   private async configurePushNotifications(): Promise<void> {
     PushNotification.configure({
       onRegister: (token) => {
-        console.log('TOKEN:', token);
-        if (Platform.OS === 'ios') {
+        console.log("TOKEN:", token);
+        if (Platform.OS === "ios") {
           this.deviceToken = token.token;
           this.sendTokenToServer(token.token);
         }
@@ -145,7 +147,7 @@ export class PushNotificationService {
 
       onNotification: (notification) => {
         this.handleLocalNotification(notification);
-        if (Platform.OS === 'ios') {
+        if (Platform.OS === "ios") {
           notification.finish(PushNotificationIOS.FetchResult.NoData);
         }
       },
@@ -155,7 +157,7 @@ export class PushNotificationService {
       },
 
       onRegistrationError: (err) => {
-        console.error('Registration error:', err);
+        console.error("Registration error:", err);
       },
 
       permissions: {
@@ -165,79 +167,79 @@ export class PushNotificationService {
       },
 
       popInitialNotification: true,
-      requestPermissions: Platform.OS === 'ios',
+      requestPermissions: Platform.OS === "ios",
     });
 
     this.createNotificationChannels();
   }
 
   private createNotificationChannels(): void {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       PushNotification.createChannel(
         {
-          channelId: 'fantasy-league',
-          channelName: 'League Updates',
-          channelDescription: 'Notifications about league activities',
+          channelId: "fantasy-league",
+          channelName: "League Updates",
+          channelDescription: "Notifications about league activities",
           importance: Importance.HIGH,
-          soundName: 'default',
+          soundName: "default",
           vibrate: true,
         },
-        () => {}
+        () => {},
       );
 
       PushNotification.createChannel(
         {
-          channelId: 'fantasy-trade',
-          channelName: 'Trade Notifications',
-          channelDescription: 'Trade proposals and updates',
+          channelId: "fantasy-trade",
+          channelName: "Trade Notifications",
+          channelDescription: "Trade proposals and updates",
           importance: Importance.HIGH,
-          soundName: 'default',
+          soundName: "default",
           vibrate: true,
         },
-        () => {}
+        () => {},
       );
 
       PushNotification.createChannel(
         {
-          channelId: 'fantasy-lineup',
-          channelName: 'Lineup Reminders',
-          channelDescription: 'Lineup deadline reminders',
+          channelId: "fantasy-lineup",
+          channelName: "Lineup Reminders",
+          channelDescription: "Lineup deadline reminders",
           importance: Importance.DEFAULT,
-          soundName: 'default',
+          soundName: "default",
           vibrate: true,
         },
-        () => {}
+        () => {},
       );
 
       PushNotification.createChannel(
         {
-          channelId: 'fantasy-scoring',
-          channelName: 'Scoring Updates',
-          channelDescription: 'Live scoring and game updates',
+          channelId: "fantasy-scoring",
+          channelName: "Scoring Updates",
+          channelDescription: "Live scoring and game updates",
           importance: Importance.DEFAULT,
-          soundName: 'default',
+          soundName: "default",
           vibrate: false,
         },
-        () => {}
+        () => {},
       );
 
       PushNotification.createChannel(
         {
-          channelId: 'fantasy-social',
-          channelName: 'Social Features',
-          channelDescription: 'Messages and social interactions',
+          channelId: "fantasy-social",
+          channelName: "Social Features",
+          channelDescription: "Messages and social interactions",
           importance: Importance.DEFAULT,
-          soundName: 'default',
+          soundName: "default",
           vibrate: true,
         },
-        () => {}
+        () => {},
       );
     }
   }
 
   private async requestPermissions(): Promise<boolean> {
     try {
-      if (Platform.OS === 'ios') {
+      if (Platform.OS === "ios") {
         const authStatus = await messaging().requestPermission();
         const enabled =
           authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -247,12 +249,15 @@ export class PushNotificationService {
         return true; // Android permissions are handled during channel creation
       }
     } catch (error) {
-      console.error('Permission request failed:', error);
+      console.error("Permission request failed:", error);
       return false;
     }
   }
 
-  public async scheduleLocalNotification(payload: NotificationPayload, scheduleTime?: Date): Promise<void> {
+  public async scheduleLocalNotification(
+    payload: NotificationPayload,
+    scheduleTime?: Date,
+  ): Promise<void> {
     if (!this.shouldShowNotification(payload)) return;
 
     const notificationConfig = {
@@ -261,16 +266,18 @@ export class PushNotificationService {
       message: payload.body,
       date: scheduleTime || new Date(Date.now() + 1000),
       channelId: `fantasy-${payload.category}`,
-      soundName: this.settings.soundEnabled ? (payload.soundName || 'default') : undefined,
+      soundName: this.settings.soundEnabled
+        ? payload.soundName || "default"
+        : undefined,
       playSound: this.settings.soundEnabled,
       vibrate: this.settings.vibrationEnabled,
-      actions: payload.actions?.map(action => action.id) || [],
+      actions: payload.actions?.map((action) => action.id) || [],
       userInfo: payload.data || {},
       category: payload.category,
-      ...(Platform.OS === 'android' && {
-        largeIcon: payload.largeIcon || 'ic_launcher',
+      ...(Platform.OS === "android" && {
+        largeIcon: payload.largeIcon || "ic_launcher",
         bigText: payload.bigText || payload.body,
-        importance: payload.priority === 'high' ? 'high' : 'default',
+        importance: payload.priority === "high" ? "high" : "default",
       }),
     };
 
@@ -278,7 +285,9 @@ export class PushNotificationService {
     this.addToHistory(payload);
   }
 
-  public async showImmediateNotification(payload: NotificationPayload): Promise<void> {
+  public async showImmediateNotification(
+    payload: NotificationPayload,
+  ): Promise<void> {
     if (!this.shouldShowNotification(payload)) return;
 
     const notificationConfig = {
@@ -286,16 +295,18 @@ export class PushNotificationService {
       title: payload.title,
       message: payload.body,
       channelId: `fantasy-${payload.category}`,
-      soundName: this.settings.soundEnabled ? (payload.soundName || 'default') : undefined,
+      soundName: this.settings.soundEnabled
+        ? payload.soundName || "default"
+        : undefined,
       playSound: this.settings.soundEnabled,
       vibrate: this.settings.vibrationEnabled,
-      actions: payload.actions?.map(action => action.id) || [],
+      actions: payload.actions?.map((action) => action.id) || [],
       userInfo: payload.data || {},
       category: payload.category,
-      ...(Platform.OS === 'android' && {
-        largeIcon: payload.largeIcon || 'ic_launcher',
+      ...(Platform.OS === "android" && {
+        largeIcon: payload.largeIcon || "ic_launcher",
         bigText: payload.bigText || payload.body,
-        importance: payload.priority === 'high' ? 'high' : 'default',
+        importance: payload.priority === "high" ? "high" : "default",
       }),
     };
 
@@ -309,7 +320,7 @@ export class PushNotificationService {
     }
 
     if (this.settings.quietHours.enabled && this.isQuietHours()) {
-      return payload.priority === 'high';
+      return payload.priority === "high";
     }
 
     return true;
@@ -317,7 +328,7 @@ export class PushNotificationService {
 
   private isQuietHours(): boolean {
     const now = new Date();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
     const { start, end } = this.settings.quietHours;
 
     if (start <= end) {
@@ -330,11 +341,11 @@ export class PushNotificationService {
   private handleForegroundMessage(remoteMessage: any): void {
     const payload: NotificationPayload = {
       id: remoteMessage.messageId || Date.now().toString(),
-      title: remoteMessage.notification?.title || 'Fantasy Update',
-      body: remoteMessage.notification?.body || '',
+      title: remoteMessage.notification?.title || "Fantasy Update",
+      body: remoteMessage.notification?.body || "",
       data: remoteMessage.data,
-      category: remoteMessage.data?.category || 'general',
-      priority: remoteMessage.data?.priority || 'normal'
+      category: remoteMessage.data?.category || "general",
+      priority: remoteMessage.data?.priority || "normal",
     };
 
     this.showImmediateNotification(payload);
@@ -354,7 +365,12 @@ export class PushNotificationService {
     const actionId = notification.action;
     const notificationId = notification.id || notification.userInfo?.id;
 
-    console.log('Notification action taken:', actionId, 'for notification:', notificationId);
+    console.log(
+      "Notification action taken:",
+      actionId,
+      "for notification:",
+      notificationId,
+    );
 
     this.updateHistoryAction(notificationId, actionId);
     this.handleAction(actionId, notification.userInfo || {});
@@ -362,39 +378,41 @@ export class PushNotificationService {
 
   private navigateToRelevantScreen(data: Record<string, any>): void {
     // This would integrate with your navigation system
-    console.log('Navigate to screen based on notification data:', data);
+    console.log("Navigate to screen based on notification data:", data);
   }
 
   private handleAction(actionId: string, data: Record<string, any>): void {
     switch (actionId) {
-      case 'accept_trade':
-        console.log('Accept trade action:', data);
+      case "accept_trade":
+        console.log("Accept trade action:", data);
         break;
-      case 'reject_trade':
-        console.log('Reject trade action:', data);
+      case "reject_trade":
+        console.log("Reject trade action:", data);
         break;
-      case 'view_lineup':
-        console.log('View lineup action:', data);
+      case "view_lineup":
+        console.log("View lineup action:", data);
         break;
-      case 'set_lineup':
-        console.log('Set lineup action:', data);
+      case "set_lineup":
+        console.log("Set lineup action:", data);
         break;
       default:
-        console.log('Unknown action:', actionId, data);
+        console.log("Unknown action:", actionId, data);
     }
   }
 
   private async sendTokenToServer(token: string): Promise<void> {
     try {
       // This would send the token to your backend
-      console.log('Sending device token to server:', token);
+      console.log("Sending device token to server:", token);
       // await ApiClient.getInstance().post('/users/device-token', { token, platform: Platform.OS });
     } catch (error) {
-      console.error('Failed to send token to server:', error);
+      console.error("Failed to send token to server:", error);
     }
   }
 
-  public async updateSettings(newSettings: Partial<NotificationSettings>): Promise<void> {
+  public async updateSettings(
+    newSettings: Partial<NotificationSettings>,
+  ): Promise<void> {
     this.settings = { ...this.settings, ...newSettings };
     await this.saveSettings();
   }
@@ -405,7 +423,7 @@ export class PushNotificationService {
 
   public async clearAllNotifications(): Promise<void> {
     PushNotification.cancelAllLocalNotifications();
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       PushNotificationIOS.removeAllDeliveredNotifications();
     }
   }
@@ -419,11 +437,11 @@ export class PushNotificationService {
   }
 
   public getUnreadNotifications(): NotificationHistory[] {
-    return this.history.filter(item => !item.readAt);
+    return this.history.filter((item) => !item.readAt);
   }
 
   public async markAsRead(id: string): Promise<void> {
-    const item = this.history.find(h => h.id === id);
+    const item = this.history.find((h) => h.id === id);
     if (item && !item.readAt) {
       item.readAt = Date.now();
       await this.saveHistory();
@@ -432,7 +450,7 @@ export class PushNotificationService {
 
   public async markAllAsRead(): Promise<void> {
     const now = Date.now();
-    this.history.forEach(item => {
+    this.history.forEach((item) => {
       if (!item.readAt) {
         item.readAt = now;
       }
@@ -444,7 +462,7 @@ export class PushNotificationService {
     const historyItem: NotificationHistory = {
       id: payload.id,
       payload,
-      receivedAt: Date.now()
+      receivedAt: Date.now(),
     };
 
     this.history.unshift(historyItem);
@@ -458,7 +476,7 @@ export class PushNotificationService {
   }
 
   private updateHistoryAction(id: string, actionId: string): void {
-    const item = this.history.find(h => h.id === id);
+    const item = this.history.find((h) => h.id === id);
     if (item) {
       item.actionTaken = actionId;
       item.readAt = Date.now();
@@ -468,39 +486,45 @@ export class PushNotificationService {
 
   private async loadSettings(): Promise<void> {
     try {
-      const data = await AsyncStorage.getItem('notification_settings');
+      const data = await AsyncStorage.getItem("notification_settings");
       if (data) {
         this.settings = { ...this.settings, ...JSON.parse(data) };
       }
     } catch (error) {
-      console.error('Failed to load notification settings:', error);
+      console.error("Failed to load notification settings:", error);
     }
   }
 
   private async saveSettings(): Promise<void> {
     try {
-      await AsyncStorage.setItem('notification_settings', JSON.stringify(this.settings));
+      await AsyncStorage.setItem(
+        "notification_settings",
+        JSON.stringify(this.settings),
+      );
     } catch (error) {
-      console.error('Failed to save notification settings:', error);
+      console.error("Failed to save notification settings:", error);
     }
   }
 
   private async loadHistory(): Promise<void> {
     try {
-      const data = await AsyncStorage.getItem('notification_history');
+      const data = await AsyncStorage.getItem("notification_history");
       if (data) {
         this.history = JSON.parse(data);
       }
     } catch (error) {
-      console.error('Failed to load notification history:', error);
+      console.error("Failed to load notification history:", error);
     }
   }
 
   private async saveHistory(): Promise<void> {
     try {
-      await AsyncStorage.setItem('notification_history', JSON.stringify(this.history));
+      await AsyncStorage.setItem(
+        "notification_history",
+        JSON.stringify(this.history),
+      );
     } catch (error) {
-      console.error('Failed to save notification history:', error);
+      console.error("Failed to save notification history:", error);
     }
   }
 
@@ -516,7 +540,7 @@ export class PushNotificationService {
       this.sendTokenToServer(newToken);
       return newToken;
     } catch (error) {
-      console.error('Failed to refresh token:', error);
+      console.error("Failed to refresh token:", error);
       return null;
     }
   }

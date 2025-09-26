@@ -9,19 +9,19 @@ const mockMatchData = {
     name: "Team Warriors",
     owner: "John Doe",
     logo: "/team-logos/warriors.png",
-    record: { wins: 8, losses: 4 }
+    record: { wins: 8, losses: 4 },
   },
   awayTeam: {
     id: "2",
     name: "Team Dragons",
     owner: "Jane Smith",
     logo: "/team-logos/dragons.png",
-    record: { wins: 6, losses: 6 }
+    record: { wins: 6, losses: 6 },
   },
   week: 13,
   projectedPoints: { home: 112.5, away: 108.2 },
   actualPoints: { home: 118.7, away: 105.3 },
-  status: "completed" as const
+  status: "completed" as const,
 };
 
 export const Upcoming = () => (
@@ -30,7 +30,7 @@ export const Upcoming = () => (
       match={{
         ...mockMatchData,
         status: "upcoming",
-        actualPoints: undefined
+        actualPoints: undefined,
       }}
     />
   </div>
@@ -42,7 +42,7 @@ export const InProgress = () => (
       match={{
         ...mockMatchData,
         status: "in_progress",
-        actualPoints: { home: 95.2, away: 78.1 }
+        actualPoints: { home: 95.2, away: 78.1 },
       }}
     />
   </div>
@@ -59,7 +59,7 @@ export const CloseGame = () => (
     <MatchCard
       match={{
         ...mockMatchData,
-        actualPoints: { home: 112.4, away: 112.1 }
+        actualPoints: { home: 112.4, away: 112.1 },
       }}
     />
   </div>
@@ -70,7 +70,7 @@ export const Blowout = () => (
     <MatchCard
       match={{
         ...mockMatchData,
-        actualPoints: { home: 145.8, away: 89.2 }
+        actualPoints: { home: 145.8, away: 89.2 },
       }}
     />
   </div>
@@ -81,7 +81,7 @@ export const WithPlayoffImplications = () => (
     <MatchCard
       match={{
         ...mockMatchData,
-        playoffImplications: "Winner clinches playoff spot"
+        playoffImplications: "Winner clinches playoff spot",
       }}
     />
     <MatchCard
@@ -89,7 +89,7 @@ export const WithPlayoffImplications = () => (
         ...mockMatchData,
         homeTeam: { ...mockMatchData.homeTeam, name: "Team Eliminators" },
         awayTeam: { ...mockMatchData.awayTeam, name: "Team Survivors" },
-        playoffImplications: "Loser eliminated from playoffs"
+        playoffImplications: "Loser eliminated from playoffs",
       }}
     />
   </div>
@@ -101,21 +101,21 @@ export const DifferentWeeks = () => (
       match={{
         ...mockMatchData,
         week: 1,
-        status: "upcoming"
+        status: "upcoming",
       }}
     />
     <MatchCard
       match={{
         ...mockMatchData,
         week: 8,
-        status: "in_progress"
+        status: "in_progress",
       }}
     />
     <MatchCard
       match={{
         ...mockMatchData,
         week: 16,
-        status: "completed"
+        status: "completed",
       }}
     />
   </div>

@@ -1,5 +1,5 @@
-import type { Story } from '@ladle/react';
-import { typographyTokens } from '../components/design-system/tokens/typography';
+import type { Story } from "@ladle/react";
+import { typographyTokens } from "../components/design-system/tokens/typography";
 
 interface TypographySampleProps {
   label: string;
@@ -7,7 +7,11 @@ interface TypographySampleProps {
   text?: string;
 }
 
-const TypographySample = ({ label, style, text = "The quick brown fox jumps over the lazy dog" }: TypographySampleProps) => (
+const TypographySample = ({
+  label,
+  style,
+  text = "The quick brown fox jumps over the lazy dog",
+}: TypographySampleProps) => (
   <div className="mb-6 p-4 border rounded-lg">
     <div className="text-sm font-mono text-gray-600 mb-2">{label}</div>
     <div style={style}>{text}</div>
@@ -17,7 +21,7 @@ const TypographySample = ({ label, style, text = "The quick brown fox jumps over
   </div>
 );
 
-const TypographyShowcase = ({ scale }: { scale: 'mobile' | 'desktop' | 'base' }) => {
+const TypographyShowcase = ({ scale }: { scale: "mobile" | "desktop" | "base" }) => {
   const tokens = typographyTokens[scale];
 
   return (
@@ -25,29 +29,13 @@ const TypographyShowcase = ({ scale }: { scale: 'mobile' | 'desktop' | 'base' })
       <h2 className="text-2xl font-bold mb-6 capitalize">{scale} Typography Scale</h2>
 
       <div className="space-y-1">
-        <TypographySample
-          label="Heading 1"
-          style={tokens.h1}
-          text="Main Page Heading"
-        />
+        <TypographySample label="Heading 1" style={tokens.h1} text="Main Page Heading" />
 
-        <TypographySample
-          label="Heading 2"
-          style={tokens.h2}
-          text="Section Heading"
-        />
+        <TypographySample label="Heading 2" style={tokens.h2} text="Section Heading" />
 
-        <TypographySample
-          label="Heading 3"
-          style={tokens.h3}
-          text="Subsection Heading"
-        />
+        <TypographySample label="Heading 3" style={tokens.h3} text="Subsection Heading" />
 
-        <TypographySample
-          label="Heading 4"
-          style={tokens.h4}
-          text="Card Title"
-        />
+        <TypographySample label="Heading 4" style={tokens.h4} text="Card Title" />
 
         <TypographySample
           label="Body Large"
@@ -73,17 +61,9 @@ const TypographyShowcase = ({ scale }: { scale: 'mobile' | 'desktop' | 'base' })
           text="Caption text for images, metadata, or fine print information."
         />
 
-        <TypographySample
-          label="Button"
-          style={tokens.button}
-          text="BUTTON TEXT"
-        />
+        <TypographySample label="Button" style={tokens.button} text="BUTTON TEXT" />
 
-        <TypographySample
-          label="Label"
-          style={tokens.label}
-          text="Form Label"
-        />
+        <TypographySample label="Label" style={tokens.label} text="Form Label" />
       </div>
     </div>
   );
@@ -97,10 +77,10 @@ const FontWeightDemo = () => {
       <h2 className="text-2xl font-bold mb-6">Font Weight Scale</h2>
 
       <div className="space-y-4">
-        {weights.map(weight => (
+        {weights.map((weight) => (
           <div key={weight} className="flex items-center space-x-4">
             <span className="w-16 text-sm font-mono text-gray-600">{weight}</span>
-            <span style={{ fontWeight: weight, fontSize: '18px' }}>
+            <span style={{ fontWeight: weight, fontSize: "18px" }}>
               Fantasy Sports Design System
             </span>
           </div>
@@ -147,11 +127,15 @@ export const FantasyContent: Story = () => (
     <div className="space-y-2 mb-4">
       <div className="flex justify-between">
         <span style={typographyTokens.base.body}>Josh Allen (QB)</span>
-        <span style={typographyTokens.base.bodySmall} className="text-green-600">23.2 pts</span>
+        <span style={typographyTokens.base.bodySmall} className="text-green-600">
+          23.2 pts
+        </span>
       </div>
       <div className="flex justify-between">
         <span style={typographyTokens.base.body}>Christian McCaffrey (RB)</span>
-        <span style={typographyTokens.base.bodySmall} className="text-green-600">18.7 pts</span>
+        <span style={typographyTokens.base.bodySmall} className="text-green-600">
+          18.7 pts
+        </span>
       </div>
     </div>
 
@@ -162,5 +146,5 @@ export const FantasyContent: Story = () => (
 );
 
 BaseScale.meta = {
-  title: 'Design System/Typography Tokens',
+  title: "Design System/Typography Tokens",
 };

@@ -22,17 +22,17 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   MobileTradeAnalyzer,
   type Trade as AnalyzerTrade,
   type TradePlayer,
-  type TradeTeam
-} from '@ultimate-fantasy/ui-components/src/components/TradeAnalyzer';
+  type TradeTeam,
+} from "@ultimate-fantasy/ui-components/src/components/TradeAnalyzer";
 import {
   MobilePlayerCard,
-  type Player as UIPlayer
-} from '@ultimate-fantasy/ui-components/src/components/PlayerCard';
+  type Player as UIPlayer,
+} from "@ultimate-fantasy/ui-components/src/components/PlayerCard";
 
 interface Player {
   id: string;

@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 // Mock react-query hooks to avoid needing a provider or network
 vi.mock("@tanstack/react-query", async () => {
-  const original = await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query");
+  const original =
+    await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query");
   return {
     ...original,
     useQuery: () => ({

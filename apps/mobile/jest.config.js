@@ -1,15 +1,15 @@
 module.exports = {
-  preset: 'jest-expo',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  preset: "jest-expo",
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   moduleNameMapper: {
-    '^@ultimate-fantasy/(.*)$': '<rootDir>/../../packages/$1/src',
+    "^@ultimate-fantasy/(.*)$": "<rootDir>/../../packages/$1/src",
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
+    "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)",
   ],
   collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/*.stories.{ts,tsx}',
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/*.stories.{ts,tsx}",
   ],
 };

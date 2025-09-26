@@ -8,15 +8,15 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@ultimate-fantasy/api-client",
     "@ultimate-fantasy/shared-logic",
-    "@ultimate-fantasy/ui-components"
+    "@ultimate-fantasy/ui-components",
   ],
 
   // Performance optimizations
   experimental: {
-    optimizePackageImports: ['@ultimate-fantasy/ui-components', 'lucide-react'],
-    webVitalsAttribution: ['CLS', 'LCP', 'FCP', 'FID', 'TTFB'],
+    optimizePackageImports: ["@ultimate-fantasy/ui-components", "lucide-react"],
+    webVitalsAttribution: ["CLS", "LCP", "FCP", "FID", "TTFB"],
     optimisticClientCache: true,
-    serverComponentsExternalPackages: ['sharp'],
+    serverComponentsExternalPackages: ["sharp"],
   },
 
   // Code splitting and bundle optimization
@@ -34,32 +34,32 @@ const nextConfig: NextConfig = {
           vendors: false,
           // Framework chunk (React, Next.js)
           framework: {
-            chunks: 'all',
-            name: 'framework',
+            chunks: "all",
+            name: "framework",
             test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
             priority: 40,
             enforce: true,
           },
           // UI components chunk
           ui: {
-            chunks: 'all',
-            name: 'ui-components',
+            chunks: "all",
+            name: "ui-components",
             test: /(?<!node_modules.*)[\\/]node_modules[\\/](@ultimate-fantasy\/ui-components|lucide-react|@radix-ui)[\\/]/,
             priority: 30,
             enforce: true,
           },
           // Shared logic chunk
           shared: {
-            chunks: 'all',
-            name: 'shared-logic',
+            chunks: "all",
+            name: "shared-logic",
             test: /(?<!node_modules.*)[\\/]node_modules[\\/](@ultimate-fantasy\/shared-logic|@ultimate-fantasy\/api-client)[\\/]/,
             priority: 25,
             enforce: true,
           },
           // Common vendor libraries
           commons: {
-            chunks: 'all',
-            name: 'commons',
+            chunks: "all",
+            name: "commons",
             test: /(?<!node_modules.*)[\\/]node_modules[\\/]/,
             priority: 20,
             minChunks: 2,
@@ -78,12 +78,20 @@ const nextConfig: NextConfig = {
         test: /\.(js|jsx|ts|tsx)$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
+          loader: "babel-loader",
           options: {
-            presets: ['next/babel'],
+            presets: ["next/babel"],
             plugins: [
-              ['import', { libraryName: 'lodash', libraryDirectory: '', camel2DashComponentName: false }, 'lodash'],
-              ['import', { libraryName: 'date-fns', libraryDirectory: '', camel2DashComponentName: false }, 'date-fns'],
+              [
+                "import",
+                { libraryName: "lodash", libraryDirectory: "", camel2DashComponentName: false },
+                "lodash",
+              ],
+              [
+                "import",
+                { libraryName: "date-fns", libraryDirectory: "", camel2DashComponentName: false },
+                "date-fns",
+              ],
             ],
           },
         },
@@ -91,14 +99,14 @@ const nextConfig: NextConfig = {
     }
 
     // Add bundle analyzer in development
-    if (dev && process.env.ANALYZE === 'true') {
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+    if (dev && process.env.ANALYZE === "true") {
+      const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
       config.plugins.push(
         new BundleAnalyzerPlugin({
-          analyzerMode: 'server',
+          analyzerMode: "server",
           analyzerPort: 8888,
           openAnalyzer: true,
-        })
+        }),
       );
     }
 
@@ -111,8 +119,8 @@ const nextConfig: NextConfig = {
 
   // Image optimization
   images: {
-    domains: ['localhost', 'ui-avatars.com'],
-    formats: ['image/webp', 'image/avif'],
+    domains: ["localhost", "ui-avatars.com"],
+    formats: ["image/webp", "image/avif"],
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
@@ -122,22 +130,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/api/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=600' },
-        ],
+        source: "/api/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, s-maxage=600" }],
       },
       {
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
-        source: '/images/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=86400' },
-        ],
+        source: "/images/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
       },
     ];
   },
@@ -146,8 +148,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/:path*`,
+        source: "/api/:path*",
+        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/:path*`,
       },
     ];
   },

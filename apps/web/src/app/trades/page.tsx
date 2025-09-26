@@ -9,7 +9,15 @@ import { Badge } from "../../components/ui/badge";
 import { useToast } from "../../components/ui/toast";
 import { PageHeader } from "../../components/ui/page-header";
 import { Modal } from "../../components/ui/modal";
-import { Clock, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Scale, Bell } from "lucide-react";
+import {
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  CheckCircle,
+  Scale,
+  Bell,
+} from "lucide-react";
 
 type Player = {
   id: string;
@@ -69,14 +77,71 @@ function uid() {
 
 // Mock player database for demo
 const MOCK_PLAYERS: Record<string, Player> = {
-  "p1": { id: "p1", name: "LeBron James", position: "SF", team: "LAL", projected_points: 52.5, current_value: 95 },
-  "p2": { id: "p2", name: "Stephen Curry", position: "PG", team: "GSW", projected_points: 48.2, current_value: 92 },
-  "p3": { id: "p3", name: "Kevin Durant", position: "PF", team: "PHX", projected_points: 46.8, current_value: 90 },
-  "p4": { id: "p4", name: "Giannis Antetokounmpo", position: "PF", team: "MIL", projected_points: 55.1, current_value: 98 },
-  "p5": { id: "p5", name: "Luka Dončić", position: "PG", team: "DAL", projected_points: 50.3, current_value: 94 },
-  "p6": { id: "p6", name: "Jayson Tatum", position: "SF", team: "BOS", projected_points: 45.7, current_value: 88 },
-  "p7": { id: "p7", name: "Nikola Jokić", position: "C", team: "DEN", projected_points: 52.8, current_value: 96 },
-  "p8": { id: "p8", name: "Joel Embiid", position: "C", team: "PHI", projected_points: 49.4, current_value: 91, injury_status: "questionable" },
+  p1: {
+    id: "p1",
+    name: "LeBron James",
+    position: "SF",
+    team: "LAL",
+    projected_points: 52.5,
+    current_value: 95,
+  },
+  p2: {
+    id: "p2",
+    name: "Stephen Curry",
+    position: "PG",
+    team: "GSW",
+    projected_points: 48.2,
+    current_value: 92,
+  },
+  p3: {
+    id: "p3",
+    name: "Kevin Durant",
+    position: "PF",
+    team: "PHX",
+    projected_points: 46.8,
+    current_value: 90,
+  },
+  p4: {
+    id: "p4",
+    name: "Giannis Antetokounmpo",
+    position: "PF",
+    team: "MIL",
+    projected_points: 55.1,
+    current_value: 98,
+  },
+  p5: {
+    id: "p5",
+    name: "Luka Dončić",
+    position: "PG",
+    team: "DAL",
+    projected_points: 50.3,
+    current_value: 94,
+  },
+  p6: {
+    id: "p6",
+    name: "Jayson Tatum",
+    position: "SF",
+    team: "BOS",
+    projected_points: 45.7,
+    current_value: 88,
+  },
+  p7: {
+    id: "p7",
+    name: "Nikola Jokić",
+    position: "C",
+    team: "DEN",
+    projected_points: 52.8,
+    current_value: 96,
+  },
+  p8: {
+    id: "p8",
+    name: "Joel Embiid",
+    position: "C",
+    team: "PHI",
+    projected_points: 49.4,
+    current_value: 91,
+    injury_status: "questionable",
+  },
 };
 
 // Trade analysis functions
@@ -96,7 +161,7 @@ function analyzeTradeProposal(offer: string[], request: string[]): TradeAnalysis
   const requestValue = calculateTradeValue(request);
   const valueDifference = Math.abs(offerValue - requestValue);
   const averageValue = (offerValue + requestValue) / 2;
-  const fairnessScore = Math.max(0, 100 - (valueDifference / averageValue * 100));
+  const fairnessScore = Math.max(0, 100 - (valueDifference / averageValue) * 100);
 
   const reasons: string[] = [];
   let recommendation: "accept" | "reject" | "negotiate" = "negotiate";
@@ -114,8 +179,8 @@ function analyzeTradeProposal(offer: string[], request: string[]): TradeAnalysis
   }
 
   // Check for injured players
-  const injuredOffered = offer.some(id => getPlayerInfo(id)?.injury_status);
-  const injuredRequested = request.some(id => getPlayerInfo(id)?.injury_status);
+  const injuredOffered = offer.some((id) => getPlayerInfo(id)?.injury_status);
+  const injuredRequested = request.some((id) => getPlayerInfo(id)?.injury_status);
 
   if (injuredOffered && !injuredRequested) {
     reasons.push("You're offering injured player(s)");
@@ -125,8 +190,8 @@ function analyzeTradeProposal(offer: string[], request: string[]): TradeAnalysis
   }
 
   // Position balance
-  const offeredPositions = offer.map(id => getPlayerInfo(id)?.position).filter(Boolean);
-  const requestedPositions = request.map(id => getPlayerInfo(id)?.position).filter(Boolean);
+  const offeredPositions = offer.map((id) => getPlayerInfo(id)?.position).filter(Boolean);
+  const requestedPositions = request.map((id) => getPlayerInfo(id)?.position).filter(Boolean);
 
   if (new Set(offeredPositions).size !== new Set(requestedPositions).size) {
     reasons.push("Consider position balance in your lineup");
@@ -138,7 +203,7 @@ function analyzeTradeProposal(offer: string[], request: string[]): TradeAnalysis
     value_difference: valueDifference,
     fairness_score: Math.round(fairnessScore),
     recommendation,
-    reasons
+    reasons,
   };
 }
 
@@ -179,7 +244,10 @@ export default function TradesPage() {
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
   const [showPlayerSearch, setShowPlayerSearch] = useState(false);
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
-  const [selectedField, setSelectedField] = useState<{ type: 'offer' | 'request', index: number } | null>(null);
+  const [selectedField, setSelectedField] = useState<{
+    type: "offer" | "request";
+    index: number;
+  } | null>(null);
 
   useEffect(() => {
     setTrades(loadTrades());
@@ -204,10 +272,11 @@ export default function TradesPage() {
 
   // Available players for search
   const availablePlayers = useMemo(() => {
-    return Object.values(MOCK_PLAYERS).filter(player =>
-      player.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
-      player.position.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
-      player.team.toLowerCase().includes(playerSearchQuery.toLowerCase())
+    return Object.values(MOCK_PLAYERS).filter(
+      (player) =>
+        player.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
+        player.position.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
+        player.team.toLowerCase().includes(playerSearchQuery.toLowerCase()),
     );
   }, [playerSearchQuery]);
 
@@ -267,7 +336,7 @@ export default function TradesPage() {
     if (!selectedField) return;
 
     const { type, index } = selectedField;
-    if (type === 'offer') {
+    if (type === "offer") {
       setOfferAt(index, playerId);
     } else {
       setRequestAt(index, playerId);
@@ -357,23 +426,33 @@ export default function TradesPage() {
 
           {/* Trade Analysis Card */}
           {tradeAnalysis && (
-            <div className={`rounded-lg border p-3 ${
-              tradeAnalysis.recommendation === "accept"
-                ? "bg-green-50 border-green-200"
-                : tradeAnalysis.recommendation === "reject"
-                  ? "bg-red-50 border-red-200"
-                  : "bg-yellow-50 border-yellow-200"
-            }`}>
+            <div
+              className={`rounded-lg border p-3 ${
+                tradeAnalysis.recommendation === "accept"
+                  ? "bg-green-50 border-green-200"
+                  : tradeAnalysis.recommendation === "reject"
+                    ? "bg-red-50 border-red-200"
+                    : "bg-yellow-50 border-yellow-200"
+              }`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Scale className="h-4 w-4" />
                   <span className="font-medium text-sm">Trade Analysis</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {tradeAnalysis.recommendation === "accept" && <CheckCircle className="h-4 w-4 text-green-600" />}
-                  {tradeAnalysis.recommendation === "reject" && <AlertCircle className="h-4 w-4 text-red-600" />}
-                  {tradeAnalysis.recommendation === "negotiate" && <TrendingUp className="h-4 w-4 text-yellow-600" />}
-                  <span className="text-sm font-medium capitalize">{tradeAnalysis.recommendation}</span>
+                  {tradeAnalysis.recommendation === "accept" && (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  )}
+                  {tradeAnalysis.recommendation === "reject" && (
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  {tradeAnalysis.recommendation === "negotiate" && (
+                    <TrendingUp className="h-4 w-4 text-yellow-600" />
+                  )}
+                  <span className="text-sm font-medium capitalize">
+                    {tradeAnalysis.recommendation}
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-xs">

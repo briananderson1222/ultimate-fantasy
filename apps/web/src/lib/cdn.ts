@@ -8,7 +8,7 @@
  * - Static asset preloading
  */
 
-import { env } from 'process';
+import { env } from "process";
 
 interface CDNConfig {
   baseUrl: string;
@@ -24,7 +24,7 @@ interface CDNConfig {
 
 interface AssetOptions {
   version?: string;
-  format?: 'webp' | 'avif' | 'jpg' | 'png';
+  format?: "webp" | "avif" | "jpg" | "png";
   quality?: number;
   width?: number;
   height?: number;
@@ -76,10 +76,13 @@ class CDNManager {
   /**
    * Generate responsive image URLs for different screen sizes.
    */
-  getResponsiveImageUrls(path: string, options: AssetOptions = {}): Array<{ url: string; width: number }> {
-    return this.config.imageOptimization.sizes.map(width => ({
+  getResponsiveImageUrls(
+    path: string,
+    options: AssetOptions = {},
+  ): Array<{ url: string; width: number }> {
+    return this.config.imageOptimization.sizes.map((width) => ({
       url: this.getAssetUrl(path, { ...options, width }),
-      width
+      width,
     }));
   }
 
@@ -88,30 +91,32 @@ class CDNManager {
    */
   generateSrcSet(path: string, options: AssetOptions = {}): string {
     const urls = this.getResponsiveImageUrls(path, options);
-    return urls.map(({ url, width }) => `${url} ${width}w`).join(', ');
+    return urls.map(({ url, width }) => `${url} ${width}w`).join(", ");
   }
 
   /**
    * Preload critical assets for better performance.
    */
-  preloadAssets(assets: Array<{ path: string; options?: AssetOptions; priority?: 'high' | 'low' }>): void {
-    if (typeof document === 'undefined') return;
+  preloadAssets(
+    assets: Array<{ path: string; options?: AssetOptions; priority?: "high" | "low" }>,
+  ): void {
+    if (typeof document === "undefined") return;
 
-    assets.forEach(({ path, options = {}, priority = 'high' }) => {
-      const link = document.createElement('link');
-      link.rel = 'preload';
+    assets.forEach(({ path, options = {}, priority = "high" }) => {
+      const link = document.createElement("link");
+      link.rel = "preload";
       link.href = this.getAssetUrl(path, options);
 
       if (this.isImageAsset(path)) {
-        link.as = 'image';
+        link.as = "image";
       } else if (this.isStyleAsset(path)) {
-        link.as = 'style';
+        link.as = "style";
       } else if (this.isScriptAsset(path)) {
-        link.as = 'script';
+        link.as = "script";
       }
 
-      if (priority === 'high') {
-        link.setAttribute('fetchpriority', 'high');
+      if (priority === "high") {
+        link.setAttribute("fetchpriority", "high");
       }
 
       document.head.appendChild(link);
@@ -122,11 +127,11 @@ class CDNManager {
    * Prefetch assets for future navigation.
    */
   prefetchAssets(assets: string[]): void {
-    if (typeof document === 'undefined') return;
+    if (typeof document === "undefined") return;
 
-    assets.forEach(path => {
-      const link = document.createElement('link');
-      link.rel = 'prefetch';
+    assets.forEach((path) => {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
       link.href = this.getAssetUrl(path);
       document.head.appendChild(link);
     });
@@ -135,41 +140,41 @@ class CDNManager {
   /**
    * Get optimal image format based on browser support.
    */
-  getOptimalImageFormat(): 'avif' | 'webp' | 'jpg' {
-    if (typeof window === 'undefined') return 'jpg';
+  getOptimalImageFormat(): "avif" | "webp" | "jpg" {
+    if (typeof window === "undefined") return "jpg";
 
     // Check for AVIF support
-    const canvas = document.createElement('canvas');
-    if (canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0) {
-      return 'avif';
+    const canvas = document.createElement("canvas");
+    if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
+      return "avif";
     }
 
     // Check for WebP support
-    if (canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0) {
-      return 'webp';
+    if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+      return "webp";
     }
 
-    return 'jpg';
+    return "jpg";
   }
 
   /**
    * Generate cache headers for static assets.
    */
   getCacheHeaders(path: string): Record<string, string> {
-    const isVersioned = path.includes('v=') || path.includes('_next/static');
+    const isVersioned = path.includes("v=") || path.includes("_next/static");
 
     if (isVersioned) {
       // Long-term caching for versioned assets
       return {
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Expires': new Date(Date.now() + 31536000 * 1000).toUTCString()
+        "Cache-Control": "public, max-age=31536000, immutable",
+        Expires: new Date(Date.now() + 31536000 * 1000).toUTCString(),
       };
     }
 
     // Short-term caching for dynamic content
     return {
-      'Cache-Control': `public, max-age=${this.config.defaultTTL}`,
-      'Expires': new Date(Date.now() + this.config.defaultTTL * 1000).toUTCString()
+      "Cache-Control": `public, max-age=${this.config.defaultTTL}`,
+      Expires: new Date(Date.now() + this.config.defaultTTL * 1000).toUTCString(),
     };
   }
 
@@ -180,16 +185,16 @@ class CDNManager {
     try {
       const purgeUrl = `${this.config.baseUrl}/purge`;
       const response = await fetch(purgeUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ paths: [path] })
+        body: JSON.stringify({ paths: [path] }),
       });
 
       return response.ok;
     } catch (error) {
-      console.error('Failed to purge asset from CDN:', error);
+      console.error("Failed to purge asset from CDN:", error);
       return false;
     }
   }
@@ -207,12 +212,12 @@ class CDNManager {
       const response = await fetch(`${this.config.baseUrl}/metrics`);
       return await response.json();
     } catch (error) {
-      console.error('Failed to fetch CDN metrics:', error);
+      console.error("Failed to fetch CDN metrics:", error);
       return {
         hitRate: 0,
         avgResponseTime: 0,
         bandwidth: 0,
-        requestCount: 0
+        requestCount: 0,
       };
     }
   }
@@ -233,27 +238,27 @@ class CDNManager {
     const params = new URLSearchParams();
 
     if (options.format) {
-      params.append('format', options.format);
+      params.append("format", options.format);
     }
 
     if (options.quality) {
-      params.append('quality', options.quality.toString());
+      params.append("quality", options.quality.toString());
     }
 
     if (options.width) {
-      params.append('width', options.width.toString());
+      params.append("width", options.width.toString());
     }
 
     if (options.height) {
-      params.append('height', options.height.toString());
+      params.append("height", options.height.toString());
     }
 
     if (options.blur) {
-      params.append('blur', '10');
+      params.append("blur", "10");
     }
 
     if (params.toString()) {
-      const separator = url.includes('?') ? '&' : '?';
+      const separator = url.includes("?") ? "&" : "?";
       url += separator + params.toString();
     }
 
@@ -263,15 +268,15 @@ class CDNManager {
 
 // Default CDN configuration
 const defaultConfig: CDNConfig = {
-  baseUrl: env.NEXT_PUBLIC_CDN_URL || 'https://cdn.ultimate-fantasy.com',
-  enableCache: env.NODE_ENV === 'production',
+  baseUrl: env.NEXT_PUBLIC_CDN_URL || "https://cdn.ultimate-fantasy.com",
+  enableCache: env.NODE_ENV === "production",
   defaultTTL: 3600, // 1 hour
-  regions: ['us-east-1', 'us-west-2', 'eu-west-1'],
+  regions: ["us-east-1", "us-west-2", "eu-west-1"],
   imageOptimization: {
-    formats: ['avif', 'webp', 'jpg'],
+    formats: ["avif", "webp", "jpg"],
     qualities: [50, 75, 90],
-    sizes: [320, 640, 768, 1024, 1280, 1920]
-  }
+    sizes: [320, 640, 768, 1024, 1280, 1920],
+  },
 };
 
 // Global CDN manager instance
@@ -287,8 +292,7 @@ export const getImageSrcSet = (path: string, options?: AssetOptions) =>
 export const preloadCriticalAssets = (assets: Array<{ path: string; options?: AssetOptions }>) =>
   cdnManager.preloadAssets(assets);
 
-export const getOptimalImageFormat = () =>
-  cdnManager.getOptimalImageFormat();
+export const getOptimalImageFormat = () => cdnManager.getOptimalImageFormat();
 
 // React hook for CDN assets
 export function useCDNAsset(path: string, options?: AssetOptions) {
@@ -299,21 +303,21 @@ export function useCDNAsset(path: string, options?: AssetOptions) {
     url,
     srcSet,
     preload: () => cdnManager.preloadAssets([{ path, options }]),
-    prefetch: () => cdnManager.prefetchAssets([path])
+    prefetch: () => cdnManager.prefetchAssets([path]),
   };
 }
 
 // Image component props helper
 export function getCDNImageProps(src: string, options?: AssetOptions & { alt: string }) {
-  const { alt, ...assetOptions } = options || { alt: '' };
+  const { alt, ...assetOptions } = options || { alt: "" };
 
   return {
     src: cdnManager.getAssetUrl(src, assetOptions),
     srcSet: cdnManager.generateSrcSet(src, assetOptions),
     alt,
-    loading: 'lazy' as const,
-    decoding: 'async' as const,
-    sizes: '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+    loading: "lazy" as const,
+    decoding: "async" as const,
+    sizes: "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
   };
 }
 

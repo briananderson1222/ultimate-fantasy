@@ -10,9 +10,9 @@
  * - Navigation performance
  */
 
-import { measure, configure } from '@react-native-performance/flipper-reporter';
-import { Platform } from 'react-native';
-import DeviceInfo from 'react-native-device-info';
+import { measure, configure } from "@react-native-performance/flipper-reporter";
+import { Platform } from "react-native";
+import DeviceInfo from "react-native-device-info";
 
 // Performance test configuration
 const PERFORMANCE_CONFIG = {
@@ -127,24 +127,41 @@ class MobilePerformanceTester {
 
   private calculateMetrics(): PerformanceMetrics {
     const totalFrames = this.frameData.length;
-    const droppedFrames = this.frameData.filter(frame => frame.isDropped).length;
-    const totalTime = this.frameData.length > 0 ?
-      (this.frameData[this.frameData.length - 1].timestamp - this.frameData[0].timestamp) / 1000 : 0;
+    const droppedFrames = this.frameData.filter(
+      (frame) => frame.isDropped,
+    ).length;
+    const totalTime =
+      this.frameData.length > 0
+        ? (this.frameData[this.frameData.length - 1].timestamp -
+            this.frameData[0].timestamp) /
+          1000
+        : 0;
 
     const averageFPS = totalTime > 0 ? totalFrames / totalTime : 0;
-    const frameDropPercentage = totalFrames > 0 ? (droppedFrames / totalFrames) * 100 : 0;
+    const frameDropPercentage =
+      totalFrames > 0 ? (droppedFrames / totalFrames) * 100 : 0;
 
-    const averageFrameTime = this.frameData.length > 0 ?
-      this.frameData.reduce((sum, frame) => sum + frame.frameTime, 0) / this.frameData.length : 0;
+    const averageFrameTime =
+      this.frameData.length > 0
+        ? this.frameData.reduce((sum, frame) => sum + frame.frameTime, 0) /
+          this.frameData.length
+        : 0;
 
-    const maxMemory = this.memorySnapshots.length > 0 ? Math.max(...this.memorySnapshots) : 0;
-    const minMemory = this.memorySnapshots.length > 0 ? Math.min(...this.memorySnapshots) : 0;
+    const maxMemory =
+      this.memorySnapshots.length > 0 ? Math.max(...this.memorySnapshots) : 0;
+    const minMemory =
+      this.memorySnapshots.length > 0 ? Math.min(...this.memorySnapshots) : 0;
     const memoryIncrease = maxMemory - minMemory;
 
     // Estimate JS thread blocking (frames taking significantly longer than budget)
-    const blockingFrames = this.frameData.filter(frame => frame.frameTime > PERFORMANCE_CONFIG.frameBudgetMs * 3);
-    const jsThreadBlocking = blockingFrames.length > 0 ?
-      blockingFrames.reduce((sum, frame) => sum + frame.frameTime, 0) / blockingFrames.length : 0;
+    const blockingFrames = this.frameData.filter(
+      (frame) => frame.frameTime > PERFORMANCE_CONFIG.frameBudgetMs * 3,
+    );
+    const jsThreadBlocking =
+      blockingFrames.length > 0
+        ? blockingFrames.reduce((sum, frame) => sum + frame.frameTime, 0) /
+          blockingFrames.length
+        : 0;
 
     return {
       averageFPS,
@@ -158,7 +175,7 @@ class MobilePerformanceTester {
 
   async measureComponentRender<T>(
     componentRenderer: () => Promise<T>,
-    componentName: string
+    componentName: string,
   ): Promise<{ result: T; metrics: PerformanceMetrics }> {
     console.log(`Starting performance measurement for ${componentName}`);
 
@@ -169,21 +186,28 @@ class MobilePerformanceTester {
     const renderEndTime = performance.now();
 
     // Let the component settle and animations complete
-    await new Promise(resolve => setTimeout(resolve, PERFORMANCE_CONFIG.animationDurationMs + 100));
+    await new Promise((resolve) =>
+      setTimeout(resolve, PERFORMANCE_CONFIG.animationDurationMs + 100),
+    );
 
     const metrics = this.stopRecording();
     metrics.renderTime = renderEndTime - renderStartTime;
 
-    console.log(`Performance measurement completed for ${componentName}:`, metrics);
+    console.log(
+      `Performance measurement completed for ${componentName}:`,
+      metrics,
+    );
 
     return { result, metrics };
   }
 
   async measureListScrolling(
     scrollFunction: () => Promise<void>,
-    itemCount: number
+    itemCount: number,
   ): Promise<PerformanceMetrics> {
-    console.log(`Starting list scrolling performance test with ${itemCount} items`);
+    console.log(
+      `Starting list scrolling performance test with ${itemCount} items`,
+    );
 
     this.startRecording();
 
@@ -191,19 +215,19 @@ class MobilePerformanceTester {
     await scrollFunction();
 
     // Let scrolling settle
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const metrics = this.stopRecording();
 
-    console.log('List scrolling performance results:', metrics);
+    console.log("List scrolling performance results:", metrics);
 
     return metrics;
   }
 
   async measureNavigationPerformance(
-    navigationFunction: () => Promise<void>
+    navigationFunction: () => Promise<void>,
   ): Promise<PerformanceMetrics> {
-    console.log('Starting navigation performance test');
+    console.log("Starting navigation performance test");
 
     const navigationStartTime = performance.now();
 
@@ -216,26 +240,28 @@ class MobilePerformanceTester {
     const metrics = this.stopRecording();
     metrics.navigationTime = navigationEndTime - navigationStartTime;
 
-    console.log('Navigation performance results:', metrics);
+    console.log("Navigation performance results:", metrics);
 
     return metrics;
   }
 
   async measureAnimationPerformance(
-    animationFunction: () => Promise<void>
+    animationFunction: () => Promise<void>,
   ): Promise<PerformanceMetrics> {
-    console.log('Starting animation performance test');
+    console.log("Starting animation performance test");
 
     this.startRecording();
 
     await animationFunction();
 
     // Wait for animation completion
-    await new Promise(resolve => setTimeout(resolve, PERFORMANCE_CONFIG.animationDurationMs));
+    await new Promise((resolve) =>
+      setTimeout(resolve, PERFORMANCE_CONFIG.animationDurationMs),
+    );
 
     const metrics = this.stopRecording();
 
-    console.log('Animation performance results:', metrics);
+    console.log("Animation performance results:", metrics);
 
     return metrics;
   }
@@ -268,7 +294,7 @@ export class PerformanceTestUtils {
       maxMemoryIncrease: number;
       maxJSThreadBlocking: number;
       maxNavigationTime: number;
-    }>
+    }>,
   ): { passed: boolean; issues: string[] } {
     const issues: string[] = [];
     const defaultRequirements = {
@@ -283,27 +309,39 @@ export class PerformanceTestUtils {
     const reqs = { ...defaultRequirements, ...requirements };
 
     if (metrics.averageFPS < reqs.minFPS) {
-      issues.push(`FPS too low: ${metrics.averageFPS.toFixed(1)} < ${reqs.minFPS}`);
+      issues.push(
+        `FPS too low: ${metrics.averageFPS.toFixed(1)} < ${reqs.minFPS}`,
+      );
     }
 
     if (metrics.frameDrops > reqs.maxFrameDrops) {
-      issues.push(`Frame drops too high: ${metrics.frameDrops.toFixed(1)}% > ${reqs.maxFrameDrops}%`);
+      issues.push(
+        `Frame drops too high: ${metrics.frameDrops.toFixed(1)}% > ${reqs.maxFrameDrops}%`,
+      );
     }
 
     if (metrics.renderTime > reqs.maxRenderTime) {
-      issues.push(`Render time too high: ${metrics.renderTime.toFixed(1)}ms > ${reqs.maxRenderTime}ms`);
+      issues.push(
+        `Render time too high: ${metrics.renderTime.toFixed(1)}ms > ${reqs.maxRenderTime}ms`,
+      );
     }
 
     if (metrics.memoryUsage > reqs.maxMemoryIncrease) {
-      issues.push(`Memory increase too high: ${metrics.memoryUsage.toFixed(1)}MB > ${reqs.maxMemoryIncrease}MB`);
+      issues.push(
+        `Memory increase too high: ${metrics.memoryUsage.toFixed(1)}MB > ${reqs.maxMemoryIncrease}MB`,
+      );
     }
 
     if (metrics.jsThreadBlocking > reqs.maxJSThreadBlocking) {
-      issues.push(`JS thread blocking too high: ${metrics.jsThreadBlocking.toFixed(1)}ms > ${reqs.maxJSThreadBlocking}ms`);
+      issues.push(
+        `JS thread blocking too high: ${metrics.jsThreadBlocking.toFixed(1)}ms > ${reqs.maxJSThreadBlocking}ms`,
+      );
     }
 
     if (metrics.navigationTime > reqs.maxNavigationTime) {
-      issues.push(`Navigation time too high: ${metrics.navigationTime.toFixed(1)}ms > ${reqs.maxNavigationTime}ms`);
+      issues.push(
+        `Navigation time too high: ${metrics.navigationTime.toFixed(1)}ms > ${reqs.maxNavigationTime}ms`,
+      );
     }
 
     const passed = issues.length === 0;
@@ -376,30 +414,40 @@ export class PerformanceTestUtils {
 // Performance benchmark decorator
 export function performanceBenchmark(
   testName: string,
-  requirements?: Parameters<typeof PerformanceTestUtils.validatePerformanceMetrics>[2]
+  requirements?: Parameters<
+    typeof PerformanceTestUtils.validatePerformanceMetrics
+  >[2],
 ) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+  return function (
+    target: any,
+    propertyName: string,
+    descriptor: PropertyDescriptor,
+  ) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
       console.log(`Starting performance benchmark: ${testName}`);
 
       const deviceInfo = await PerformanceTestUtils.getDeviceInfo();
-      console.log('Device info:', deviceInfo);
+      console.log("Device info:", deviceInfo);
 
-      const { result, metrics } = await PerformanceTestUtils.tester.measureComponentRender(
-        () => originalMethod.apply(this, args),
-        testName
-      );
+      const { result, metrics } =
+        await PerformanceTestUtils.tester.measureComponentRender(
+          () => originalMethod.apply(this, args),
+          testName,
+        );
 
       const validation = PerformanceTestUtils.validatePerformanceMetrics(
         metrics,
         testName,
-        requirements
+        requirements,
       );
 
       if (!validation.passed) {
-        console.error(`Performance benchmark "${testName}" failed:`, validation.issues);
+        console.error(
+          `Performance benchmark "${testName}" failed:`,
+          validation.issues,
+        );
         // In test environment, this would throw an error
         // throw new Error(`Performance requirements not met: ${validation.issues.join(', ')}`);
       }

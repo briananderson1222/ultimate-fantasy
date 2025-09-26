@@ -1,5 +1,5 @@
-import type { Story } from '@ladle/react';
-import { ProgressBar } from '../components/design-system/primitives/ProgressBar';
+import type { Story } from "@ladle/react";
+import { ProgressBar } from "../components/design-system/primitives/ProgressBar";
 
 // Win percentage examples for fantasy sports
 const WinPercentageDemo = () => (
@@ -53,32 +53,17 @@ const RosterPercentageDemo = () => (
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold mb-2">Popular Player (High Roster %)</h3>
-        <ProgressBar
-          value={94}
-          size="md"
-          showLabel={true}
-          label="Rostered in 94% of leagues"
-        />
+        <ProgressBar value={94} size="md" showLabel={true} label="Rostered in 94% of leagues" />
       </div>
 
       <div>
         <h3 className="text-lg font-semibold mb-2">Trending Player (Medium Roster %)</h3>
-        <ProgressBar
-          value={67}
-          size="md"
-          showLabel={true}
-          label="Rostered in 67% of leagues"
-        />
+        <ProgressBar value={67} size="md" showLabel={true} label="Rostered in 67% of leagues" />
       </div>
 
       <div>
         <h3 className="text-lg font-semibold mb-2">Sleeper Pick (Low Roster %)</h3>
-        <ProgressBar
-          value={12}
-          size="md"
-          showLabel={true}
-          label="Rostered in 12% of leagues"
-        />
+        <ProgressBar value={12} size="md" showLabel={true} label="Rostered in 12% of leagues" />
       </div>
     </div>
   </div>
@@ -116,8 +101,20 @@ export const Animated: Story = () => (
   <div className="p-6 space-y-4">
     <h2 className="text-2xl font-bold">Animated Progress Bars</h2>
     <ProgressBar value={30} animated={true} showLabel={true} label="Loading..." />
-    <ProgressBar value={60} animated={true} variant="success" showLabel={true} label="In Progress" />
-    <ProgressBar value={90} animated={true} variant="success" showLabel={true} label="Almost Complete" />
+    <ProgressBar
+      value={60}
+      animated={true}
+      variant="success"
+      showLabel={true}
+      label="In Progress"
+    />
+    <ProgressBar
+      value={90}
+      animated={true}
+      variant="success"
+      showLabel={true}
+      label="Almost Complete"
+    />
   </div>
 );
 
@@ -133,5 +130,5 @@ export const FantasyScenarios: Story = () => (
 );
 
 Default.meta = {
-  title: 'Design System/Primitives/ProgressBar',
+  title: "Design System/Primitives/ProgressBar",
 };

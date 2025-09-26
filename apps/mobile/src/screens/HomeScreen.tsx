@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { StackNavigationProp } from "@react-navigation/stack";
 
 type RootStackParamList = {
   Home: undefined;
@@ -9,7 +9,7 @@ type RootStackParamList = {
 };
 
 type HomeScreenProps = {
-  navigation: StackNavigationProp<RootStackParamList, 'Home'>;
+  navigation: StackNavigationProp<RootStackParamList, "Home">;
 };
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
@@ -21,22 +21,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Dashboard')}
+          onPress={() => navigation.navigate("Dashboard")}
         >
           <Text style={styles.buttonText}>Dashboard</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Leagues')}
+          onPress={() => navigation.navigate("Leagues")}
         >
           <Text style={styles.buttonText}>My Leagues</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footerText}>
-        Manage your fantasy teams on the go
-      </Text>
+      <Text style={styles.footerText}>Manage your fantasy teams on the go</Text>
     </View>
   );
 }
@@ -44,43 +42,43 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#f8fafc",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 20,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 40,
   },
   buttonContainer: {
-    width: '100%',
+    width: "100%",
     maxWidth: 300,
     gap: 16,
   },
   button: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footerText: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: "#94a3b8",
     marginTop: 40,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

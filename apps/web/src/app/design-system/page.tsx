@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 import {
   Card,
   Button,
@@ -12,9 +12,9 @@ import {
   TrendingPlayers,
   SettingsGrid,
   LeagueChat,
-  useTheme
-} from '../../components/design-system';
-import { Settings, Plus, Trophy } from 'lucide-react';
+  useTheme,
+} from "../../components/design-system";
+import { Settings, Plus, Trophy } from "lucide-react";
 
 const mockMatch = {
   homeTeam: {
@@ -22,19 +22,19 @@ const mockMatch = {
     name: "Team Warriors",
     owner: "John Doe",
     logo: "/team-logos/warriors.png",
-    record: { wins: 8, losses: 4 }
+    record: { wins: 8, losses: 4 },
   },
   awayTeam: {
     id: "2",
     name: "Team Dragons",
     owner: "Jane Smith",
     logo: "/team-logos/dragons.png",
-    record: { wins: 6, losses: 6 }
+    record: { wins: 6, losses: 6 },
   },
   week: 13,
   projectedPoints: { home: 112.5, away: 108.2 },
   actualPoints: { home: 118.7, away: 105.3 },
-  status: "completed" as const
+  status: "completed" as const,
 };
 
 const mockPlayer = {
@@ -48,10 +48,10 @@ const mockPlayer = {
     projected: 22.1,
     passingYards: 325,
     touchdowns: 3,
-    interceptions: 0
+    interceptions: 0,
   },
   injury: null,
-  status: "active" as const
+  status: "active" as const,
 };
 
 const mockTrendingPlayers = [
@@ -65,10 +65,10 @@ const mockTrendingPlayers = [
       direction: "up" as const,
       percentage: 15.3,
       reason: "Target share increasing",
-      addDropPercentage: 23.1
+      addDropPercentage: 23.1,
     },
     weeklyPoints: [12.3, 18.7, 24.1, 19.5],
-    projectedPoints: 21.8
+    projectedPoints: 21.8,
   },
   {
     id: "2",
@@ -80,11 +80,11 @@ const mockTrendingPlayers = [
       direction: "down" as const,
       percentage: -8.7,
       reason: "Injury concerns",
-      addDropPercentage: -12.4
+      addDropPercentage: -12.4,
     },
     weeklyPoints: [15.2, 8.1, 6.3, 4.9],
-    projectedPoints: 8.2
-  }
+    projectedPoints: 8.2,
+  },
 ];
 
 const mockSettings = [
@@ -94,7 +94,7 @@ const mockSettings = [
     description: "Configure how points are awarded",
     value: "Standard",
     type: "select" as const,
-    options: ["Standard", "PPR", "Half PPR", "Custom"]
+    options: ["Standard", "PPR", "Half PPR", "Custom"],
   },
   {
     id: "roster_size",
@@ -103,8 +103,8 @@ const mockSettings = [
     value: "16",
     type: "number" as const,
     min: 12,
-    max: 20
-  }
+    max: 20,
+  },
 ];
 
 const mockMessages = [
@@ -114,7 +114,7 @@ const mockMessages = [
     username: "FantasyGuru",
     message: "Anyone want to trade for a WR? I need RB depth",
     timestamp: new Date("2024-01-15T10:30:00"),
-    type: "message" as const
+    type: "message" as const,
   },
   {
     id: "2",
@@ -126,9 +126,9 @@ const mockMessages = [
     transactionData: {
       type: "waiver_claim" as const,
       player: "Gus Edwards",
-      team: "Team Warriors"
-    }
-  }
+      team: "Team Warriors",
+    },
+  },
 ];
 
 export default function DesignSystemPage() {
@@ -142,15 +142,15 @@ export default function DesignSystemPage() {
           <h1 className="text-3xl font-bold">Design System Showcase</h1>
           <div className="flex items-center gap-2">
             <Button
-              variant={theme === 'light' ? 'primary' : 'secondary'}
-              onClick={() => setTheme('light')}
+              variant={theme === "light" ? "primary" : "secondary"}
+              onClick={() => setTheme("light")}
               size="sm"
             >
               Light
             </Button>
             <Button
-              variant={theme === 'dark' ? 'primary' : 'secondary'}
-              onClick={() => setTheme('dark')}
+              variant={theme === "dark" ? "primary" : "secondary"}
+              onClick={() => setTheme("dark")}
               size="sm"
             >
               Dark
@@ -283,7 +283,7 @@ export default function DesignSystemPage() {
               <LeagueChat
                 messages={mockMessages}
                 showComposer
-                onSendMessage={(message) => console.log('Message:', message)}
+                onSendMessage={(message) => console.log("Message:", message)}
               />
             </div>
           </div>

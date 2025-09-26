@@ -1,6 +1,6 @@
-import type { Story } from '@ladle/react';
-import { ThemeProvider } from '../components/design-system/providers/ThemeProvider';
-import { useTheme } from '../components/design-system/hooks/useTheme';
+import type { Story } from "@ladle/react";
+import { ThemeProvider } from "../components/design-system/providers/ThemeProvider";
+import { useTheme } from "../components/design-system/hooks/useTheme";
 
 const ThemeDemo = () => {
   const { theme, setTheme, tokens } = useTheme();
@@ -11,36 +11,40 @@ const ThemeDemo = () => {
 
       <div className="flex gap-4">
         <button
-          onClick={() => setTheme('light')}
-          className={`px-4 py-2 rounded ${theme === 'light' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          onClick={() => setTheme("light")}
+          className={`px-4 py-2 rounded ${theme === "light" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
         >
           Light Theme
         </button>
         <button
-          onClick={() => setTheme('dark')}
-          className={`px-4 py-2 rounded ${theme === 'dark' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          onClick={() => setTheme("dark")}
+          className={`px-4 py-2 rounded ${theme === "dark" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
         >
           Dark Theme
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-4 border rounded" style={{
-          backgroundColor: tokens.colors.surface,
-          color: tokens.colors.textPrimary,
-          borderColor: tokens.colors.border
-        }}>
+        <div
+          className="p-4 border rounded"
+          style={{
+            backgroundColor: tokens.colors.surface,
+            color: tokens.colors.textPrimary,
+            borderColor: tokens.colors.border,
+          }}
+        >
           <h3 className="font-semibold mb-2">Surface Container</h3>
-          <p style={{ color: tokens.colors.textSecondary }}>
-            Secondary text example
-          </p>
+          <p style={{ color: tokens.colors.textSecondary }}>Secondary text example</p>
         </div>
 
-        <div className="p-4 border rounded" style={{
-          backgroundColor: tokens.colors.primary + '20',
-          color: tokens.colors.textPrimary,
-          borderColor: tokens.colors.primary
-        }}>
+        <div
+          className="p-4 border rounded"
+          style={{
+            backgroundColor: tokens.colors.primary + "20",
+            color: tokens.colors.textPrimary,
+            borderColor: tokens.colors.primary,
+          }}
+        >
           <h3 className="font-semibold mb-2">Primary Accent</h3>
           <p>Primary color: {tokens.colors.primary}</p>
         </div>
@@ -89,5 +93,5 @@ export const SystemTheme: Story = () => (
 );
 
 Default.meta = {
-  title: 'Design System/ThemeProvider',
+  title: "Design System/ThemeProvider",
 };

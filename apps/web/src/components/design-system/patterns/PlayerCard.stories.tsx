@@ -14,10 +14,10 @@ const mockPlayerData = {
     projected: 22.1,
     passingYards: 325,
     touchdowns: 3,
-    interceptions: 0
+    interceptions: 0,
   },
   injury: null,
-  status: "active" as const
+  status: "active" as const,
 };
 
 export const Default = () => (
@@ -41,8 +41,8 @@ export const DifferentPositions = () => (
           projected: 16.2,
           rushingYards: 125,
           touchdowns: 2,
-          receptions: 3
-        }
+          receptions: 3,
+        },
       }}
     />
     <PlayerCard
@@ -57,8 +57,8 @@ export const DifferentPositions = () => (
           projected: 19.5,
           receptions: 8,
           receivingYards: 95,
-          touchdowns: 1
-        }
+          touchdowns: 1,
+        },
       }}
     />
   </div>
@@ -69,7 +69,7 @@ export const InjuryStatus = () => (
     <PlayerCard
       player={{
         ...mockPlayerData,
-        injury: { status: "questionable", description: "Ankle" }
+        injury: { status: "questionable", description: "Ankle" },
       }}
     />
     <PlayerCard
@@ -77,14 +77,14 @@ export const InjuryStatus = () => (
         ...mockPlayerData,
         name: "Aaron Rodgers",
         injury: { status: "out", description: "Achilles" },
-        status: "injured"
+        status: "injured",
       }}
     />
     <PlayerCard
       player={{
         ...mockPlayerData,
         name: "Josh Allen",
-        injury: { status: "probable", description: "Shoulder" }
+        injury: { status: "probable", description: "Shoulder" },
       }}
     />
   </div>
@@ -105,21 +105,21 @@ export const PerformanceVariations = () => (
       player={{
         ...mockPlayerData,
         name: "Overperforming Player",
-        stats: { ...mockPlayerData.stats, points: 28.5, projected: 18.2 }
+        stats: { ...mockPlayerData.stats, points: 28.5, projected: 18.2 },
       }}
     />
     <PlayerCard
       player={{
         ...mockPlayerData,
         name: "Underperforming Player",
-        stats: { ...mockPlayerData.stats, points: 8.3, projected: 20.1 }
+        stats: { ...mockPlayerData.stats, points: 8.3, projected: 20.1 },
       }}
     />
     <PlayerCard
       player={{
         ...mockPlayerData,
         name: "Projected Performance",
-        stats: { ...mockPlayerData.stats, points: 19.8, projected: 19.5 }
+        stats: { ...mockPlayerData.stats, points: 19.8, projected: 19.5 },
       }}
     />
   </div>
@@ -138,7 +138,7 @@ export const WithActions = () => (
       actions={[
         { label: "Start", action: () => alert("Start player") },
         { label: "Bench", action: () => alert("Bench player") },
-        { label: "Drop", action: () => alert("Drop player"), destructive: true }
+        { label: "Drop", action: () => alert("Drop player"), destructive: true },
       ]}
     />
   </div>
@@ -168,7 +168,7 @@ export const TeamRoster = () => (
             name: "Christian McCaffrey",
             position: "RB",
             team: "SF",
-            status: "active"
+            status: "active",
           }}
           variant="compact"
         />
@@ -179,7 +179,7 @@ export const TeamRoster = () => (
             name: "Tyreek Hill",
             position: "WR",
             team: "MIA",
-            status: "active"
+            status: "active",
           }}
           variant="compact"
         />

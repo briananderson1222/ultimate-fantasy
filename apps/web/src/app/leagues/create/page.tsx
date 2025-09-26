@@ -59,7 +59,7 @@ export default function CreateLeaguePage() {
     setFocus,
     setError,
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema as any),
     defaultValues: {
       name: "My League",
       sport: "nba",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,18 +12,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import {
   Ionicons,
   MaterialIcons,
   MaterialCommunityIcons,
-} from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
+} from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { BlurView } from "expo-blur";
 
 interface ChatMessage {
   id: string;
@@ -32,8 +32,8 @@ interface ChatMessage {
   user_name: string;
   user_avatar?: string;
   timestamp: string;
-  message_type: 'text' | 'trade_proposal' | 'lineup_share' | 'achievement';
-  status: 'sent' | 'delivered' | 'read';
+  message_type: "text" | "trade_proposal" | "lineup_share" | "achievement";
+  status: "sent" | "delivered" | "read";
   thread_id?: string;
   parent_message_id?: string;
   reactions: { [emoji: string]: string[] };
@@ -46,7 +46,7 @@ interface ChatParticipant {
   user_id: string;
   user_name: string;
   user_avatar?: string;
-  role: 'owner' | 'admin' | 'member';
+  role: "owner" | "admin" | "member";
   is_online: boolean;
   last_seen?: string;
 }
@@ -56,7 +56,7 @@ interface TypingIndicator {
   user_name: string;
 }
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function ChatScreen() {
   const route = useRoute();
@@ -65,7 +65,7 @@ export default function ChatScreen() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<ChatParticipant[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -73,8 +73,10 @@ export default function ChatScreen() {
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<TypingIndicator[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(
+    null,
+  );
 
   const flatListRef = useRef<FlatList>(null);
   const websocketRef = useRef<WebSocket | null>(null);
@@ -88,54 +90,63 @@ export default function ChatScreen() {
   }, []);
 
   const initializeWebSocket = useCallback(() => {
-    const wsUrl = `${process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:8000'}/ws/chat/${leagueId}`;
+    const wsUrl = `${process.env.EXPO_PUBLIC_WS_URL || "ws://localhost:8000"}/ws/chat/${leagueId}`;
     websocketRef.current = new WebSocket(wsUrl);
 
     websocketRef.current.onopen = () => {
-      console.log('WebSocket connected');
+      console.log("WebSocket connected");
     };
 
     websocketRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       switch (data.type) {
-        case 'message':
-          setMessages(prev => [...prev, data.message]);
+        case "message":
+          setMessages((prev) => [...prev, data.message]);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           break;
-        case 'typing_start':
-          setTypingUsers(prev => [
-            ...prev.filter(u => u.user_id !== data.user_id),
-            { user_id: data.user_id, user_name: data.user_name }
+        case "typing_start":
+          setTypingUsers((prev) => [
+            ...prev.filter((u) => u.user_id !== data.user_id),
+            { user_id: data.user_id, user_name: data.user_name },
           ]);
           break;
-        case 'typing_stop':
-          setTypingUsers(prev => prev.filter(u => u.user_id !== data.user_id));
+        case "typing_stop":
+          setTypingUsers((prev) =>
+            prev.filter((u) => u.user_id !== data.user_id),
+          );
           break;
-        case 'reaction_added':
-          setMessages(prev => prev.map(msg =>
-            msg.id === data.message_id
-              ? {
-                  ...msg,
-                  reactions: {
-                    ...msg.reactions,
-                    [data.emoji]: [...(msg.reactions[data.emoji] || []), data.user_id]
+        case "reaction_added":
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === data.message_id
+                ? {
+                    ...msg,
+                    reactions: {
+                      ...msg.reactions,
+                      [data.emoji]: [
+                        ...(msg.reactions[data.emoji] || []),
+                        data.user_id,
+                      ],
+                    },
                   }
-                }
-              : msg
-          ));
+                : msg,
+            ),
+          );
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           break;
-        case 'message_pinned':
-          setMessages(prev => prev.map(msg =>
-            msg.id === data.message_id ? { ...msg, is_pinned: true } : msg
-          ));
+        case "message_pinned":
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === data.message_id ? { ...msg, is_pinned: true } : msg,
+            ),
+          );
           break;
       }
     };
 
     websocketRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.log("WebSocket disconnected");
       setTimeout(() => {
         if (websocketRef.current?.readyState === WebSocket.CLOSED) {
           initializeWebSocket();
@@ -144,22 +155,24 @@ export default function ChatScreen() {
     };
 
     websocketRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
     };
   }, [leagueId]);
 
   const fetchMessages = async () => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages`);
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages`,
+      );
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);
         setParticipants(data.participants || []);
-        setCurrentUserId(data.current_user_id || '');
+        setCurrentUserId(data.current_user_id || "");
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
-      Alert.alert('Error', 'Failed to load messages');
+      console.error("Error fetching messages:", error);
+      Alert.alert("Error", "Failed to load messages");
     } finally {
       setIsLoading(false);
     }
@@ -170,21 +183,24 @@ export default function ChatScreen() {
 
     const messageData = {
       content: newMessage,
-      message_type: 'text',
-      thread_id: replyToMessage?.id
+      message_type: "text",
+      thread_id: replyToMessage?.id,
     };
 
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(messageData),
         },
-        body: JSON.stringify(messageData),
-      });
+      );
 
       if (response.ok) {
-        setNewMessage('');
+        setNewMessage("");
         setReplyToMessage(null);
         stopTyping();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -196,67 +212,76 @@ export default function ChatScreen() {
         }).start();
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message");
     }
   };
 
   const addReaction = async (messageId: string, emoji: string) => {
     try {
-      await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages/${messageId}/reactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages/${messageId}/reactions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ emoji }),
         },
-        body: JSON.stringify({ emoji }),
-      });
+      );
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       hideReactionModal();
     } catch (error) {
-      console.error('Error adding reaction:', error);
+      console.error("Error adding reaction:", error);
     }
   };
 
   const pinMessage = async (messageId: string) => {
     try {
-      await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages/${messageId}/pin`, {
-        method: 'POST',
-      });
+      await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages/${messageId}/pin`,
+        {
+          method: "POST",
+        },
+      );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      console.error('Error pinning message:', error);
+      console.error("Error pinning message:", error);
     }
   };
 
   const reportMessage = async (messageId: string) => {
     Alert.alert(
-      'Report Message',
-      'Are you sure you want to report this message?',
+      "Report Message",
+      "Are you sure you want to report this message?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Report',
-          style: 'destructive',
+          text: "Report",
+          style: "destructive",
           onPress: async () => {
             try {
-              await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages/${messageId}/report`, {
-                method: 'POST',
-              });
-              Alert.alert('Success', 'Message reported successfully');
+              await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/api/leagues/${leagueId}/messages/${messageId}/report`,
+                {
+                  method: "POST",
+                },
+              );
+              Alert.alert("Success", "Message reported successfully");
             } catch (error) {
-              console.error('Error reporting message:', error);
-              Alert.alert('Error', 'Failed to report message');
+              console.error("Error reporting message:", error);
+              Alert.alert("Error", "Failed to report message");
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
   const startTyping = () => {
     if (!isTyping && websocketRef.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(JSON.stringify({ type: 'typing_start' }));
+      websocketRef.current.send(JSON.stringify({ type: "typing_start" }));
       setIsTyping(true);
     }
 
@@ -271,7 +296,7 @@ export default function ChatScreen() {
 
   const stopTyping = () => {
     if (isTyping && websocketRef.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(JSON.stringify({ type: 'typing_stop' }));
+      websocketRef.current.send(JSON.stringify({ type: "typing_stop" }));
       setIsTyping(false);
     }
 
@@ -331,7 +356,7 @@ export default function ChatScreen() {
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
 
-    if (diffMins < 1) return 'now';
+    if (diffMins < 1) return "now";
     if (diffMins < 60) return `${diffMins}m`;
     if (diffHours < 24) return `${diffHours}h`;
     return date.toLocaleDateString();
@@ -339,10 +364,14 @@ export default function ChatScreen() {
 
   const getMessageTypeIcon = (type: string) => {
     switch (type) {
-      case 'trade_proposal': return '🤝';
-      case 'lineup_share': return '📋';
-      case 'achievement': return '🏆';
-      default: return null;
+      case "trade_proposal":
+        return "🤝";
+      case "lineup_share":
+        return "📋";
+      case "achievement":
+        return "🏆";
+      default:
+        return null;
     }
   };
 
@@ -364,41 +393,100 @@ export default function ChatScreen() {
     }
   };
 
-  const renderMessage = ({ item: message, index }: { item: ChatMessage; index: number }) => {
+  const renderMessage = ({
+    item: message,
+    index,
+  }: {
+    item: ChatMessage;
+    index: number;
+  }) => {
     const isOwnMessage = message.user_id === currentUserId;
-    const showAvatar = index === 0 || messages[index - 1].user_id !== message.user_id;
-    const showTimestamp = index === 0 ||
-      new Date(message.timestamp).getTime() - new Date(messages[index - 1].timestamp).getTime() > 300000;
+    const showAvatar =
+      index === 0 || messages[index - 1].user_id !== message.user_id;
+    const showTimestamp =
+      index === 0 ||
+      new Date(message.timestamp).getTime() -
+        new Date(messages[index - 1].timestamp).getTime() >
+        300000;
 
     return (
-      <View className="mb-4 px-4">
+      <View style={{ marginBottom: 16, paddingHorizontal: 16 }}>
         {showTimestamp && (
-          <View className="items-center mb-2">
-            <Text className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+          <View style={{ alignItems: "center", marginBottom: 8 }}>
+            <Text
+              style={{
+                fontSize: 12,
+                color: "#6b7280",
+                backgroundColor: "#f3f4f6",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 9999,
+              }}
+            >
               {formatTimestamp(message.timestamp)}
             </Text>
           </View>
         )}
 
-        <View className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: isOwnMessage ? "flex-end" : "flex-start",
+          }}
+        >
           {!isOwnMessage && showAvatar && (
             <Image
-              source={{ uri: message.user_avatar || `https://ui-avatars.com/api/?name=${message.user_name}&background=random` }}
-              className="w-8 h-8 rounded-full mr-2"
+              source={{
+                uri:
+                  message.user_avatar ||
+                  `https://ui-avatars.com/api/?name=${message.user_name}&background=random`,
+              }}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                marginRight: 8,
+              }}
             />
           )}
-          {!isOwnMessage && !showAvatar && <View className="w-8 mr-2" />}
+          {!isOwnMessage && !showAvatar && (
+            <View style={{ width: 32, marginRight: 8 }} />
+          )}
 
-          <View className={`max-w-[75%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+          <View
+            style={{
+              maxWidth: "75%",
+              alignItems: isOwnMessage ? "flex-end" : "flex-start",
+            }}
+          >
             {!isOwnMessage && showAvatar && (
-              <View className="flex-row items-center mb-1">
-                <Text className="text-xs font-medium text-gray-700">{message.user_name}</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 4,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 12, fontWeight: "500", color: "#374151" }}
+                >
+                  {message.user_name}
+                </Text>
                 {getMessageTypeIcon(message.message_type) && (
-                  <Text className="ml-1 text-xs">{getMessageTypeIcon(message.message_type)}</Text>
+                  <Text style={{ marginLeft: 4, fontSize: 12 }}>
+                    {getMessageTypeIcon(message.message_type)}
+                  </Text>
                 )}
                 {message.is_moderator_message && (
-                  <View className="ml-1 bg-blue-100 px-1 rounded">
-                    <Text className="text-xs text-blue-600">MOD</Text>
+                  <View
+                    style={{
+                      marginLeft: 4,
+                      backgroundColor: "#dbeafe",
+                      paddingHorizontal: 4,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, color: "#2563eb" }}>MOD</Text>
                   </View>
                 )}
               </View>
@@ -413,51 +501,99 @@ export default function ChatScreen() {
                   setReplyToMessage(message);
                 }
               }}
-              className={`px-3 py-2 rounded-2xl ${
-                isOwnMessage
-                  ? 'bg-blue-500'
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: isOwnMessage
+                  ? "#3b82f6"
                   : message.is_pinned
-                    ? 'bg-yellow-100 border border-yellow-300'
-                    : 'bg-gray-100'
-              }`}
+                    ? "#fef3c7"
+                    : "#f3f4f6",
+                borderWidth: message.is_pinned ? 1 : 0,
+                borderColor: message.is_pinned ? "#f59e0b" : undefined,
+              }}
             >
               {message.is_pinned && (
-                <View className="flex-row items-center mb-1">
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 4,
+                  }}
+                >
                   <MaterialIcons name="push-pin" size={12} color="#f59e0b" />
-                  <Text className="text-xs text-yellow-600 ml-1">Pinned</Text>
+                  <Text
+                    style={{ fontSize: 12, color: "#f59e0b", marginLeft: 4 }}
+                  >
+                    Pinned
+                  </Text>
                 </View>
               )}
 
-              <Text className={`${isOwnMessage ? 'text-white' : 'text-gray-800'}`}>
+              <Text style={{ color: isOwnMessage ? "#ffffff" : "#1f2937" }}>
                 {message.content}
               </Text>
             </TouchableOpacity>
 
             {/* Reactions */}
             {Object.keys(message.reactions).length > 0 && (
-              <View className="flex-row flex-wrap mt-1 max-w-full">
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  marginTop: 4,
+                  maxWidth: "100%",
+                }}
+              >
                 {Object.entries(message.reactions).map(([emoji, userIds]) => (
                   <TouchableOpacity
                     key={emoji}
                     onPress={() => addReaction(message.id, emoji)}
-                    className="bg-white border border-gray-200 rounded-full px-2 py-1 mr-1 mb-1 flex-row items-center"
+                    style={{
+                      backgroundColor: "white",
+                      borderWidth: 1,
+                      borderColor: "#e5e7eb",
+                      borderRadius: 9999,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      marginRight: 4,
+                      marginBottom: 4,
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
                   >
-                    <Text className="text-sm">{emoji}</Text>
-                    <Text className="text-xs text-gray-600 ml-1">{userIds.length}</Text>
+                    <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                    <Text
+                      style={{ fontSize: 12, color: "#6b7280", marginLeft: 4 }}
+                    >
+                      {userIds.length}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
-            <View className="flex-row items-center mt-1">
-              <Text className={`text-xs ${isOwnMessage ? 'text-blue-200' : 'text-gray-500'}`}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: 4,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: isOwnMessage ? "#93c5fd" : "#6b7280",
+                }}
+              >
                 {formatTimestamp(message.timestamp)}
               </Text>
               {isOwnMessage && (
                 <MaterialIcons
-                  name={message.status === 'read' ? 'done-all' : 'done'}
+                  name={message.status === "read" ? "done-all" : "done"}
                   size={12}
-                  color={message.status === 'read' ? '#3b82f6' : '#9ca3af'}
+                  color={message.status === "read" ? "#3b82f6" : "#9ca3af"}
                   style={{ marginLeft: 4 }}
                 />
               )}
@@ -477,8 +613,8 @@ export default function ChatScreen() {
           <View className="w-8 mr-2" />
           <View className="bg-gray-100 px-3 py-2 rounded-2xl">
             <Text className="text-gray-500 text-sm">
-              {typingUsers.map(u => u.user_name).join(', ')}
-              {typingUsers.length === 1 ? ' is' : ' are'} typing...
+              {typingUsers.map((u) => u.user_name).join(", ")}
+              {typingUsers.length === 1 ? " is" : " are"} typing...
             </Text>
           </View>
         </View>
@@ -488,7 +624,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     navigation.setOptions({
-      title: leagueName || 'League Chat',
+      title: leagueName || "League Chat",
       headerRight: () => (
         <TouchableOpacity onPress={showParticipantsModal} className="mr-4">
           <MaterialIcons name="people" size={24} color="#3b82f6" />
@@ -511,28 +647,56 @@ export default function ChatScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-white justify-center items-center">
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: "white",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <MaterialIcons name="chat" size={48} color="#9ca3af" />
-        <Text className="text-gray-500 mt-4">Loading messages...</Text>
+        <Text style={{ color: "#6b7280", marginTop: 16 }}>
+          Loading messages...
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
         {/* Reply indicator */}
         {replyToMessage && (
-          <View className="bg-blue-50 px-4 py-2 border-b border-blue-200">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-blue-600 text-sm font-medium">
+          <View
+            style={{
+              backgroundColor: "#eff6ff",
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#bfdbfe",
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{ color: "#2563eb", fontSize: 14, fontWeight: "500" }}
+                >
                   Replying to {replyToMessage.user_name}
                 </Text>
-                <Text className="text-blue-500 text-sm" numberOfLines={1}>
+                <Text
+                  style={{ color: "#3b82f6", fontSize: 14 }}
+                  numberOfLines={1}
+                >
                   {replyToMessage.content}
                 </Text>
               </View>
@@ -549,7 +713,7 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          className="flex-1"
+          style={{ flex: 1 }}
           onContentSizeChange={scrollToBottom}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -558,10 +722,20 @@ export default function ChatScreen() {
         />
 
         {/* Input */}
-        <View className="px-4 py-2 border-t border-gray-200">
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderTopWidth: 1,
+            borderTopColor: "#e5e7eb",
+          }}
+        >
           <Animated.View
-            style={{ height: inputHeight }}
-            className="flex-row items-end"
+            style={{
+              height: inputHeight,
+              flexDirection: "row",
+              alignItems: "flex-end",
+            }}
           >
             <TextInput
               value={newMessage}
@@ -573,21 +747,31 @@ export default function ChatScreen() {
               onBlur={handleInputBlur}
               placeholder="Type a message..."
               multiline
-              className="flex-1 border border-gray-300 rounded-full px-4 py-2 mr-2 max-h-20"
-              style={{ textAlignVertical: 'center' }}
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: "#d1d5db",
+                borderRadius: 9999,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                marginRight: 8,
+                maxHeight: 80,
+                textAlignVertical: "center",
+              }}
             />
             <TouchableOpacity
               onPress={sendMessage}
               disabled={!newMessage.trim()}
-              className={`w-10 h-10 rounded-full justify-center items-center ${
-                newMessage.trim() ? 'bg-blue-500' : 'bg-gray-300'
-              }`}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 9999,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: newMessage.trim() ? "#3b82f6" : "#d1d5db",
+              }}
             >
-              <MaterialIcons
-                name="send"
-                size={20}
-                color="white"
-              />
+              <MaterialIcons name="send" size={20} color="white" />
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -608,12 +792,16 @@ export default function ChatScreen() {
               <SafeAreaView className="flex-1">
                 <View className="px-4 py-4 border-b border-gray-200">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-lg font-semibold">League Members</Text>
+                    <Text className="text-lg font-semibold">
+                      League Members
+                    </Text>
                     <TouchableOpacity onPress={hideParticipantsModal}>
                       <MaterialIcons name="close" size={24} color="#374151" />
                     </TouchableOpacity>
                   </View>
-                  <Text className="text-gray-500">{participants.length} members</Text>
+                  <Text className="text-gray-500">
+                    {participants.length} members
+                  </Text>
                 </View>
 
                 <FlatList
@@ -625,8 +813,9 @@ export default function ChatScreen() {
                       <View className="relative">
                         <Image
                           source={{
-                            uri: participant.user_avatar ||
-                            `https://ui-avatars.com/api/?name=${participant.user_name}&background=random`
+                            uri:
+                              participant.user_avatar ||
+                              `https://ui-avatars.com/api/?name=${participant.user_name}&background=random`,
                           }}
                           className="w-10 h-10 rounded-full"
                         />
@@ -636,15 +825,21 @@ export default function ChatScreen() {
                       </View>
                       <View className="flex-1 ml-3">
                         <View className="flex-row items-center">
-                          <Text className="font-medium">{participant.user_name}</Text>
-                          {participant.role === 'owner' && (
+                          <Text className="font-medium">
+                            {participant.user_name}
+                          </Text>
+                          {participant.role === "owner" && (
                             <View className="ml-2 bg-red-100 px-2 py-1 rounded">
-                              <Text className="text-xs text-red-600">Owner</Text>
+                              <Text className="text-xs text-red-600">
+                                Owner
+                              </Text>
                             </View>
                           )}
-                          {participant.role === 'admin' && (
+                          {participant.role === "admin" && (
                             <View className="ml-2 bg-blue-100 px-2 py-1 rounded">
-                              <Text className="text-xs text-blue-600">Admin</Text>
+                              <Text className="text-xs text-blue-600">
+                                Admin
+                              </Text>
                             </View>
                           )}
                         </View>
@@ -676,17 +871,23 @@ export default function ChatScreen() {
             }}
             className="bg-white rounded-2xl p-4 mx-8"
           >
-            <Text className="text-center text-lg font-semibold mb-4">Add Reaction</Text>
+            <Text className="text-center text-lg font-semibold mb-4">
+              Add Reaction
+            </Text>
             <View className="flex-row flex-wrap justify-center">
-              {['❤️', '👍', '👎', '😂', '😮', '😢', '😡', '🔥', '👏', '🎉'].map(emoji => (
-                <TouchableOpacity
-                  key={emoji}
-                  onPress={() => selectedMessage && addReaction(selectedMessage, emoji)}
-                  className="w-12 h-12 justify-center items-center m-1 bg-gray-100 rounded-full"
-                >
-                  <Text className="text-2xl">{emoji}</Text>
-                </TouchableOpacity>
-              ))}
+              {["❤️", "👍", "👎", "😂", "😮", "😢", "😡", "🔥", "👏", "🎉"].map(
+                (emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() =>
+                      selectedMessage && addReaction(selectedMessage, emoji)
+                    }
+                    className="w-12 h-12 justify-center items-center m-1 bg-gray-100 rounded-full"
+                  >
+                    <Text className="text-2xl">{emoji}</Text>
+                  </TouchableOpacity>
+                ),
+              )}
             </View>
 
             <View className="flex-row justify-center mt-4 space-x-4">
@@ -699,7 +900,9 @@ export default function ChatScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => selectedMessage && reportMessage(selectedMessage)}
+                onPress={() =>
+                  selectedMessage && reportMessage(selectedMessage)
+                }
                 className="flex-row items-center bg-red-100 px-4 py-2 rounded-full"
               >
                 <MaterialIcons name="flag" size={16} color="#ef4444" />

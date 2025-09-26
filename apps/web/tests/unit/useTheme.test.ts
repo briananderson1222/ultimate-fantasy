@@ -1,75 +1,79 @@
-import { renderHook, act } from '@testing-library/react';
-import { ThemeProvider, useTheme } from '../../src/components/design-system/providers/ThemeProvider';
-import React from 'react';
+import { renderHook, act } from "@testing-library/react";
+import {
+  ThemeProvider,
+  useTheme,
+} from "../../src/components/design-system/providers/ThemeProvider";
+import React from "react";
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  React.createElement(ThemeProvider, { defaultTheme: 'dark' }, children)
-);
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(ThemeProvider, { defaultTheme: "dark" }, children);
 
-describe('useTheme', () => {
+describe("useTheme", () => {
   beforeEach(() => {
     localStorage.clear();
     // Reset document theme
-    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute("data-theme");
   });
 
-  it('throws error when used outside ThemeProvider', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it("throws error when used outside ThemeProvider", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => {
-      renderHook(() => useTheme());
-    }).toThrow('useTheme must be used within a ThemeProvider');
+      renderHook(() => useTheme(), {
+        wrapper: ({ children }) => React.createElement(React.Fragment, {}, children),
+      });
+    }).toThrow("useTheme must be used within a ThemeProvider");
 
     consoleSpy.mockRestore();
   });
 
-  it('provides initial theme value', () => {
+  it("provides initial theme value", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
-    expect(result.current.theme).toBe('dark');
-    expect(typeof result.current.setTheme).toBe('function');
+    expect(result.current.theme).toBe("dark");
+    expect(typeof result.current.setTheme).toBe("function");
     expect(result.current.tokens).toBeDefined();
   });
 
-  it('allows theme switching', () => {
+  it("allows theme switching", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     act(() => {
-      result.current.setTheme('light');
+      result.current.setTheme("light");
     });
 
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
   });
 
-  it('persists theme to localStorage', () => {
+  it("persists theme to localStorage", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     act(() => {
-      result.current.setTheme('light');
+      result.current.setTheme("light");
     });
 
-    expect(localStorage.getItem('theme')).toBe('light');
+    expect(localStorage.getItem("theme")).toBe("light");
   });
 
-  it('loads theme from localStorage on initialization', () => {
-    localStorage.setItem('theme', 'light');
+  it("loads theme from localStorage on initialization", () => {
+    localStorage.setItem("theme", "light");
 
     const { result } = renderHook(() => useTheme(), { wrapper });
 
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
   });
 
-  it('applies theme to document element', () => {
+  it("applies theme to document element", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     act(() => {
-      result.current.setTheme('light');
+      result.current.setTheme("light");
     });
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
-  it('provides color tokens for current theme', () => {
+  it("provides color tokens for current theme", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     expect(result.current.tokens.colors).toBeDefined();
@@ -77,13 +81,13 @@ describe('useTheme', () => {
     expect(result.current.tokens.colors.success).toBeDefined();
   });
 
-  it('updates tokens when theme changes', () => {
+  it("updates tokens when theme changes", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     const darkTokens = result.current.tokens.colors;
 
     act(() => {
-      result.current.setTheme('light');
+      result.current.setTheme("light");
     });
 
     const lightTokens = result.current.tokens.colors;
@@ -92,7 +96,7 @@ describe('useTheme', () => {
     expect(darkTokens).not.toEqual(lightTokens);
   });
 
-  it('handles system theme detection', () => {
+  it("handles system theme detection", () => {
     // Mock matchMedia
     const mockMatchMedia = vi.fn();
     window.matchMedia = mockMatchMedia;
@@ -105,28 +109,27 @@ describe('useTheme', () => {
 
     const { result } = renderHook(() => useTheme(), { wrapper });
 
-    expect(result.current.systemTheme).toBe('dark');
+    expect(result.current.systemTheme).toBe("dark");
   });
 
-  it('switches to system theme when requested', () => {
+  it("switches to system theme when requested", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     act(() => {
-      result.current.setTheme('system');
+      result.current.setTheme("system");
     });
 
-    expect(result.current.theme).toBe('system');
+    expect(result.current.theme).toBe("system");
   });
 
-  it('applies CSS custom properties on theme change', () => {
+  it("applies CSS custom properties on theme change", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
 
     act(() => {
-      result.current.setTheme('light');
+      result.current.setTheme("light");
     });
 
     // Check that CSS custom properties are set
-    const rootStyles = getComputedStyle(document.documentElement);
-    expect(document.documentElement.style.getPropertyValue('--color-primary')).toBeTruthy();
+    expect(document.documentElement.style.getPropertyValue("--color-primary")).toBeTruthy();
   });
 });

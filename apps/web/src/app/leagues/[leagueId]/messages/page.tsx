@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Send,
   Reply,
@@ -18,19 +18,15 @@ import {
   Flag,
   Search,
   Filter,
-  Users
-} from 'lucide-react';
+  Users,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ChatMessage {
   id: string;
@@ -39,8 +35,8 @@ interface ChatMessage {
   user_name: string;
   user_avatar?: string;
   timestamp: string;
-  message_type: 'text' | 'trade_proposal' | 'lineup_share' | 'achievement';
-  status: 'sent' | 'delivered' | 'read';
+  message_type: "text" | "trade_proposal" | "lineup_share" | "achievement";
+  status: "sent" | "delivered" | "read";
   thread_id?: string;
   parent_message_id?: string;
   reactions: { [emoji: string]: string[] };
@@ -53,7 +49,7 @@ interface ChatParticipant {
   user_id: string;
   user_name: string;
   user_avatar?: string;
-  role: 'owner' | 'admin' | 'member';
+  role: "owner" | "admin" | "member";
   is_online: boolean;
   last_seen?: string;
 }
@@ -68,69 +64,71 @@ export default function LeagueMessagesPage() {
   const leagueId = params.leagueId as string;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<ChatParticipant[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<TypingIndicator[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const websocketRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const initializeWebSocket = useCallback(() => {
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'}/ws/chat/${leagueId}`;
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000"}/ws/chat/${leagueId}`;
     websocketRef.current = new WebSocket(wsUrl);
 
     websocketRef.current.onopen = () => {
-      console.log('WebSocket connected');
+      console.log("WebSocket connected");
     };
 
     websocketRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       switch (data.type) {
-        case 'message':
-          setMessages(prev => [...prev, data.message]);
+        case "message":
+          setMessages((prev) => [...prev, data.message]);
           scrollToBottom();
           break;
-        case 'typing_start':
-          setTypingUsers(prev => [
-            ...prev.filter(u => u.user_id !== data.user_id),
-            { user_id: data.user_id, user_name: data.user_name }
+        case "typing_start":
+          setTypingUsers((prev) => [
+            ...prev.filter((u) => u.user_id !== data.user_id),
+            { user_id: data.user_id, user_name: data.user_name },
           ]);
           break;
-        case 'typing_stop':
-          setTypingUsers(prev => prev.filter(u => u.user_id !== data.user_id));
+        case "typing_stop":
+          setTypingUsers((prev) => prev.filter((u) => u.user_id !== data.user_id));
           break;
-        case 'reaction_added':
-          setMessages(prev => prev.map(msg =>
-            msg.id === data.message_id
-              ? {
-                  ...msg,
-                  reactions: {
-                    ...msg.reactions,
-                    [data.emoji]: [...(msg.reactions[data.emoji] || []), data.user_id]
+        case "reaction_added":
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === data.message_id
+                ? {
+                    ...msg,
+                    reactions: {
+                      ...msg.reactions,
+                      [data.emoji]: [...(msg.reactions[data.emoji] || []), data.user_id],
+                    },
                   }
-                }
-              : msg
-          ));
+                : msg,
+            ),
+          );
           break;
-        case 'message_pinned':
-          setMessages(prev => prev.map(msg =>
-            msg.id === data.message_id ? { ...msg, is_pinned: true } : msg
-          ));
+        case "message_pinned":
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === data.message_id ? { ...msg, is_pinned: true } : msg)),
+          );
           break;
       }
     };
 
     websocketRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.log("WebSocket disconnected");
       // Attempt to reconnect after 3 seconds
       setTimeout(() => {
         if (websocketRef.current?.readyState === WebSocket.CLOSED) {
@@ -140,7 +138,7 @@ export default function LeagueMessagesPage() {
     };
 
     websocketRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
     };
   }, [leagueId]);
 
@@ -151,10 +149,10 @@ export default function LeagueMessagesPage() {
         const data = await response.json();
         setMessages(data.messages || []);
         setParticipants(data.participants || []);
-        setCurrentUserId(data.current_user_id || '');
+        setCurrentUserId(data.current_user_id || "");
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error("Error fetching messages:", error);
     } finally {
       setIsLoading(false);
     }
@@ -165,65 +163,65 @@ export default function LeagueMessagesPage() {
 
     const messageData = {
       content: newMessage,
-      message_type: 'text',
-      thread_id: selectedThread
+      message_type: "text",
+      thread_id: selectedThread,
     };
 
     try {
       const response = await fetch(`/api/leagues/${leagueId}/messages`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(messageData),
       });
 
       if (response.ok) {
-        setNewMessage('');
+        setNewMessage("");
         stopTyping();
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
     }
   };
 
   const addReaction = async (messageId: string, emoji: string) => {
     try {
       await fetch(`/api/leagues/${leagueId}/messages/${messageId}/reactions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ emoji }),
       });
     } catch (error) {
-      console.error('Error adding reaction:', error);
+      console.error("Error adding reaction:", error);
     }
   };
 
   const pinMessage = async (messageId: string) => {
     try {
       await fetch(`/api/leagues/${leagueId}/messages/${messageId}/pin`, {
-        method: 'POST',
+        method: "POST",
       });
     } catch (error) {
-      console.error('Error pinning message:', error);
+      console.error("Error pinning message:", error);
     }
   };
 
   const reportMessage = async (messageId: string) => {
     try {
       await fetch(`/api/leagues/${leagueId}/messages/${messageId}/report`, {
-        method: 'POST',
+        method: "POST",
       });
     } catch (error) {
-      console.error('Error reporting message:', error);
+      console.error("Error reporting message:", error);
     }
   };
 
   const startTyping = () => {
     if (!isTyping && websocketRef.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(JSON.stringify({ type: 'typing_start' }));
+      websocketRef.current.send(JSON.stringify({ type: "typing_start" }));
       setIsTyping(true);
     }
 
@@ -238,7 +236,7 @@ export default function LeagueMessagesPage() {
 
   const stopTyping = () => {
     if (isTyping && websocketRef.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(JSON.stringify({ type: 'typing_stop' }));
+      websocketRef.current.send(JSON.stringify({ type: "typing_stop" }));
       setIsTyping(false);
     }
 
@@ -253,20 +251,21 @@ export default function LeagueMessagesPage() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
 
-  const filteredMessages = messages.filter(message =>
-    searchTerm === '' ||
-    message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    message.user_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredMessages = messages.filter(
+    (message) =>
+      searchTerm === "" ||
+      message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      message.user_name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const pinnedMessages = filteredMessages.filter(msg => msg.is_pinned);
-  const regularMessages = filteredMessages.filter(msg => !msg.is_pinned);
+  const pinnedMessages = filteredMessages.filter((msg) => msg.is_pinned);
+  const regularMessages = filteredMessages.filter((msg) => !msg.is_pinned);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -276,7 +275,7 @@ export default function LeagueMessagesPage() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -285,10 +284,14 @@ export default function LeagueMessagesPage() {
 
   const getMessageTypeIcon = (type: string) => {
     switch (type) {
-      case 'trade_proposal': return '🤝';
-      case 'lineup_share': return '📋';
-      case 'achievement': return '🏆';
-      default: return null;
+      case "trade_proposal":
+        return "🤝";
+      case "lineup_share":
+        return "📋";
+      case "achievement":
+        return "🏆";
+      default:
+        return null;
     }
   };
 
@@ -333,7 +336,7 @@ export default function LeagueMessagesPage() {
             <Input
               placeholder="Search messages..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
               className="pl-8"
             />
           </div>
@@ -341,7 +344,10 @@ export default function LeagueMessagesPage() {
 
         <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(100vh-200px)]">
           {participants.map((participant) => (
-            <div key={participant.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent">
+            <div
+              key={participant.user_id}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent"
+            >
               <div className="relative">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={participant.user_avatar} />
@@ -354,8 +360,16 @@ export default function LeagueMessagesPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{participant.user_name}</p>
-                  {participant.role === 'owner' && <Badge variant="destructive" className="text-xs">Owner</Badge>}
-                  {participant.role === 'admin' && <Badge variant="secondary" className="text-xs">Admin</Badge>}
+                  {participant.role === "owner" && (
+                    <Badge variant="destructive" className="text-xs">
+                      Owner
+                    </Badge>
+                  )}
+                  {participant.role === "admin" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Admin
+                    </Badge>
+                  )}
                 </div>
                 {!participant.is_online && participant.last_seen && (
                   <p className="text-xs text-muted-foreground">
@@ -378,14 +392,14 @@ export default function LeagueMessagesPage() {
               <p className="text-sm text-muted-foreground">
                 {typingUsers.length > 0 && (
                   <span className="text-primary">
-                    {typingUsers.map(u => u.user_name).join(', ')}
-                    {typingUsers.length === 1 ? ' is' : ' are'} typing...
+                    {typingUsers.map((u) => u.user_name).join(", ")}
+                    {typingUsers.length === 1 ? " is" : " are"} typing...
                   </span>
                 )}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="secondary" size="sm">
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
@@ -422,7 +436,10 @@ export default function LeagueMessagesPage() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {regularMessages.map((message) => (
-            <Card key={message.id} className={`${message.is_moderator_message ? 'border-primary/50' : ''}`}>
+            <Card
+              key={message.id}
+              className={`${message.is_moderator_message ? "border-primary/50" : ""}`}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-8 w-8">
@@ -440,7 +457,9 @@ export default function LeagueMessagesPage() {
                         {formatTimestamp(message.timestamp)}
                       </span>
                       {message.is_moderator_message && (
-                        <Badge variant="outline" className="text-xs">Moderator</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Moderator
+                        </Badge>
                       )}
                     </div>
 
@@ -454,7 +473,7 @@ export default function LeagueMessagesPage() {
                         {Object.entries(message.reactions).map(([emoji, userIds]) => (
                           <Button
                             key={emoji}
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             className="h-6 px-2 text-xs"
                             onClick={() => addReaction(message.id, emoji)}
@@ -468,14 +487,14 @@ export default function LeagueMessagesPage() {
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
                       <Popover>
-                        <PopoverTrigger asChild>
+                        <PopoverTrigger>
                           <Button variant="ghost" size="sm" className="h-6 px-2">
                             <Heart className="h-3 w-3" />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-2">
                           <div className="flex gap-1">
-                            {['❤️', '👍', '👎', '😂', '😮', '😢', '😡'].map(emoji => (
+                            {["❤️", "👍", "👎", "😂", "😮", "😢", "😡"].map((emoji) => (
                               <Button
                                 key={emoji}
                                 variant="ghost"
@@ -500,7 +519,7 @@ export default function LeagueMessagesPage() {
                       </Button>
 
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                           <Button variant="ghost" size="sm" className="h-6 px-2">
                             <MoreVertical className="h-3 w-3" />
                           </Button>
@@ -529,14 +548,8 @@ export default function LeagueMessagesPage() {
         {selectedThread && (
           <div className="px-4 py-2 bg-muted border-t">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Replying to thread
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedThread(null)}
-              >
+              <span className="text-sm text-muted-foreground">Replying to thread</span>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedThread(null)}>
                 Cancel
               </Button>
             </div>

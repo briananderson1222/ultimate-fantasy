@@ -5,7 +5,7 @@
  * sorting, comparison tools, and detailed player information.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,14 +19,14 @@ import {
   RefreshControl,
   Dimensions,
   Switch,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   MobilePlayerCard,
-  type Player as UIPlayer
-} from '@ultimate-fantasy/ui-components/src/components/PlayerCard';
+  type Player as UIPlayer,
+} from "@ultimate-fantasy/ui-components/src/components/PlayerCard";
 
 // Enhanced player interface with search-specific data
 interface Player extends UIPlayer {
@@ -36,7 +36,14 @@ interface Player extends UIPlayer {
   team: string;
   rank: number;
   projected_points: number;
-  status: 'healthy' | 'questionable' | 'doubtful' | 'out' | 'injured' | 'bye' | 'suspended';
+  status:
+    | "healthy"
+    | "questionable"
+    | "doubtful"
+    | "out"
+    | "injured"
+    | "bye"
+    | "suspended";
 
   // Additional search/filter fields
   adp?: number; // Average Draft Position
@@ -47,9 +54,9 @@ interface Player extends UIPlayer {
   target_share?: number;
   snap_count?: number;
   recent_points?: number[];
-  trending?: 'up' | 'down' | 'steady';
+  trending?: "up" | "down" | "steady";
   news_count?: number;
-  injury_risk?: 'low' | 'medium' | 'high';
+  injury_risk?: "low" | "medium" | "high";
 
   // Stats for filtering
   stats?: {
@@ -76,219 +83,266 @@ interface SearchFilters {
   maxProjection?: number;
   trending?: string;
   injuryRisk?: string;
-  availability: 'all' | 'available' | 'owned';
+  availability: "all" | "available" | "owned";
 }
 
 interface SortOption {
   key: string;
   label: string;
   field: keyof Player | string;
-  direction: 'asc' | 'desc';
+  direction: "asc" | "desc";
 }
 
 // Mock comprehensive player data
 const MOCK_PLAYERS: Player[] = [
   {
-    id: 'p1',
-    name: 'Josh Allen',
-    position: 'QB',
-    team: 'BUF',
+    id: "p1",
+    name: "Josh Allen",
+    position: "QB",
+    team: "BUF",
     rank: 1,
     projected_points: 24.2,
-    status: 'healthy',
+    status: "healthy",
     adp: 8.5,
     tier: 1,
     bye_week: 12,
     salary: 9200,
     ownership_percentage: 23.4,
-    trending: 'up',
+    trending: "up",
     news_count: 2,
-    injury_risk: 'low',
+    injury_risk: "low",
     stats: {
       passing_yards: 3264,
       touchdowns: 28,
-      fantasy_points_per_game: 23.8
-    }
+      fantasy_points_per_game: 23.8,
+    },
   },
   {
-    id: 'p2',
-    name: 'Christian McCaffrey',
-    position: 'RB',
-    team: 'SF',
+    id: "p2",
+    name: "Christian McCaffrey",
+    position: "RB",
+    team: "SF",
     rank: 2,
     projected_points: 22.8,
-    status: 'healthy',
+    status: "healthy",
     adp: 1.2,
     tier: 1,
     bye_week: 9,
     salary: 9800,
     ownership_percentage: 31.2,
-    trending: 'steady',
+    trending: "steady",
     news_count: 1,
-    injury_risk: 'medium',
+    injury_risk: "medium",
     stats: {
       rushing_yards: 1139,
       receiving_yards: 564,
       touchdowns: 18,
-      fantasy_points_per_game: 21.4
-    }
+      fantasy_points_per_game: 21.4,
+    },
   },
   {
-    id: 'p3',
-    name: 'Cooper Kupp',
-    position: 'WR',
-    team: 'LAR',
+    id: "p3",
+    name: "Cooper Kupp",
+    position: "WR",
+    team: "LAR",
     rank: 3,
     projected_points: 19.4,
-    status: 'questionable',
+    status: "questionable",
     adp: 12.3,
     tier: 1,
     bye_week: 10,
     salary: 8900,
     ownership_percentage: 18.7,
-    trending: 'down',
+    trending: "down",
     news_count: 4,
-    injury_risk: 'high',
+    injury_risk: "high",
     stats: {
       receiving_yards: 1492,
       receptions: 145,
       touchdowns: 8,
-      fantasy_points_per_game: 18.2
-    }
+      fantasy_points_per_game: 18.2,
+    },
   },
   {
-    id: 'p4',
-    name: 'Travis Kelce',
-    position: 'TE',
-    team: 'KC',
+    id: "p4",
+    name: "Travis Kelce",
+    position: "TE",
+    team: "KC",
     rank: 4,
     projected_points: 15.7,
-    status: 'healthy',
+    status: "healthy",
     adp: 18.1,
     tier: 1,
     bye_week: 10,
     salary: 7800,
     ownership_percentage: 27.3,
-    trending: 'up',
+    trending: "up",
     news_count: 0,
-    injury_risk: 'low',
+    injury_risk: "low",
     stats: {
       receiving_yards: 992,
       receptions: 110,
       touchdowns: 12,
-      fantasy_points_per_game: 14.9
-    }
+      fantasy_points_per_game: 14.9,
+    },
   },
   {
-    id: 'p5',
-    name: 'Stefon Diggs',
-    position: 'WR',
-    team: 'BUF',
+    id: "p5",
+    name: "Stefon Diggs",
+    position: "WR",
+    team: "BUF",
     rank: 5,
     projected_points: 17.8,
-    status: 'healthy',
+    status: "healthy",
     adp: 14.2,
     tier: 2,
     bye_week: 12,
     salary: 8200,
     ownership_percentage: 15.8,
-    trending: 'steady',
+    trending: "steady",
     news_count: 1,
-    injury_risk: 'low',
+    injury_risk: "low",
     stats: {
       receiving_yards: 1429,
       receptions: 108,
       touchdowns: 11,
-      fantasy_points_per_game: 16.7
-    }
+      fantasy_points_per_game: 16.7,
+    },
   },
   // Add more players for better search experience
   {
-    id: 'p6',
-    name: 'Derrick Henry',
-    position: 'RB',
-    team: 'TEN',
+    id: "p6",
+    name: "Derrick Henry",
+    position: "RB",
+    team: "TEN",
     rank: 6,
     projected_points: 18.3,
-    status: 'healthy',
+    status: "healthy",
     adp: 15.7,
     tier: 2,
     bye_week: 7,
     salary: 8700,
     ownership_percentage: 22.1,
-    trending: 'up',
+    trending: "up",
     news_count: 0,
-    injury_risk: 'low',
+    injury_risk: "low",
     stats: {
       rushing_yards: 1538,
       touchdowns: 13,
-      fantasy_points_per_game: 17.2
-    }
+      fantasy_points_per_game: 17.2,
+    },
   },
   {
-    id: 'p7',
-    name: 'Patrick Mahomes',
-    position: 'QB',
-    team: 'KC',
+    id: "p7",
+    name: "Patrick Mahomes",
+    position: "QB",
+    team: "KC",
     rank: 7,
     projected_points: 23.9,
-    status: 'healthy',
+    status: "healthy",
     adp: 22.4,
     tier: 1,
     bye_week: 10,
     salary: 8800,
     ownership_percentage: 19.6,
-    trending: 'steady',
+    trending: "steady",
     news_count: 2,
-    injury_risk: 'low',
+    injury_risk: "low",
     stats: {
       passing_yards: 4839,
       touchdowns: 37,
-      fantasy_points_per_game: 22.3
-    }
+      fantasy_points_per_game: 22.3,
+    },
   },
 ];
 
-const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DST'];
-const TEAMS = ['ALL', 'BUF', 'SF', 'LAR', 'KC', 'TEN', 'MIA', 'LAC', 'BAL', 'NE', 'NYJ', 'DAL'];
-const STATUSES = ['ALL', 'healthy', 'questionable', 'doubtful', 'out', 'injured'];
-const TRENDING_OPTIONS = ['ALL', 'up', 'down', 'steady'];
-const INJURY_RISK_OPTIONS = ['ALL', 'low', 'medium', 'high'];
+const POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+const TEAMS = [
+  "ALL",
+  "BUF",
+  "SF",
+  "LAR",
+  "KC",
+  "TEN",
+  "MIA",
+  "LAC",
+  "BAL",
+  "NE",
+  "NYJ",
+  "DAL",
+];
+const STATUSES = [
+  "ALL",
+  "healthy",
+  "questionable",
+  "doubtful",
+  "out",
+  "injured",
+];
+const TRENDING_OPTIONS = ["ALL", "up", "down", "steady"];
+const INJURY_RISK_OPTIONS = ["ALL", "low", "medium", "high"];
 
 const SORT_OPTIONS: SortOption[] = [
-  { key: 'rank-asc', label: 'Rank (Best First)', field: 'rank', direction: 'asc' },
-  { key: 'projection-desc', label: 'Projected Points (High to Low)', field: 'projected_points', direction: 'desc' },
-  { key: 'adp-asc', label: 'ADP (Early to Late)', field: 'adp', direction: 'asc' },
-  { key: 'name-asc', label: 'Name (A to Z)', field: 'name', direction: 'asc' },
-  { key: 'team-asc', label: 'Team (A to Z)', field: 'team', direction: 'asc' },
-  { key: 'salary-desc', label: 'Salary (High to Low)', field: 'salary', direction: 'desc' },
-  { key: 'ownership-desc', label: 'Ownership % (High to Low)', field: 'ownership_percentage', direction: 'desc' },
+  {
+    key: "rank-asc",
+    label: "Rank (Best First)",
+    field: "rank",
+    direction: "asc",
+  },
+  {
+    key: "projection-desc",
+    label: "Projected Points (High to Low)",
+    field: "projected_points",
+    direction: "desc",
+  },
+  {
+    key: "adp-asc",
+    label: "ADP (Early to Late)",
+    field: "adp",
+    direction: "asc",
+  },
+  { key: "name-asc", label: "Name (A to Z)", field: "name", direction: "asc" },
+  { key: "team-asc", label: "Team (A to Z)", field: "team", direction: "asc" },
+  {
+    key: "salary-desc",
+    label: "Salary (High to Low)",
+    field: "salary",
+    direction: "desc",
+  },
+  {
+    key: "ownership-desc",
+    label: "Ownership % (High to Low)",
+    field: "ownership_percentage",
+    direction: "desc",
+  },
 ];
 
 export default function PlayerSearchScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = Dimensions.get('window');
+  const { width: screenWidth } = Dimensions.get("window");
 
   // State
   const [players] = useState<Player[]>(MOCK_PLAYERS);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
+  const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Filter and search state
   const [filters, setFilters] = useState<SearchFilters>({
-    searchTerm: '',
-    position: 'ALL',
-    team: 'ALL',
-    status: 'ALL',
+    searchTerm: "",
+    position: "ALL",
+    team: "ALL",
+    status: "ALL",
     tier: undefined,
     minRank: undefined,
     maxRank: undefined,
     minProjection: undefined,
     maxProjection: undefined,
-    trending: 'ALL',
-    injuryRisk: 'ALL',
-    availability: 'all'
+    trending: "ALL",
+    injuryRisk: "ALL",
+    availability: "all",
   });
 
   // Sorting
@@ -298,7 +352,7 @@ export default function PlayerSearchScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   // Advanced search modes
   const [advancedMode, setAdvancedMode] = useState(false);
@@ -306,25 +360,29 @@ export default function PlayerSearchScreen() {
 
   // Filter and sort players
   const filteredAndSortedPlayers = useMemo(() => {
-    let filtered = players.filter(player => {
+    let filtered = players.filter((player) => {
       // Text search
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
-        if (!player.name.toLowerCase().includes(searchLower) &&
-            !player.team.toLowerCase().includes(searchLower) &&
-            !player.position.toLowerCase().includes(searchLower)) {
+        if (
+          !player.name.toLowerCase().includes(searchLower) &&
+          !player.team.toLowerCase().includes(searchLower) &&
+          !player.position.toLowerCase().includes(searchLower)
+        ) {
           return false;
         }
       }
 
       // Position filter
-      if (filters.position !== 'ALL' && player.position !== filters.position) return false;
+      if (filters.position !== "ALL" && player.position !== filters.position)
+        return false;
 
       // Team filter
-      if (filters.team !== 'ALL' && player.team !== filters.team) return false;
+      if (filters.team !== "ALL" && player.team !== filters.team) return false;
 
       // Status filter
-      if (filters.status !== 'ALL' && player.status !== filters.status) return false;
+      if (filters.status !== "ALL" && player.status !== filters.status)
+        return false;
 
       // Tier filter
       if (filters.tier && player.tier !== filters.tier) return false;
@@ -334,14 +392,27 @@ export default function PlayerSearchScreen() {
       if (filters.maxRank && player.rank > filters.maxRank) return false;
 
       // Projection range
-      if (filters.minProjection && player.projected_points < filters.minProjection) return false;
-      if (filters.maxProjection && player.projected_points > filters.maxProjection) return false;
+      if (
+        filters.minProjection &&
+        player.projected_points < filters.minProjection
+      )
+        return false;
+      if (
+        filters.maxProjection &&
+        player.projected_points > filters.maxProjection
+      )
+        return false;
 
       // Trending filter
-      if (filters.trending !== 'ALL' && player.trending !== filters.trending) return false;
+      if (filters.trending !== "ALL" && player.trending !== filters.trending)
+        return false;
 
       // Injury risk filter
-      if (filters.injuryRisk !== 'ALL' && player.injury_risk !== filters.injuryRisk) return false;
+      if (
+        filters.injuryRisk !== "ALL" &&
+        player.injury_risk !== filters.injuryRisk
+      )
+        return false;
 
       return true;
     });
@@ -353,18 +424,20 @@ export default function PlayerSearchScreen() {
       let bVal = b[field as keyof Player];
 
       // Handle undefined values
-      if (aVal === undefined) aVal = currentSort.direction === 'asc' ? Infinity : -Infinity;
-      if (bVal === undefined) bVal = currentSort.direction === 'asc' ? Infinity : -Infinity;
+      if (aVal === undefined)
+        aVal = currentSort.direction === "asc" ? Infinity : -Infinity;
+      if (bVal === undefined)
+        bVal = currentSort.direction === "asc" ? Infinity : -Infinity;
 
-      if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return currentSort.direction === 'asc'
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return currentSort.direction === "asc"
           ? aVal.localeCompare(bVal)
           : bVal.localeCompare(aVal);
       }
 
       const numA = Number(aVal);
       const numB = Number(bVal);
-      return currentSort.direction === 'asc' ? numA - numB : numB - numA;
+      return currentSort.direction === "asc" ? numA - numB : numB - numA;
     });
 
     return filtered;
@@ -373,7 +446,7 @@ export default function PlayerSearchScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     setRefreshing(false);
   }, []);
 
@@ -389,33 +462,33 @@ export default function PlayerSearchScreen() {
 
   const clearFilters = () => {
     setFilters({
-      searchTerm: '',
-      position: 'ALL',
-      team: 'ALL',
-      status: 'ALL',
+      searchTerm: "",
+      position: "ALL",
+      team: "ALL",
+      status: "ALL",
       tier: undefined,
       minRank: undefined,
       maxRank: undefined,
       minProjection: undefined,
       maxProjection: undefined,
-      trending: 'ALL',
-      injuryRisk: 'ALL',
-      availability: 'all'
+      trending: "ALL",
+      injuryRisk: "ALL",
+      availability: "all",
     });
   };
 
   const getActiveFilterCount = () => {
     let count = 0;
     if (filters.searchTerm) count++;
-    if (filters.position !== 'ALL') count++;
-    if (filters.team !== 'ALL') count++;
-    if (filters.status !== 'ALL') count++;
+    if (filters.position !== "ALL") count++;
+    if (filters.team !== "ALL") count++;
+    if (filters.status !== "ALL") count++;
     if (filters.tier) count++;
     if (filters.minRank || filters.maxRank) count++;
     if (filters.minProjection || filters.maxProjection) count++;
-    if (filters.trending !== 'ALL') count++;
-    if (filters.injuryRisk !== 'ALL') count++;
-    if (filters.availability !== 'all') count++;
+    if (filters.trending !== "ALL") count++;
+    if (filters.injuryRisk !== "ALL") count++;
+    if (filters.availability !== "all") count++;
     return count;
   };
 
@@ -426,21 +499,30 @@ export default function PlayerSearchScreen() {
       <View style={styles.playerContainer}>
         <MobilePlayerCard
           player={player}
-          variant={viewMode === 'grid' ? 'compact' : 'standard'}
+          variant={viewMode === "grid" ? "compact" : "standard"}
           selected={isSelected}
           selectable={comparisonMode}
           showProjection={true}
-          onPress={() => comparisonMode ? togglePlayerSelection(player.id) : handlePlayerPress(player)}
+          onPress={() =>
+            comparisonMode
+              ? togglePlayerSelection(player.id)
+              : handlePlayerPress(player)
+          }
           style={[
-            viewMode === 'grid' && styles.gridPlayerCard,
-            isSelected && styles.selectedCard
+            viewMode === "grid" && styles.gridPlayerCard,
+            isSelected && styles.selectedCard,
           ]}
         />
 
         {/* Additional player info overlay */}
         <View style={styles.playerOverlay}>
           {player.trending && (
-            <View style={[styles.trendingBadge, { backgroundColor: getTrendingColor(player.trending) }]}>
+            <View
+              style={[
+                styles.trendingBadge,
+                { backgroundColor: getTrendingColor(player.trending) },
+              ]}
+            >
               <Ionicons
                 name={getTrendingIcon(player.trending)}
                 size={12}
@@ -457,7 +539,10 @@ export default function PlayerSearchScreen() {
 
           {comparisonMode && (
             <TouchableOpacity
-              style={[styles.selectionButton, isSelected && styles.selectionButtonActive]}
+              style={[
+                styles.selectionButton,
+                isSelected && styles.selectionButtonActive,
+              ]}
               onPress={() => togglePlayerSelection(player.id)}
             >
               <Ionicons
@@ -473,13 +558,14 @@ export default function PlayerSearchScreen() {
         {advancedMode && (
           <View style={styles.extendedStats}>
             <Text style={styles.statText}>
-              ADP: {player.adp?.toFixed(1) || 'N/A'} |
-              Own: {player.ownership_percentage?.toFixed(1)}% |
-              Tier: {player.tier || 'N/A'}
+              ADP: {player.adp?.toFixed(1) || "N/A"} | Own:{" "}
+              {player.ownership_percentage?.toFixed(1)}% | Tier:{" "}
+              {player.tier || "N/A"}
             </Text>
             {player.stats && (
               <Text style={styles.statText}>
-                FPPG: {player.stats.fantasy_points_per_game?.toFixed(1) || 'N/A'}
+                FPPG:{" "}
+                {player.stats.fantasy_points_per_game?.toFixed(1) || "N/A"}
               </Text>
             )}
           </View>
@@ -493,28 +579,39 @@ export default function PlayerSearchScreen() {
       player.name,
       `${player.position} - ${player.team}\nProjected: ${player.projected_points} pts\nRank: #${player.rank}`,
       [
-        { text: 'Add to Watchlist', onPress: () => console.log('Add to watchlist') },
-        { text: 'View Details', onPress: () => console.log('View details') },
-        { text: 'Cancel', style: 'cancel' }
-      ]
+        {
+          text: "Add to Watchlist",
+          onPress: () => console.log("Add to watchlist"),
+        },
+        { text: "View Details", onPress: () => console.log("View details") },
+        { text: "Cancel", style: "cancel" },
+      ],
     );
   };
 
   const getTrendingColor = (trending: string) => {
     switch (trending) {
-      case 'up': return '#10b981';
-      case 'down': return '#ef4444';
-      case 'steady': return '#6b7280';
-      default: return '#6b7280';
+      case "up":
+        return "#10b981";
+      case "down":
+        return "#ef4444";
+      case "steady":
+        return "#6b7280";
+      default:
+        return "#6b7280";
     }
   };
 
   const getTrendingIcon = (trending: string) => {
     switch (trending) {
-      case 'up': return 'trending-up' as const;
-      case 'down': return 'trending-down' as const;
-      case 'steady': return 'remove' as const;
-      default: return 'remove' as const;
+      case "up":
+        return "trending-up" as const;
+      case "down":
+        return "trending-down" as const;
+      case "steady":
+        return "remove" as const;
+      default:
+        return "remove" as const;
     }
   };
 
@@ -528,10 +625,7 @@ export default function PlayerSearchScreen() {
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Filter Players</Text>
           <View style={styles.modalHeaderButtons}>
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={clearFilters}
-            >
+            <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowFilters(false)}>
@@ -548,7 +642,9 @@ export default function PlayerSearchScreen() {
               style={styles.searchInput}
               placeholder="Player name, team, or position..."
               value={filters.searchTerm}
-              onChangeText={(text) => setFilters(prev => ({ ...prev, searchTerm: text }))}
+              onChangeText={(text) =>
+                setFilters((prev) => ({ ...prev, searchTerm: text }))
+              }
             />
           </View>
 
@@ -561,14 +657,18 @@ export default function PlayerSearchScreen() {
                   key={pos}
                   style={[
                     styles.filterChip,
-                    filters.position === pos && styles.filterChipActive
+                    filters.position === pos && styles.filterChipActive,
                   ]}
-                  onPress={() => setFilters(prev => ({ ...prev, position: pos }))}
+                  onPress={() =>
+                    setFilters((prev) => ({ ...prev, position: pos }))
+                  }
                 >
-                  <Text style={[
-                    styles.filterChipText,
-                    filters.position === pos && styles.filterChipTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filters.position === pos && styles.filterChipTextActive,
+                    ]}
+                  >
                     {pos}
                   </Text>
                 </TouchableOpacity>
@@ -585,14 +685,16 @@ export default function PlayerSearchScreen() {
                   key={team}
                   style={[
                     styles.filterChip,
-                    filters.team === team && styles.filterChipActive
+                    filters.team === team && styles.filterChipActive,
                   ]}
-                  onPress={() => setFilters(prev => ({ ...prev, team }))}
+                  onPress={() => setFilters((prev) => ({ ...prev, team }))}
                 >
-                  <Text style={[
-                    styles.filterChipText,
-                    filters.team === team && styles.filterChipTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filters.team === team && styles.filterChipTextActive,
+                    ]}
+                  >
                     {team}
                   </Text>
                 </TouchableOpacity>
@@ -609,14 +711,16 @@ export default function PlayerSearchScreen() {
                   key={status}
                   style={[
                     styles.filterChip,
-                    filters.status === status && styles.filterChipActive
+                    filters.status === status && styles.filterChipActive,
                   ]}
-                  onPress={() => setFilters(prev => ({ ...prev, status }))}
+                  onPress={() => setFilters((prev) => ({ ...prev, status }))}
                 >
-                  <Text style={[
-                    styles.filterChipText,
-                    filters.status === status && styles.filterChipTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filters.status === status && styles.filterChipTextActive,
+                    ]}
+                  >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -631,8 +735,8 @@ export default function PlayerSearchScreen() {
               <Switch
                 value={advancedMode}
                 onValueChange={setAdvancedMode}
-                trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
-                thumbColor={advancedMode ? '#ffffff' : '#f4f3f4'}
+                trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
+                thumbColor={advancedMode ? "#ffffff" : "#f4f3f4"}
               />
             </View>
 
@@ -645,22 +749,26 @@ export default function PlayerSearchScreen() {
                     <TextInput
                       style={styles.rangeInput}
                       placeholder="Min"
-                      value={filters.minRank?.toString() || ''}
-                      onChangeText={(text) => setFilters(prev => ({
-                        ...prev,
-                        minRank: text ? parseInt(text) : undefined
-                      }))}
+                      value={filters.minRank?.toString() || ""}
+                      onChangeText={(text) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          minRank: text ? parseInt(text) : undefined,
+                        }))
+                      }
                       keyboardType="numeric"
                     />
                     <Text style={styles.rangeSeparator}>to</Text>
                     <TextInput
                       style={styles.rangeInput}
                       placeholder="Max"
-                      value={filters.maxRank?.toString() || ''}
-                      onChangeText={(text) => setFilters(prev => ({
-                        ...prev,
-                        maxRank: text ? parseInt(text) : undefined
-                      }))}
+                      value={filters.maxRank?.toString() || ""}
+                      onChangeText={(text) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          maxRank: text ? parseInt(text) : undefined,
+                        }))
+                      }
                       keyboardType="numeric"
                     />
                   </View>
@@ -673,22 +781,26 @@ export default function PlayerSearchScreen() {
                     <TextInput
                       style={styles.rangeInput}
                       placeholder="Min"
-                      value={filters.minProjection?.toString() || ''}
-                      onChangeText={(text) => setFilters(prev => ({
-                        ...prev,
-                        minProjection: text ? parseFloat(text) : undefined
-                      }))}
+                      value={filters.minProjection?.toString() || ""}
+                      onChangeText={(text) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          minProjection: text ? parseFloat(text) : undefined,
+                        }))
+                      }
                       keyboardType="numeric"
                     />
                     <Text style={styles.rangeSeparator}>to</Text>
                     <TextInput
                       style={styles.rangeInput}
                       placeholder="Max"
-                      value={filters.maxProjection?.toString() || ''}
-                      onChangeText={(text) => setFilters(prev => ({
-                        ...prev,
-                        maxProjection: text ? parseFloat(text) : undefined
-                      }))}
+                      value={filters.maxProjection?.toString() || ""}
+                      onChangeText={(text) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          maxProjection: text ? parseFloat(text) : undefined,
+                        }))
+                      }
                       keyboardType="numeric"
                     />
                   </View>
@@ -703,14 +815,19 @@ export default function PlayerSearchScreen() {
                         key={trend}
                         style={[
                           styles.filterChip,
-                          filters.trending === trend && styles.filterChipActive
+                          filters.trending === trend && styles.filterChipActive,
                         ]}
-                        onPress={() => setFilters(prev => ({ ...prev, trending: trend }))}
+                        onPress={() =>
+                          setFilters((prev) => ({ ...prev, trending: trend }))
+                        }
                       >
-                        <Text style={[
-                          styles.filterChipText,
-                          filters.trending === trend && styles.filterChipTextActive
-                        ]}>
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            filters.trending === trend &&
+                              styles.filterChipTextActive,
+                          ]}
+                        >
                           {trend.charAt(0).toUpperCase() + trend.slice(1)}
                         </Text>
                       </TouchableOpacity>
@@ -745,17 +862,19 @@ export default function PlayerSearchScreen() {
               key={option.key}
               style={[
                 styles.sortOption,
-                currentSort.key === option.key && styles.sortOptionActive
+                currentSort.key === option.key && styles.sortOptionActive,
               ]}
               onPress={() => {
                 setCurrentSort(option);
                 setShowSortOptions(false);
               }}
             >
-              <Text style={[
-                styles.sortOptionText,
-                currentSort.key === option.key && styles.sortOptionTextActive
-              ]}>
+              <Text
+                style={[
+                  styles.sortOptionText,
+                  currentSort.key === option.key && styles.sortOptionTextActive,
+                ]}
+              >
                 {option.label}
               </Text>
               {currentSort.key === option.key && (
@@ -771,7 +890,7 @@ export default function PlayerSearchScreen() {
   const renderComparisonPanel = () => {
     if (!comparisonMode || selectedPlayers.size === 0) return null;
 
-    const selectedPlayerData = players.filter(p => selectedPlayers.has(p.id));
+    const selectedPlayerData = players.filter((p) => selectedPlayers.has(p.id));
 
     return (
       <View style={styles.comparisonPanel}>
@@ -805,17 +924,20 @@ export default function PlayerSearchScreen() {
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
+            onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}
           >
             <Ionicons
-              name={viewMode === 'list' ? 'grid' : 'list'}
+              name={viewMode === "list" ? "grid" : "list"}
               size={20}
               color="#6b7280"
             />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.headerButton, comparisonMode && styles.headerButtonActive]}
+            style={[
+              styles.headerButton,
+              comparisonMode && styles.headerButtonActive,
+            ]}
             onPress={() => {
               setComparisonMode(!comparisonMode);
               if (comparisonMode) {
@@ -835,17 +957,26 @@ export default function PlayerSearchScreen() {
       {/* Quick Search */}
       <View style={styles.quickSearch}>
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
+          <Ionicons
+            name="search"
+            size={20}
+            color="#6b7280"
+            style={styles.searchIcon}
+          />
           <TextInput
             style={styles.quickSearchInput}
             placeholder="Search players..."
             value={filters.searchTerm}
-            onChangeText={(text) => setFilters(prev => ({ ...prev, searchTerm: text }))}
+            onChangeText={(text) =>
+              setFilters((prev) => ({ ...prev, searchTerm: text }))
+            }
           />
           {filters.searchTerm.length > 0 && (
             <TouchableOpacity
               style={styles.clearSearchButton}
-              onPress={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
+              onPress={() =>
+                setFilters((prev) => ({ ...prev, searchTerm: "" }))
+              }
             >
               <Ionicons name="close-circle" size={20} color="#6b7280" />
             </TouchableOpacity>
@@ -886,9 +1017,9 @@ export default function PlayerSearchScreen() {
         }
         contentContainerStyle={[
           styles.playersList,
-          viewMode === 'grid' && styles.playersListGrid
+          viewMode === "grid" && styles.playersListGrid,
         ]}
-        numColumns={viewMode === 'grid' ? 2 : 1}
+        numColumns={viewMode === "grid" ? 2 : 1}
         key={viewMode} // Force re-render when switching modes
         showsVerticalScrollIndicator={false}
       />
@@ -906,57 +1037,57 @@ export default function PlayerSearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   headerLeft: {
     flex: 1,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   headerButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerButtonActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: "#eff6ff",
   },
 
   // Quick Search
   quickSearch: {
     padding: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
     borderRadius: 8,
     paddingHorizontal: 12,
   },
@@ -967,7 +1098,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 12,
-    color: '#1e293b',
+    color: "#1e293b",
   },
   clearSearchButton: {
     padding: 4,
@@ -975,33 +1106,33 @@ const styles = StyleSheet.create({
 
   // Control Bar
   controlBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     borderRadius: 6,
     marginRight: 12,
     gap: 6,
   },
   controlButtonText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   sortIndicator: {
     flex: 1,
     fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'right',
+    color: "#9ca3af",
+    textAlign: "right",
   },
 
   // Player List
@@ -1009,143 +1140,143 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   playersListGrid: {
-    alignItems: 'stretch',
+    alignItems: "stretch",
   },
   playerContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 12,
   },
   gridPlayerCard: {
-    width: '100%',
+    width: "100%",
   },
   selectedCard: {
-    borderColor: '#3b82f6',
+    borderColor: "#3b82f6",
     borderWidth: 2,
   },
 
   // Player Overlay
   playerOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   trendingBadge: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   newsBadge: {
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 6,
   },
   newsBadgeText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   selectionButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   selectionButtonActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: "#eff6ff",
   },
 
   // Extended Stats
   extendedStats: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
     borderRadius: 6,
     padding: 8,
     marginTop: 8,
   },
   statText: {
     fontSize: 11,
-    color: '#6b7280',
+    color: "#6b7280",
     marginBottom: 2,
   },
 
   // Comparison Panel
   comparisonPanel: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: "#e2e8f0",
     padding: 16,
   },
   comparisonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   comparisonTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   compareButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
   },
   compareButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   modalHeaderButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   clearButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     borderRadius: 6,
   },
   clearButtonText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   modalClose: {
     fontSize: 16,
-    color: '#3b82f6',
-    fontWeight: '500',
+    color: "#3b82f6",
+    fontWeight: "500",
   },
   modalContent: {
     flex: 1,
@@ -1158,42 +1289,42 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 12,
   },
   searchInput: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
   },
   filterChip: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
   },
   filterChipText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   filterChipTextActive: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
 
   // Advanced Filters
   switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   rangeSection: {
@@ -1201,49 +1332,49 @@ const styles = StyleSheet.create({
   },
   rangeLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: "500",
+    color: "#374151",
     marginBottom: 8,
   },
   rangeInputs: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   rangeInput: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 6,
     padding: 10,
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   rangeSeparator: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
 
   // Sort Options
   sortOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: "#f1f5f9",
   },
   sortOptionActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: "#eff6ff",
   },
   sortOptionText: {
     fontSize: 16,
-    color: '#1e293b',
+    color: "#1e293b",
   },
   sortOptionTextActive: {
-    color: '#3b82f6',
-    fontWeight: '600',
+    color: "#3b82f6",
+    fontWeight: "600",
   },
 });

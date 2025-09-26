@@ -21,16 +21,16 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   MobileDraftBoard,
   type DraftPick as DraftBoardPick,
-  type DraftTeam
-} from '@ultimate-fantasy/ui-components/src/components/DraftBoard';
+  type DraftTeam,
+} from "@ultimate-fantasy/ui-components/src/components/DraftBoard";
 import {
   MobilePlayerCard,
-  type Player as UIPlayer
-} from '@ultimate-fantasy/ui-components/src/components/PlayerCard';
+  type Player as UIPlayer,
+} from "@ultimate-fantasy/ui-components/src/components/PlayerCard";
 
 interface Player extends UIPlayer {
   id: string;
@@ -39,7 +39,14 @@ interface Player extends UIPlayer {
   team: string;
   rank: number;
   projected_points: number;
-  status: 'healthy' | 'questionable' | 'doubtful' | 'out' | 'injured' | 'bye' | 'suspended';
+  status:
+    | "healthy"
+    | "questionable"
+    | "doubtful"
+    | "out"
+    | "injured"
+    | "bye"
+    | "suspended";
   adp?: number;
   tier?: number;
   bye_week?: number;
@@ -83,7 +90,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "BUF",
     rank: 1,
     projected_points: 24.2,
-    status: 'healthy',
+    status: "healthy",
     adp: 8.5,
     tier: 1,
     bye_week: 12,
@@ -95,7 +102,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "SF",
     rank: 2,
     projected_points: 22.8,
-    status: 'healthy',
+    status: "healthy",
     adp: 1.2,
     tier: 1,
     bye_week: 9,
@@ -107,7 +114,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "LAR",
     rank: 3,
     projected_points: 19.4,
-    status: 'questionable',
+    status: "questionable",
     adp: 12.3,
     tier: 1,
     bye_week: 10,
@@ -119,7 +126,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "KC",
     rank: 4,
     projected_points: 15.7,
-    status: 'healthy',
+    status: "healthy",
     adp: 18.1,
     tier: 1,
     bye_week: 10,
@@ -131,7 +138,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "TEN",
     rank: 5,
     projected_points: 18.3,
-    status: 'healthy',
+    status: "healthy",
     adp: 15.7,
     tier: 2,
     bye_week: 7,
@@ -143,7 +150,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "BUF",
     rank: 6,
     projected_points: 17.8,
-    status: 'healthy',
+    status: "healthy",
     adp: 14.2,
     tier: 2,
     bye_week: 12,
@@ -155,7 +162,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "KC",
     rank: 7,
     projected_points: 23.9,
-    status: 'healthy',
+    status: "healthy",
     adp: 22.4,
     tier: 1,
     bye_week: 10,
@@ -167,7 +174,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "MIA",
     rank: 8,
     projected_points: 17.2,
-    status: 'healthy',
+    status: "healthy",
     adp: 16.8,
     tier: 2,
     bye_week: 11,
@@ -179,7 +186,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "LAC",
     rank: 9,
     projected_points: 16.9,
-    status: 'doubtful',
+    status: "doubtful",
     adp: 11.5,
     tier: 2,
     bye_week: 8,
@@ -191,7 +198,7 @@ const MOCK_PLAYERS: Player[] = [
     team: "BAL",
     rank: 10,
     projected_points: 13.2,
-    status: 'healthy',
+    status: "healthy",
     adp: 28.3,
     tier: 2,
     bye_week: 14,
@@ -199,20 +206,48 @@ const MOCK_PLAYERS: Player[] = [
 ];
 
 const MOCK_TEAMS: DraftTeam[] = [
-  { id: 'team1', name: 'Your Team', owner: 'You', pick_order: 1, is_current_turn: true, is_user_team: true },
-  { id: 'team2', name: 'Rivals', owner: 'Mike', pick_order: 2, is_current_turn: false, is_user_team: false },
-  { id: 'team3', name: 'Crushers', owner: 'Sarah', pick_order: 3, is_current_turn: false, is_user_team: false },
-  { id: 'team4', name: 'Champions', owner: 'Alex', pick_order: 4, is_current_turn: false, is_user_team: false },
+  {
+    id: "team1",
+    name: "Your Team",
+    owner: "You",
+    pick_order: 1,
+    is_current_turn: true,
+    is_user_team: true,
+  },
+  {
+    id: "team2",
+    name: "Rivals",
+    owner: "Mike",
+    pick_order: 2,
+    is_current_turn: false,
+    is_user_team: false,
+  },
+  {
+    id: "team3",
+    name: "Crushers",
+    owner: "Sarah",
+    pick_order: 3,
+    is_current_turn: false,
+    is_user_team: false,
+  },
+  {
+    id: "team4",
+    name: "Champions",
+    owner: "Alex",
+    pick_order: 4,
+    is_current_turn: false,
+    is_user_team: false,
+  },
 ];
 
-const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DST'];
-const TEAMS = ['ALL', 'BUF', 'SF', 'LAR', 'KC', 'TEN', 'MIA', 'LAC', 'BAL'];
-const TIERS = ['ALL', '1', '2', '3', '4', '5'];
+const POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+const TEAMS = ["ALL", "BUF", "SF", "LAR", "KC", "TEN", "MIA", "LAC", "BAL"];
+const TIERS = ["ALL", "1", "2", "3", "4", "5"];
 
 export default function DraftScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = Dimensions.get('window');
+  const { width: screenWidth } = Dimensions.get("window");
 
   // Core draft state
   const [players] = useState<Player[]>(MOCK_PLAYERS);
@@ -226,21 +261,23 @@ export default function DraftScreen() {
   const [draftSettings] = useState<DraftSettings>({
     totalRounds: 16,
     timePerPick: 90,
-    draftOrder: ['team1', 'team2', 'team3', 'team4'],
-    snakeDraft: true
+    draftOrder: ["team1", "team2", "team3", "team4"],
+    snakeDraft: true,
   });
 
   // UI state
-  const [currentView, setCurrentView] = useState<'players' | 'board' | 'queue'>('players');
+  const [currentView, setCurrentView] = useState<"players" | "board" | "queue">(
+    "players",
+  );
   const [showFilters, setShowFilters] = useState(false);
 
   // Filtering and search
   const [filters, setFilters] = useState<PlayerFilter>({
-    position: 'ALL',
-    team: 'ALL',
-    searchTerm: '',
+    position: "ALL",
+    team: "ALL",
+    searchTerm: "",
     tier: undefined,
-    available: true
+    available: true,
   });
 
   // Draft queue management
@@ -251,14 +288,26 @@ export default function DraftScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   // Computed values
-  const filteredPlayers = players.filter(player => {
-    const isAvailable = !draftPicks.some(pick => pick.player.id === player.id);
+  const filteredPlayers = players.filter((player) => {
+    const isAvailable = !draftPicks.some(
+      (pick) => pick.player.id === player.id,
+    );
     if (filters.available && !isAvailable) return false;
 
-    if (filters.position && filters.position !== 'ALL' && player.position !== filters.position) return false;
-    if (filters.team && filters.team !== 'ALL' && player.team !== filters.team) return false;
+    if (
+      filters.position &&
+      filters.position !== "ALL" &&
+      player.position !== filters.position
+    )
+      return false;
+    if (filters.team && filters.team !== "ALL" && player.team !== filters.team)
+      return false;
     if (filters.tier && player.tier !== filters.tier) return false;
-    if (filters.searchTerm && !player.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) return false;
+    if (
+      filters.searchTerm &&
+      !player.name.toLowerCase().includes(filters.searchTerm.toLowerCase())
+    )
+      return false;
 
     return true;
   });
@@ -269,15 +318,15 @@ export default function DraftScreen() {
   const isMyTurn = currentTeam.is_user_team;
 
   // Convert draft picks to format expected by DraftBoard
-  const boardPicks: DraftBoardPick[] = draftPicks.map(pick => ({
+  const boardPicks: DraftBoardPick[] = draftPicks.map((pick) => ({
     pick_number: pick.pickNo,
     round: Math.ceil(pick.pickNo / draftTeams.length),
     team_id: pick.teamId,
-    team_name: draftTeams.find(t => t.id === pick.teamId)?.name || 'Unknown',
+    team_name: draftTeams.find((t) => t.id === pick.teamId)?.name || "Unknown",
     player_id: pick.player.id,
     player_name: pick.player.name,
     player_position: pick.player.position,
-    timestamp: new Date(pick.timestamp).toISOString()
+    timestamp: new Date(pick.timestamp).toISOString(),
   }));
 
   const draftPlayer = useCallback(
@@ -303,13 +352,15 @@ export default function DraftScreen() {
 
       // Update team turn
       const nextTeamIndex = currentPick % draftTeams.length;
-      setDraftTeams(teams => teams.map((team, idx) => ({
-        ...team,
-        is_current_turn: idx === nextTeamIndex
-      })));
+      setDraftTeams((teams) =>
+        teams.map((team, idx) => ({
+          ...team,
+          is_current_turn: idx === nextTeamIndex,
+        })),
+      );
 
       // Remove from queue if it was queued
-      setDraftQueue(prev => prev.filter(p => p.id !== player.id));
+      setDraftQueue((prev) => prev.filter((p) => p.id !== player.id));
 
       // Animate the pick
       Animated.sequence([
@@ -331,7 +382,14 @@ export default function DraftScreen() {
         [{ text: "OK" }],
       );
     },
-    [currentPick, currentTeam, currentRound, draftSettings.timePerPick, draftTeams.length, scaleAnim],
+    [
+      currentPick,
+      currentTeam,
+      currentRound,
+      draftSettings.timePerPick,
+      draftTeams.length,
+      scaleAnim,
+    ],
   );
 
   const autoDraft = useCallback(() => {
@@ -366,7 +424,9 @@ export default function DraftScreen() {
       return;
     }
 
-    const isAlreadyDrafted = draftPicks.some(pick => pick.player.id === player.id);
+    const isAlreadyDrafted = draftPicks.some(
+      (pick) => pick.player.id === player.id,
+    );
     if (isAlreadyDrafted) {
       Alert.alert("Already Drafted", "This player has already been selected.");
       return;
@@ -385,20 +445,23 @@ export default function DraftScreen() {
   };
 
   const addToQueue = (player: Player) => {
-    if (!draftQueue.find(p => p.id === player.id)) {
-      setDraftQueue(prev => [...prev, player]);
+    if (!draftQueue.find((p) => p.id === player.id)) {
+      setDraftQueue((prev) => [...prev, player]);
       Alert.alert("Added to Queue", `${player.name} added to your draft queue`);
     }
   };
 
   const removeFromQueue = (player: Player) => {
-    setDraftQueue(prev => prev.filter(p => p.id !== player.id));
+    setDraftQueue((prev) => prev.filter((p) => p.id !== player.id));
   };
 
   const addToWatchlist = (player: Player) => {
-    if (!watchlist.find(p => p.id === player.id)) {
-      setWatchlist(prev => [...prev, player]);
-      Alert.alert("Added to Watchlist", `${player.name} added to your watchlist`);
+    if (!watchlist.find((p) => p.id === player.id)) {
+      setWatchlist((prev) => [...prev, player]);
+      Alert.alert(
+        "Added to Watchlist",
+        `${player.name} added to your watchlist`,
+      );
     }
   };
 
@@ -409,9 +472,11 @@ export default function DraftScreen() {
   };
 
   const renderPlayer = ({ item: player }: { item: Player }) => {
-    const isAlreadyDrafted = draftPicks.some(pick => pick.player.id === player.id);
+    const isAlreadyDrafted = draftPicks.some(
+      (pick) => pick.player.id === player.id,
+    );
     const isSelected = selectedPlayer?.id === player.id;
-    const isQueued = draftQueue.some(p => p.id === player.id);
+    const isQueued = draftQueue.some((p) => p.id === player.id);
 
     return (
       <View style={styles.playerContainer}>
@@ -424,7 +489,7 @@ export default function DraftScreen() {
           onPress={() => handlePlayerSelect(player)}
           style={[
             isAlreadyDrafted && styles.playerCardDrafted,
-            isQueued && styles.playerCardQueued
+            isQueued && styles.playerCardQueued,
           ]}
         />
 
@@ -432,7 +497,9 @@ export default function DraftScreen() {
           <View style={styles.playerActions}>
             <TouchableOpacity
               style={styles.queueButton}
-              onPress={() => isQueued ? removeFromQueue(player) : addToQueue(player)}
+              onPress={() =>
+                isQueued ? removeFromQueue(player) : addToQueue(player)
+              }
             >
               <Ionicons
                 name={isQueued ? "checkmark-circle" : "add-circle-outline"}
@@ -491,7 +558,9 @@ export default function DraftScreen() {
               style={styles.searchInput}
               placeholder="Player name..."
               value={filters.searchTerm}
-              onChangeText={(text) => setFilters(prev => ({ ...prev, searchTerm: text }))}
+              onChangeText={(text) =>
+                setFilters((prev) => ({ ...prev, searchTerm: text }))
+              }
             />
           </View>
 
@@ -504,14 +573,18 @@ export default function DraftScreen() {
                   key={pos}
                   style={[
                     styles.filterChip,
-                    filters.position === pos && styles.filterChipActive
+                    filters.position === pos && styles.filterChipActive,
                   ]}
-                  onPress={() => setFilters(prev => ({ ...prev, position: pos }))}
+                  onPress={() =>
+                    setFilters((prev) => ({ ...prev, position: pos }))
+                  }
                 >
-                  <Text style={[
-                    styles.filterChipText,
-                    filters.position === pos && styles.filterChipTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filters.position === pos && styles.filterChipTextActive,
+                    ]}
+                  >
                     {pos}
                   </Text>
                 </TouchableOpacity>
@@ -528,14 +601,16 @@ export default function DraftScreen() {
                   key={team}
                   style={[
                     styles.filterChip,
-                    filters.team === team && styles.filterChipActive
+                    filters.team === team && styles.filterChipActive,
                   ]}
-                  onPress={() => setFilters(prev => ({ ...prev, team }))}
+                  onPress={() => setFilters((prev) => ({ ...prev, team }))}
                 >
-                  <Text style={[
-                    styles.filterChipText,
-                    filters.team === team && styles.filterChipTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filters.team === team && styles.filterChipTextActive,
+                    ]}
+                  >
                     {team}
                   </Text>
                 </TouchableOpacity>
@@ -546,13 +621,15 @@ export default function DraftScreen() {
           {/* Reset Filters */}
           <TouchableOpacity
             style={styles.resetButton}
-            onPress={() => setFilters({
-              position: 'ALL',
-              team: 'ALL',
-              searchTerm: '',
-              tier: undefined,
-              available: true
-            })}
+            onPress={() =>
+              setFilters({
+                position: "ALL",
+                team: "ALL",
+                searchTerm: "",
+                tier: undefined,
+                available: true,
+              })
+            }
           >
             <Text style={styles.resetButtonText}>Reset Filters</Text>
           </TouchableOpacity>
@@ -564,15 +641,20 @@ export default function DraftScreen() {
   const renderViewTabs = () => (
     <View style={styles.viewTabs}>
       {[
-        { key: 'players', label: 'Players', icon: 'people' },
-        { key: 'board', label: 'Draft Board', icon: 'grid' },
-        { key: 'queue', label: 'Queue', icon: 'list', badge: draftQueue.length }
+        { key: "players", label: "Players", icon: "people" },
+        { key: "board", label: "Draft Board", icon: "grid" },
+        {
+          key: "queue",
+          label: "Queue",
+          icon: "list",
+          badge: draftQueue.length,
+        },
       ].map((tab) => (
         <TouchableOpacity
           key={tab.key}
           style={[
             styles.viewTab,
-            currentView === tab.key && styles.viewTabActive
+            currentView === tab.key && styles.viewTabActive,
           ]}
           onPress={() => setCurrentView(tab.key as any)}
         >
@@ -582,10 +664,12 @@ export default function DraftScreen() {
               size={18}
               color={currentView === tab.key ? "#3b82f6" : "#6b7280"}
             />
-            <Text style={[
-              styles.viewTabText,
-              currentView === tab.key && styles.viewTabTextActive
-            ]}>
+            <Text
+              style={[
+                styles.viewTabText,
+                currentView === tab.key && styles.viewTabTextActive,
+              ]}
+            >
               {tab.label}
             </Text>
             {tab.badge > 0 && (
@@ -601,7 +685,7 @@ export default function DraftScreen() {
 
   const renderContent = () => {
     switch (currentView) {
-      case 'board':
+      case "board":
         return (
           <View style={styles.boardContainer}>
             <MobileDraftBoard
@@ -614,7 +698,7 @@ export default function DraftScreen() {
           </View>
         );
 
-      case 'queue':
+      case "queue":
         return (
           <View style={styles.queueContainer}>
             {draftQueue.length === 0 ? (
@@ -694,9 +778,7 @@ export default function DraftScreen() {
       {renderViewTabs()}
 
       {/* Main Content */}
-      <View style={styles.content}>
-        {renderContent()}
-      </View>
+      <View style={styles.content}>{renderContent()}</View>
 
       {/* Draft Controls */}
       <View style={styles.controls}>
@@ -774,46 +856,46 @@ const styles = StyleSheet.create({
 
   // View Tabs
   viewTabs: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   viewTab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   viewTabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#3b82f6',
+    borderBottomColor: "#3b82f6",
   },
   tabContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   viewTabText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   viewTabTextActive: {
-    color: '#3b82f6',
-    fontWeight: '600',
+    color: "#3b82f6",
+    fontWeight: "600",
   },
   tabBadge: {
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   tabBadgeText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Content Areas
@@ -826,50 +908,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playersHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   playersCount: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     borderRadius: 6,
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   playersList: {
     padding: 16,
   },
   playerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   playerCardDrafted: {
     opacity: 0.6,
   },
   playerCardQueued: {
-    borderColor: '#10b981',
+    borderColor: "#10b981",
     borderWidth: 2,
   },
   playerActions: {
-    flexDirection: 'column',
+    flexDirection: "column",
     marginLeft: 12,
     gap: 8,
   },
@@ -892,44 +974,44 @@ const styles = StyleSheet.create({
   },
   emptyQueue: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 32,
   },
   emptyQueueText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontWeight: "600",
+    color: "#6b7280",
     marginTop: 16,
   },
   emptyQueueSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
+    color: "#9ca3af",
+    textAlign: "center",
     marginTop: 8,
   },
   queueList: {
     flex: 1,
   },
   queueItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   queuePlayerInfo: {
     flex: 1,
   },
   queuePlayerName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   queuePlayerDetails: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 4,
   },
   removeButton: {
@@ -939,26 +1021,26 @@ const styles = StyleSheet.create({
   // Filter Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   modalClose: {
     fontSize: 16,
-    color: '#3b82f6',
-    fontWeight: '500',
+    color: "#3b82f6",
+    fontWeight: "500",
   },
   modalContent: {
     flex: 1,
@@ -969,47 +1051,47 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 12,
   },
   searchInput: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
   },
   filterChip: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
   },
   filterChipText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   filterChipTextActive: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
   resetButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
   resetButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Controls
@@ -1017,9 +1099,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 16,
     gap: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: "#e2e8f0",
   },
   controlButton: {
     flex: 1,

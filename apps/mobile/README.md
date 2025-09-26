@@ -74,6 +74,7 @@ This mobile app uses shared packages from the monorepo:
 The mobile app is designed to work seamlessly with the shared codebase. Components automatically adapt to the mobile platform using the platform adapter system.
 
 Key features:
+
 - Platform-aware storage (AsyncStorage for mobile, localStorage for web)
 - Cross-platform UI components that work on both web and mobile
 - Shared dashboard utilities and state management

@@ -14,7 +14,7 @@ export const FontSizes = () => (
           style={{
             fontSize: style.fontSize,
             fontWeight: style.fontWeight,
-            lineHeight: style.lineHeight
+            lineHeight: style.lineHeight,
           }}
         >
           The quick brown fox jumps over the lazy dog
@@ -58,17 +58,17 @@ export const MobileTypography = () => (
           style={{
             fontSize: style.fontSize,
             fontWeight: style.fontWeight,
-            lineHeight: style.lineHeight
+            lineHeight: style.lineHeight,
           }}
         >
-          {element === 'h1' && 'Main Heading'}
-          {element === 'h2' && 'Section Heading'}
-          {element === 'h3' && 'Subsection Heading'}
-          {element === 'body' && 'Body text for reading'}
-          {element === 'caption' && 'Caption text'}
-          {element === 'button' && 'Button Text'}
-          {element === 'label' && 'Label Text'}
-          {element.includes('body') && !element.includes('Large') && 'Body text content'}
+          {element === "h1" && "Main Heading"}
+          {element === "h2" && "Section Heading"}
+          {element === "h3" && "Subsection Heading"}
+          {element === "body" && "Body text for reading"}
+          {element === "caption" && "Caption text"}
+          {element === "button" && "Button Text"}
+          {element === "label" && "Label Text"}
+          {element.includes("body") && !element.includes("Large") && "Body text content"}
         </div>
       </div>
     ))}
@@ -85,17 +85,17 @@ export const DesktopTypography = () => (
           style={{
             fontSize: style.fontSize,
             fontWeight: style.fontWeight,
-            lineHeight: style.lineHeight
+            lineHeight: style.lineHeight,
           }}
         >
-          {element === 'h1' && 'Main Heading'}
-          {element === 'h2' && 'Section Heading'}
-          {element === 'h3' && 'Subsection Heading'}
-          {element === 'body' && 'Body text for reading'}
-          {element === 'caption' && 'Caption text'}
-          {element === 'button' && 'Button Text'}
-          {element === 'label' && 'Label Text'}
-          {element.includes('body') && !element.includes('Large') && 'Body text content'}
+          {element === "h1" && "Main Heading"}
+          {element === "h2" && "Section Heading"}
+          {element === "h3" && "Subsection Heading"}
+          {element === "body" && "Body text for reading"}
+          {element === "caption" && "Caption text"}
+          {element === "button" && "Button Text"}
+          {element === "label" && "Label Text"}
+          {element.includes("body") && !element.includes("Large") && "Body text content"}
         </div>
       </div>
     ))}

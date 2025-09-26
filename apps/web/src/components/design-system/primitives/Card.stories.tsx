@@ -87,9 +87,7 @@ export const WithFooter = () => (
         <p>You're facing the league champion this week. Good luck!</p>
       </Card.Content>
       <Card.Footer>
-        <button className="text-blue-600 text-sm hover:underline">
-          View Full Matchup
-        </button>
+        <button className="text-blue-600 text-sm hover:underline">View Full Matchup</button>
       </Card.Footer>
     </Card>
   </div>

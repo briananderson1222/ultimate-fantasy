@@ -12,7 +12,15 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { z } from "zod";
 import { useToast } from "../../components/ui/toast";
-import { Plus, Save, Copy, GripVertical, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Save,
+  Copy,
+  GripVertical,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+} from "lucide-react";
 import OnboardingTour from "../../components/OnboardingTour";
 
 type LineupPlayer = { player_id: string; position: string; projected_points?: number };
@@ -35,7 +43,7 @@ const POSITION_CONFIGS = {
       { position: "C", min: 1, max: 2, label: "Center" },
       { position: "UTIL", min: 1, max: 3, label: "Utility" },
     ],
-    total: { min: 8, max: 10 }
+    total: { min: 8, max: 10 },
   },
   NFL: {
     required: [
@@ -47,8 +55,8 @@ const POSITION_CONFIGS = {
       { position: "K", min: 1, max: 1, label: "Kicker" },
       { position: "DST", min: 1, max: 1, label: "Defense" },
     ],
-    total: { min: 9, max: 9 }
-  }
+    total: { min: 9, max: 9 },
+  },
 };
 
 type DragItem = {
@@ -61,7 +69,9 @@ export default function LineupPage() {
   const [teamId, setTeamId] = useState("");
   const [gameDay, setGameDay] = useState<string>(new Date().toISOString().slice(0, 10));
   const [sport, setSport] = useState<keyof typeof POSITION_CONFIGS>("NBA");
-  const [players, setPlayers] = useState<LineupPlayer[]>([{ player_id: "", position: "", projected_points: 0 }]);
+  const [players, setPlayers] = useState<LineupPlayer[]>([
+    { player_id: "", position: "", projected_points: 0 },
+  ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [lastSavedKey, setLastSavedKey] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -74,24 +84,26 @@ export default function LineupPage() {
   const positionConfig = POSITION_CONFIGS[sport];
   const positionValidation = useMemo(() => {
     const counts: Record<string, number> = {};
-    players.forEach(p => {
+    players.forEach((p) => {
       if (p.position) {
         counts[p.position] = (counts[p.position] || 0) + 1;
       }
     });
 
     const violations: string[] = [];
-    positionConfig.required.forEach(req => {
+    positionConfig.required.forEach((req) => {
       const count = counts[req.position] || 0;
       if (count < req.min) {
-        violations.push(`Need at least ${req.min} ${req.label}${req.min > 1 ? 's' : ''} (have ${count})`);
+        violations.push(
+          `Need at least ${req.min} ${req.label}${req.min > 1 ? "s" : ""} (have ${count})`,
+        );
       }
       if (count > req.max) {
         violations.push(`Too many ${req.label}s: ${count}/${req.max}`);
       }
     });
 
-    const total = players.filter(p => p.position && p.player_id).length;
+    const total = players.filter((p) => p.position && p.player_id).length;
     if (total < positionConfig.total.min) {
       violations.push(`Need at least ${positionConfig.total.min} players (have ${total})`);
     }
@@ -105,13 +117,13 @@ export default function LineupPage() {
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', '');
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", "");
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
     dragOverIndex.current = index;
   }, []);
 
@@ -120,26 +132,31 @@ export default function LineupPage() {
     dragOverIndex.current = null;
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    const dragIndex = draggedIndex;
+  const handleDrop = useCallback(
+    (e: React.DragEvent, dropIndex: number) => {
+      e.preventDefault();
+      const dragIndex = draggedIndex;
 
-    if (dragIndex === null || dragIndex === dropIndex) return;
+      if (dragIndex === null || dragIndex === dropIndex) return;
 
-    setPlayers(prev => {
-      const newPlayers = [...prev];
-      const [draggedPlayer] = newPlayers.splice(dragIndex, 1);
-      newPlayers.splice(dropIndex, 0, draggedPlayer);
-      return newPlayers;
-    });
+      setPlayers((prev) => {
+        const newPlayers = [...prev];
+        const [draggedPlayer] = newPlayers.splice(dragIndex, 1);
+        newPlayers.splice(dropIndex, 0, draggedPlayer);
+        return newPlayers;
+      });
 
-    setDraggedIndex(null);
-    dragOverIndex.current = null;
-  }, [draggedIndex]);
+      setDraggedIndex(null);
+      dragOverIndex.current = null;
+    },
+    [draggedIndex],
+  );
 
   // Auto-optimize lineup based on projected points
   const optimizeLineup = useCallback(() => {
-    const sortedPlayers = [...players].sort((a, b) => (b.projected_points || 0) - (a.projected_points || 0));
+    const sortedPlayers = [...players].sort(
+      (a, b) => (b.projected_points || 0) - (a.projected_points || 0),
+    );
     setPlayers(sortedPlayers);
     toast.show({ title: "Lineup optimized", description: "Players sorted by projected points" });
   }, [players, toast]);
@@ -182,7 +199,8 @@ export default function LineupPage() {
     setPlayers((prev) => prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
   };
 
-  const addPlayer = () => setPlayers((prev) => [...prev, { player_id: "", position: "", projected_points: 0 }]);
+  const addPlayer = () =>
+    setPlayers((prev) => [...prev, { player_id: "", position: "", projected_points: 0 }]);
   const removePlayer = (idx: number) => setPlayers((prev) => prev.filter((_, i) => i !== idx));
 
   const keyFor = (t: string, d: string, ps: LineupPlayer[]) =>
@@ -245,9 +263,7 @@ export default function LineupPage() {
             <CardTitle className="flex items-center justify-between">
               Lineup Builder
               <div className="flex items-center gap-2">
-                {!positionValidation.isValid && (
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                )}
+                {!positionValidation.isValid && <AlertCircle className="h-5 w-5 text-red-500" />}
                 <Button
                   variant="secondary"
                   size="sm"
@@ -314,15 +330,20 @@ export default function LineupPage() {
           <div className="bg-gray-50 rounded-lg p-3">
             <h3 className="text-sm font-medium mb-2">Position Requirements ({sport})</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {positionConfig.required.map(req => {
+              {positionConfig.required.map((req) => {
                 const count = positionValidation.counts[req.position] || 0;
                 const isValid = count >= req.min && count <= req.max;
                 return (
-                  <div key={req.position} className={`flex items-center justify-between p-2 rounded ${
-                    isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
+                  <div
+                    key={req.position}
+                    className={`flex items-center justify-between p-2 rounded ${
+                      isValid ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}
+                  >
                     <span>{req.position}</span>
-                    <span>{count}/{req.min}-{req.max}</span>
+                    <span>
+                      {count}/{req.min}-{req.max}
+                    </span>
                   </div>
                 );
               })}
@@ -356,8 +377,8 @@ export default function LineupPage() {
                 key={idx}
                 className={`flex gap-2 p-3 rounded-lg border transition-all ${
                   draggedIndex === idx
-                    ? 'bg-blue-50 border-blue-200 shadow-lg scale-105'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                    ? "bg-blue-50 border-blue-200 shadow-lg scale-105"
+                    : "bg-white border-gray-200 hover:bg-gray-50"
                 }`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, idx)}
@@ -405,7 +426,7 @@ export default function LineupPage() {
                     }
                   >
                     <option value="">Select...</option>
-                    {positionConfig.required.map(req => (
+                    {positionConfig.required.map((req) => (
                       <option key={req.position} value={req.position}>
                         {req.position} - {req.label}
                       </option>
@@ -422,7 +443,9 @@ export default function LineupPage() {
                     type="number"
                     step="0.1"
                     value={p.projected_points || 0}
-                    onChange={(e) => updatePlayer(idx, "projected_points", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      updatePlayer(idx, "projected_points", parseFloat(e.target.value) || 0)
+                    }
                     placeholder="0.0"
                     className="w-full rounded border px-3 py-2 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   />

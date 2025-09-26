@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Card } from '../primitives/Card';
-import { Button } from '../primitives/Button';
-import { ProgressBar } from '../primitives/ProgressBar';
-import { Avatar } from '../primitives/Avatar';
-import { cn } from '../../../lib/utils';
+import React, { useState } from "react";
+import { Card } from "../primitives/Card";
+import { Button } from "../primitives/Button";
+import { ProgressBar } from "../primitives/ProgressBar";
+import { Avatar } from "../primitives/Avatar";
+import { cn } from "../../../lib/utils";
 
 export interface TrendData {
-  direction: 'up' | 'down' | 'hot';
+  direction: "up" | "down" | "hot";
   percentage: number;
   reason: string;
   addDropPercentage: number;
@@ -34,7 +34,7 @@ export interface TrendingPlayersFilters {
 export interface TrendingPlayersProps {
   players: TrendingPlayer[];
   title?: string;
-  variant?: 'default' | 'compact';
+  variant?: "default" | "compact";
   loading?: boolean;
   filters?: TrendingPlayersFilters;
   showActions?: boolean;
@@ -44,29 +44,29 @@ export interface TrendingPlayersProps {
   className?: string;
 }
 
-const getTrendIcon = (direction: TrendData['direction']) => {
+const getTrendIcon = (direction: TrendData["direction"]) => {
   switch (direction) {
-    case 'up':
-      return '↗️';
-    case 'down':
-      return '↘️';
-    case 'hot':
-      return '🔥';
+    case "up":
+      return "↗️";
+    case "down":
+      return "↘️";
+    case "hot":
+      return "🔥";
     default:
-      return '—';
+      return "—";
   }
 };
 
-const getTrendColor = (direction: TrendData['direction']) => {
+const getTrendColor = (direction: TrendData["direction"]) => {
   switch (direction) {
-    case 'up':
-      return 'text-green-600';
-    case 'down':
-      return 'text-red-600';
-    case 'hot':
-      return 'text-orange-600';
+    case "up":
+      return "text-green-600";
+    case "down":
+      return "text-red-600";
+    case "hot":
+      return "text-orange-600";
     default:
-      return 'text-gray-600';
+      return "text-gray-600";
   }
 };
 
@@ -94,15 +94,15 @@ const WeeklyTrend: React.FC<{ points: number[] }> = ({ points }) => {
 
 export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
   players,
-  title = 'Trending Players',
-  variant = 'default',
+  title = "Trending Players",
+  variant = "default",
   loading = false,
   filters,
   showActions = false,
   onFilterChange,
   onAddPlayer,
   onWatchPlayer,
-  className
+  className,
 }) => {
   const [activeFilters, setActiveFilters] = useState<TrendingPlayersFilters>(filters || {});
 
@@ -114,7 +114,7 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
 
     const currentValues = newFilters[filterType] as string[];
     if (currentValues.includes(value)) {
-      newFilters[filterType] = currentValues.filter(v => v !== value);
+      newFilters[filterType] = currentValues.filter((v) => v !== value);
     } else {
       newFilters[filterType] = [...currentValues, value];
     }
@@ -172,15 +172,13 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
           <h3 className="font-semibold">{title}</h3>
           {filters && (
             <div className="flex gap-2">
-              {filters.position?.map(pos => (
+              {filters.position?.map((pos) => (
                 <Button
                   key={pos}
                   variant="outline"
                   size="sm"
-                  onClick={() => handleFilterChange('position', pos)}
-                  className={cn(
-                    activeFilters.position?.includes(pos) && 'bg-primary text-white'
-                  )}
+                  onClick={() => handleFilterChange("position", pos)}
+                  className={cn(activeFilters.position?.includes(pos) && "bg-primary text-white")}
                 >
                   {pos}
                 </Button>
@@ -193,15 +191,19 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
       <Card.Content>
         <div className="space-y-4">
           {players.map((player) => {
-            const { id, name, position, team, photoUrl, trendData, weeklyPoints, projectedPoints } = player;
+            const { id, name, position, team, photoUrl, trendData, weeklyPoints, projectedPoints } =
+              player;
 
-            if (variant === 'compact') {
+            if (variant === "compact") {
               return (
                 <div key={id} className="flex items-center gap-3 py-2">
                   <Avatar
                     src={photoUrl}
                     alt={name}
-                    fallback={name.split(' ').map(n => n[0]).join('')}
+                    fallback={name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">
@@ -211,8 +213,9 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={cn('text-sm', getTrendColor(trendData.direction))}>
-                      {getTrendIcon(trendData.direction)} {Math.abs(trendData.percentage).toFixed(1)}%
+                    <span className={cn("text-sm", getTrendColor(trendData.direction))}>
+                      {getTrendIcon(trendData.direction)}{" "}
+                      {Math.abs(trendData.percentage).toFixed(1)}%
                     </span>
                   </div>
                 </div>
@@ -226,7 +229,10 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
                     <Avatar
                       src={photoUrl}
                       alt={name}
-                      fallback={name.split(' ').map(n => n[0]).join('')}
+                      fallback={name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                       size="md"
                     />
                     <div>
@@ -237,8 +243,9 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={cn('font-bold', getTrendColor(trendData.direction))}>
-                      {getTrendIcon(trendData.direction)} {Math.abs(trendData.percentage).toFixed(1)}%
+                    <div className={cn("font-bold", getTrendColor(trendData.direction))}>
+                      {getTrendIcon(trendData.direction)}{" "}
+                      {Math.abs(trendData.percentage).toFixed(1)}%
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Proj: {projectedPoints.toFixed(1)}
@@ -252,12 +259,15 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
                       <span>Add/Drop Percentage</span>
-                      <span>{trendData.addDropPercentage > 0 ? '+' : ''}{trendData.addDropPercentage.toFixed(1)}%</span>
+                      <span>
+                        {trendData.addDropPercentage > 0 ? "+" : ""}
+                        {trendData.addDropPercentage.toFixed(1)}%
+                      </span>
                     </div>
                     <ProgressBar
                       value={Math.abs(trendData.addDropPercentage)}
                       max={100}
-                      variant={trendData.addDropPercentage > 0 ? 'success' : 'error'}
+                      variant={trendData.addDropPercentage > 0 ? "success" : "error"}
                       size="sm"
                     />
                   </div>
@@ -271,20 +281,12 @@ export const TrendingPlayers: React.FC<TrendingPlayersProps> = ({
                 {showActions && (
                   <div className="flex gap-2">
                     {onAddPlayer && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => onAddPlayer(id)}
-                      >
+                      <Button variant="primary" size="sm" onClick={() => onAddPlayer(id)}>
                         Add
                       </Button>
                     )}
                     {onWatchPlayer && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onWatchPlayer(id)}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => onWatchPlayer(id)}>
                         Watch
                       </Button>
                     )}

@@ -32,7 +32,10 @@ export const WithIcons = () => (
     <div className="flex gap-4">
       <Button leftIcon={<Plus className="h-4 w-4" />}>Add Player</Button>
       <Button rightIcon={<ChevronRight className="h-4 w-4" />}>View Details</Button>
-      <Button leftIcon={<Trophy className="h-4 w-4" />} rightIcon={<ChevronRight className="h-4 w-4" />}>
+      <Button
+        leftIcon={<Trophy className="h-4 w-4" />}
+        rightIcon={<ChevronRight className="h-4 w-4" />}
+      >
         Leaderboard
       </Button>
     </div>
@@ -69,8 +72,12 @@ export const States = () => (
       <div className="text-sm font-medium">Secondary</div>
       <div className="flex gap-4">
         <Button variant="secondary">Normal</Button>
-        <Button variant="secondary" disabled>Disabled</Button>
-        <Button variant="secondary" loading>Loading</Button>
+        <Button variant="secondary" disabled>
+          Disabled
+        </Button>
+        <Button variant="secondary" loading>
+          Loading
+        </Button>
       </div>
     </div>
   </div>

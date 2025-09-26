@@ -21,7 +21,7 @@ The Ultimate Fantasy Design System is a comprehensive component library built fo
 The design system is already included in this project. To use components:
 
 ```tsx
-import { Button, Card, ThemeProvider } from '../components/design-system';
+import { Button, Card, ThemeProvider } from "../components/design-system";
 
 // Wrap your app with ThemeProvider
 <ThemeProvider>
@@ -33,20 +33,20 @@ import { Button, Card, ThemeProvider } from '../components/design-system';
       <Button variant="primary">Click me</Button>
     </Card.Content>
   </Card>
-</ThemeProvider>
+</ThemeProvider>;
 ```
 
 ### Theme Usage
 
 ```tsx
-import { useTheme } from '../components/design-system';
+import { useTheme } from "../components/design-system";
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-      Toggle to {theme === 'dark' ? 'Light' : 'Dark'}
+    <Button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      Toggle to {theme === "dark" ? "Light" : "Dark"}
     </Button>
   );
 }
@@ -82,6 +82,7 @@ Responsive typography scale with three breakpoints:
 ### Primitive Components
 
 #### Button
+
 Versatile button component with multiple variants and states.
 
 ```tsx
@@ -94,6 +95,7 @@ Versatile button component with multiple variants and states.
 **Sizes**: `sm`, `md`, `lg`, `xl`
 
 #### Card
+
 Flexible card component with sub-components for structured content.
 
 ```tsx
@@ -112,31 +114,23 @@ Flexible card component with sub-components for structured content.
 ```
 
 #### ProgressBar
+
 Visual progress indicator perfect for stats and completion tracking.
 
 ```tsx
-<ProgressBar
-  value={75}
-  max={100}
-  variant="success"
-  showLabel
-  label="Win Percentage"
-/>
+<ProgressBar value={75} max={100} variant="success" showLabel label="Win Percentage" />
 ```
 
 #### Avatar
+
 User and team avatars with fallback support.
 
 ```tsx
-<Avatar
-  src="/user-photo.jpg"
-  alt="John Doe"
-  fallback="JD"
-  size="lg"
-/>
+<Avatar src="/user-photo.jpg" alt="John Doe" fallback="JD" size="lg" />
 ```
 
 #### Badge
+
 Status indicators and labels.
 
 ```tsx
@@ -149,6 +143,7 @@ Status indicators and labels.
 ### Pattern Components
 
 #### MatchCard
+
 Display fantasy matchups with team info, scores, and projections.
 
 ```tsx
@@ -158,13 +153,14 @@ Display fantasy matchups with team info, scores, and projections.
     awayTeam: { name: "Team Dragons", owner: "Jane", record: { wins: 6, losses: 6 } },
     week: 13,
     actualPoints: { home: 118.7, away: 105.3 },
-    status: "completed"
+    status: "completed",
   }}
-  onClick={() => navigate('/match/123')}
+  onClick={() => navigate("/match/123")}
 />
 ```
 
 #### PlayerCard
+
 Comprehensive player information with stats and actions.
 
 ```tsx
@@ -174,17 +170,18 @@ Comprehensive player information with stats and actions.
     position: "QB",
     team: "KC",
     stats: { points: 24.5, projected: 22.1 },
-    status: "active"
+    status: "active",
   }}
   actions={[
     { label: "Start", action: () => startPlayer() },
-    { label: "Bench", action: () => benchPlayer() }
+    { label: "Bench", action: () => benchPlayer() },
   ]}
   draggable
 />
 ```
 
 #### TrendingPlayers
+
 Show trending players with performance data and add/drop percentages.
 
 ```tsx
@@ -197,6 +194,7 @@ Show trending players with performance data and add/drop percentages.
 ```
 
 #### SettingsGrid
+
 Configurable settings interface for league management.
 
 ```tsx
@@ -208,14 +206,15 @@ Configurable settings interface for league management.
       description: "How points are calculated",
       value: "PPR",
       type: "select",
-      options: ["Standard", "PPR", "Half PPR"]
-    }
+      options: ["Standard", "PPR", "Half PPR"],
+    },
   ]}
   onChange={handleSettingChange}
 />
 ```
 
 #### LeagueChat
+
 Real-time chat with transaction notifications.
 
 ```tsx
@@ -324,6 +323,7 @@ npm run play:ui
 ```
 
 Browse to `http://localhost:61000` to see:
+
 - Component examples
 - Interactive props
 - Usage documentation

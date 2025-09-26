@@ -43,12 +43,11 @@ test("Managers tab lists commissioner and joined user", async ({ page, request }
   });
 
   await page.goto(`/leagues/${league_id}`);
-  await page.waitForLoadState('networkidle'); // Add this line
+  await page.waitForLoadState("networkidle"); // Add this line
   console.log("Page loaded, checking for Managers tab..."); // Add this line
   const managersTab = page.getByRole("tab", { name: "Managers" });
   console.log("Managers tab visible:", await managersTab.isVisible()); // Add this line
-  await managersTab.waitFor({ state: 'visible' });
-  await managersTab.waitFor({ state: 'enabled' });
+  await managersTab.waitFor({ state: "visible" });
   await managersTab.click(); // Use the variable
 
   await expect(page.locator(".animate-pulse")).toBeVisible();

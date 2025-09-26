@@ -1,5 +1,5 @@
-import type { Story } from '@ladle/react';
-import { Card } from '../components/design-system/primitives/Card';
+import type { Story } from "@ladle/react";
+import { Card } from "../components/design-system/primitives/Card";
 
 const FantasyCardDemo = () => (
   <div className="p-6 space-y-6">
@@ -50,9 +50,7 @@ const FantasyCardDemo = () => (
               <span className="font-semibold">119.7</span>
             </div>
           </div>
-          <div className="text-center text-sm text-green-600 font-medium">
-            Leading by 7.7 pts
-          </div>
+          <div className="text-center text-sm text-green-600 font-medium">Leading by 7.7 pts</div>
         </div>
       </Card>
     </div>
@@ -134,20 +132,12 @@ export const InteractiveCards: Story = () => (
   <div className="p-6 space-y-4">
     <h2 className="text-2xl font-bold">Interactive Cards</h2>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card
-        variant="interactive"
-        padding="md"
-        onClick={() => alert('Card clicked!')}
-      >
+      <Card variant="interactive" padding="md" onClick={() => alert("Card clicked!")}>
         <h3 className="font-semibold mb-2">Clickable Card</h3>
         <p className="text-gray-600">Click me to see the action</p>
       </Card>
 
-      <Card
-        variant="interactive"
-        padding="md"
-        disabled
-      >
+      <Card variant="interactive" padding="md" disabled>
         <h3 className="font-semibold mb-2 text-gray-400">Disabled Card</h3>
         <p className="text-gray-400">This card is not clickable</p>
       </Card>
@@ -208,15 +198,9 @@ export const CardWithActions: Story = () => (
             <p className="text-gray-600">You have a new trade offer from TeamOwner123</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm">
-              Accept
-            </button>
-            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm">
-              Decline
-            </button>
-            <button className="px-3 py-1 border border-gray-300 rounded text-sm">
-              Counter
-            </button>
+            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm">Accept</button>
+            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm">Decline</button>
+            <button className="px-3 py-1 border border-gray-300 rounded text-sm">Counter</button>
           </div>
         </div>
       </Card>
@@ -241,5 +225,5 @@ export const ResponsiveCards: Story = () => (
 export const FantasyCards: Story = () => <FantasyCardDemo />;
 
 Default.meta = {
-  title: 'Design System/Primitives/Card',
+  title: "Design System/Primitives/Card",
 };

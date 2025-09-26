@@ -5,7 +5,7 @@
  * and interactive widgets for fantasy sports management.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,17 +17,21 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Modal
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { dashboardUtils, DEFAULT_WIDGETS, type WidgetKey } from '@ultimate-fantasy/shared-logic/utils/dashboard';
+  Modal,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import {
+  dashboardUtils,
+  DEFAULT_WIDGETS,
+  type WidgetKey,
+} from "@ultimate-fantasy/shared-logic/utils/dashboard";
 
 // Enhanced widget data interfaces
 export interface DashboardWidget {
   id: WidgetKey;
   title: string;
-  type: 'chart' | 'list' | 'card' | 'score' | 'news';
+  type: "chart" | "list" | "card" | "score" | "news";
   data: any;
   lastUpdated: string;
   refreshing: boolean;
@@ -59,15 +63,15 @@ export interface NewsItem {
   title: string;
   summary: string;
   timestamp: string;
-  category: 'injury' | 'trade' | 'waiver' | 'news' | 'analysis';
-  impact: 'high' | 'medium' | 'low';
+  category: "injury" | "trade" | "waiver" | "news" | "analysis";
+  impact: "high" | "medium" | "low";
   playerId?: string;
 }
 
 export default function EnhancedDashboardScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { width: screenWidth } = Dimensions.get('window');
+  const { width: screenWidth } = Dimensions.get("window");
 
   // Dashboard state
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
@@ -80,7 +84,9 @@ export default function EnhancedDashboardScreen() {
 
   // Widget management
   const [widgetOrder, setWidgetOrder] = useState<WidgetKey[]>(DEFAULT_WIDGETS);
-  const [visibleWidgets, setVisibleWidgets] = useState<Set<WidgetKey>>(new Set(DEFAULT_WIDGETS));
+  const [visibleWidgets, setVisibleWidgets] = useState<Set<WidgetKey>>(
+    new Set(DEFAULT_WIDGETS),
+  );
 
   // Initialize dashboard data
   useEffect(() => {
@@ -110,85 +116,84 @@ export default function EnhancedDashboardScreen() {
         waiverClaims: 2,
         weeklyRank: 4,
         seasonPoints: 1247.6,
-        winPercentage: 67.3
+        winPercentage: 67.3,
       };
       setUserMetrics(metrics);
 
       // Load quick actions
       const actions: QuickAction[] = [
         {
-          id: 'lineup',
-          title: 'Set Lineup',
-          subtitle: '2 players to set',
-          icon: '⚡',
-          action: () => navigation.navigate('Lineup' as never),
-          color: '#ef4444',
-          urgent: true
+          id: "lineup",
+          title: "Set Lineup",
+          subtitle: "2 players to set",
+          icon: "⚡",
+          action: () => navigation.navigate("Lineup" as never),
+          color: "#ef4444",
+          urgent: true,
         },
         {
-          id: 'waivers',
-          title: 'Waiver Wire',
-          subtitle: '5 new players',
-          icon: '🔄',
-          action: () => navigation.navigate('Waivers' as never),
-          color: '#3b82f6'
+          id: "waivers",
+          title: "Waiver Wire",
+          subtitle: "5 new players",
+          icon: "🔄",
+          action: () => navigation.navigate("Waivers" as never),
+          color: "#3b82f6",
         },
         {
-          id: 'trades',
-          title: 'Trade Center',
-          subtitle: '1 pending offer',
-          icon: '🤝',
-          action: () => navigation.navigate('Trades' as never),
-          color: '#10b981',
-          urgent: true
+          id: "trades",
+          title: "Trade Center",
+          subtitle: "1 pending offer",
+          icon: "🤝",
+          action: () => navigation.navigate("Trades" as never),
+          color: "#10b981",
+          urgent: true,
         },
         {
-          id: 'research',
-          title: 'Player Research',
-          subtitle: 'Weekly rankings',
-          icon: '📊',
-          action: () => navigation.navigate('Research' as never),
-          color: '#8b5cf6'
-        }
+          id: "research",
+          title: "Player Research",
+          subtitle: "Weekly rankings",
+          icon: "📊",
+          action: () => navigation.navigate("Research" as never),
+          color: "#8b5cf6",
+        },
       ];
       setQuickActions(actions);
 
       // Load news items
       const news: NewsItem[] = [
         {
-          id: 'news1',
-          title: 'Mahomes questionable for Sunday',
-          summary: 'Ankle injury may limit playtime',
-          timestamp: '2 hours ago',
-          category: 'injury',
-          impact: 'high',
-          playerId: 'mahomes'
+          id: "news1",
+          title: "Mahomes questionable for Sunday",
+          summary: "Ankle injury may limit playtime",
+          timestamp: "2 hours ago",
+          category: "injury",
+          impact: "high",
+          playerId: "mahomes",
         },
         {
-          id: 'news2',
-          title: 'Jonathan Taylor activated from IR',
-          summary: 'Expected to play significant snaps',
-          timestamp: '4 hours ago',
-          category: 'news',
-          impact: 'medium'
-        }
+          id: "news2",
+          title: "Jonathan Taylor activated from IR",
+          summary: "Expected to play significant snaps",
+          timestamp: "4 hours ago",
+          category: "news",
+          impact: "medium",
+        },
       ];
       setNewsItems(news);
 
       // Initialize widgets
-      const initialWidgets: DashboardWidget[] = DEFAULT_WIDGETS.map(key => ({
+      const initialWidgets: DashboardWidget[] = DEFAULT_WIDGETS.map((key) => ({
         id: key,
         title: getWidgetTitle(key),
         type: getWidgetType(key),
         data: getWidgetData(key),
         lastUpdated: new Date().toISOString(),
-        refreshing: false
+        refreshing: false,
       }));
       setWidgets(initialWidgets);
-
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data');
+      console.error("Failed to load dashboard data:", error);
+      Alert.alert("Error", "Failed to load dashboard data");
     }
   };
 
@@ -198,7 +203,7 @@ export default function EnhancedDashboardScreen() {
       await loadDashboardData();
       setLastUpdate(new Date());
     } catch (error) {
-      console.error('Refresh failed:', error);
+      console.error("Refresh failed:", error);
     } finally {
       setRefreshing(false);
     }
@@ -206,53 +211,75 @@ export default function EnhancedDashboardScreen() {
 
   const getWidgetTitle = (key: WidgetKey): string => {
     const titles = {
-      myLeagues: 'My Leagues',
-      upcoming: 'Upcoming Games',
-      scoreboard: 'Live Scores',
-      waivers: 'Waiver Activity',
-      tips: 'Fantasy Tips'
+      myLeagues: "My Leagues",
+      upcoming: "Upcoming Games",
+      scoreboard: "Live Scores",
+      waivers: "Waiver Activity",
+      tips: "Fantasy Tips",
     };
     return titles[key] || key;
   };
 
-  const getWidgetType = (key: WidgetKey): DashboardWidget['type'] => {
+  const getWidgetType = (key: WidgetKey): DashboardWidget["type"] => {
     const types = {
-      myLeagues: 'list' as const,
-      upcoming: 'card' as const,
-      scoreboard: 'score' as const,
-      waivers: 'list' as const,
-      tips: 'news' as const
+      myLeagues: "list" as const,
+      upcoming: "card" as const,
+      scoreboard: "score" as const,
+      waivers: "list" as const,
+      tips: "news" as const,
     };
-    return types[key] || 'card';
+    return types[key] || "card";
   };
 
   const getWidgetData = (key: WidgetKey) => {
     switch (key) {
-      case 'myLeagues':
+      case "myLeagues":
         return [
-          { id: '1', name: 'Work League', status: 'active', rank: 3, record: '7-3' },
-          { id: '2', name: 'Friends League', status: 'active', rank: 1, record: '8-2' },
-          { id: '3', name: 'Family League', status: 'completed', rank: 2, record: '9-5' }
+          {
+            id: "1",
+            name: "Work League",
+            status: "active",
+            rank: 3,
+            record: "7-3",
+          },
+          {
+            id: "2",
+            name: "Friends League",
+            status: "active",
+            rank: 1,
+            record: "8-2",
+          },
+          {
+            id: "3",
+            name: "Family League",
+            status: "completed",
+            rank: 2,
+            record: "9-5",
+          },
         ];
-      case 'upcoming':
+      case "upcoming":
         return [
-          { player: 'Josh Allen', opponent: 'vs MIA', time: 'Sun 1:00 PM' },
-          { player: 'Christian McCaffrey', opponent: '@ SEA', time: 'Sun 4:05 PM' }
+          { player: "Josh Allen", opponent: "vs MIA", time: "Sun 1:00 PM" },
+          {
+            player: "Christian McCaffrey",
+            opponent: "@ SEA",
+            time: "Sun 4:05 PM",
+          },
         ];
-      case 'scoreboard':
+      case "scoreboard":
         return [
-          { matchup: 'You vs Mike', score: '87.4 - 72.1', status: 'winning' },
-          { matchup: 'Sarah vs Tom', score: '94.2 - 89.7', status: 'close' }
+          { matchup: "You vs Mike", score: "87.4 - 72.1", status: "winning" },
+          { matchup: "Sarah vs Tom", score: "94.2 - 89.7", status: "close" },
         ];
-      case 'waivers':
+      case "waivers":
         return [
-          { player: 'Gus Edwards', status: 'pending', priority: 3 },
-          { player: 'Tyler Boyd', status: 'won', priority: 1 }
+          { player: "Gus Edwards", status: "pending", priority: 3 },
+          { player: "Tyler Boyd", status: "won", priority: 1 },
         ];
-      case 'tips':
+      case "tips":
         return [
-          { tip: 'Start players facing weak defenses', category: 'strategy' },
-          { tip: 'Monitor injury reports Friday', category: 'lineup' }
+          { tip: "Start players facing weak defenses", category: "strategy" },
+          { tip: "Monitor injury reports Friday", category: "lineup" },
         ];
       default:
         return [];
@@ -272,26 +299,30 @@ export default function EnhancedDashboardScreen() {
   const saveLayout = () => {
     dashboardUtils.saveLayout(widgetOrder);
     setCustomizationMode(false);
-    Alert.alert('Success', 'Dashboard layout saved');
+    Alert.alert("Success", "Dashboard layout saved");
   };
 
   const resetLayout = () => {
     setWidgetOrder(DEFAULT_WIDGETS);
     setVisibleWidgets(new Set(DEFAULT_WIDGETS));
-    Alert.alert('Reset', 'Dashboard layout reset to default');
+    Alert.alert("Reset", "Dashboard layout reset to default");
   };
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
       <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickActionsList}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.quickActionsList}
+      >
         {quickActions.map((action) => (
           <TouchableOpacity
             key={action.id}
             style={[
               styles.quickActionCard,
               { borderLeftColor: action.color },
-              action.urgent && styles.urgentAction
+              action.urgent && styles.urgentAction,
             ]}
             onPress={action.action}
           >
@@ -338,7 +369,12 @@ export default function EnhancedDashboardScreen() {
       <Text style={styles.sectionTitle}>Latest News</Text>
       {newsItems.map((item) => (
         <TouchableOpacity key={item.id} style={styles.newsItem}>
-          <View style={[styles.newsIndicator, { backgroundColor: getNewsColor(item.impact) }]} />
+          <View
+            style={[
+              styles.newsIndicator,
+              { backgroundColor: getNewsColor(item.impact) },
+            ]}
+          />
           <View style={styles.newsContent}>
             <Text style={styles.newsTitle}>{item.title}</Text>
             <Text style={styles.newsSummary}>{item.summary}</Text>
@@ -349,12 +385,16 @@ export default function EnhancedDashboardScreen() {
     </View>
   );
 
-  const getNewsColor = (impact: NewsItem['impact']) => {
+  const getNewsColor = (impact: NewsItem["impact"]) => {
     switch (impact) {
-      case 'high': return '#ef4444';
-      case 'medium': return '#f59e0b';
-      case 'low': return '#10b981';
-      default: return '#6b7280';
+      case "high":
+        return "#ef4444";
+      case "medium":
+        return "#f59e0b";
+      case "low":
+        return "#10b981";
+      default:
+        return "#6b7280";
     }
   };
 
@@ -371,13 +411,17 @@ export default function EnhancedDashboardScreen() {
         </View>
 
         {widget.refreshing ? (
-          <ActivityIndicator size="small" color="#3b82f6" style={styles.widgetLoader} />
+          <ActivityIndicator
+            size="small"
+            color="#3b82f6"
+            style={styles.widgetLoader}
+          />
         ) : (
           <View style={styles.widgetContent}>
-            {widget.type === 'list' && renderListWidget(widget)}
-            {widget.type === 'card' && renderCardWidget(widget)}
-            {widget.type === 'score' && renderScoreWidget(widget)}
-            {widget.type === 'news' && renderNewsWidget(widget)}
+            {widget.type === "list" && renderListWidget(widget)}
+            {widget.type === "card" && renderCardWidget(widget)}
+            {widget.type === "score" && renderScoreWidget(widget)}
+            {widget.type === "news" && renderNewsWidget(widget)}
           </View>
         )}
       </View>
@@ -413,10 +457,12 @@ export default function EnhancedDashboardScreen() {
       {widget.data.map((item: any, index: number) => (
         <View key={index} style={styles.scoreItem}>
           <Text style={styles.scoreMatchup}>{item.matchup}</Text>
-          <Text style={[
-            styles.scoreValue,
-            { color: item.status === 'winning' ? '#10b981' : '#6b7280' }
-          ]}>
+          <Text
+            style={[
+              styles.scoreValue,
+              { color: item.status === "winning" ? "#10b981" : "#6b7280" },
+            ]}
+          >
             {item.score}
           </Text>
         </View>
@@ -457,11 +503,15 @@ export default function EnhancedDashboardScreen() {
               onPress={() => toggleWidgetVisibility(key)}
             >
               <Text style={styles.toggleLabel}>{getWidgetTitle(key)}</Text>
-              <View style={[
-                styles.toggle,
-                visibleWidgets.has(key) && styles.toggleActive
-              ]}>
-                {visibleWidgets.has(key) && <View style={styles.toggleIndicator} />}
+              <View
+                style={[
+                  styles.toggle,
+                  visibleWidgets.has(key) && styles.toggleActive,
+                ]}
+              >
+                {visibleWidgets.has(key) && (
+                  <View style={styles.toggleIndicator} />
+                )}
               </View>
             </TouchableOpacity>
           ))}
@@ -470,7 +520,10 @@ export default function EnhancedDashboardScreen() {
             <TouchableOpacity style={styles.primaryButton} onPress={saveLayout}>
               <Text style={styles.primaryButtonText}>Save Layout</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={resetLayout}>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={resetLayout}
+            >
               <Text style={styles.secondaryButtonText}>Reset to Default</Text>
             </TouchableOpacity>
           </View>
@@ -512,7 +565,7 @@ export default function EnhancedDashboardScreen() {
         {/* Widgets */}
         <View style={styles.widgetsContainer}>
           <Text style={styles.sectionTitle}>Dashboard Widgets</Text>
-          {widgets.filter(w => visibleWidgets.has(w.id)).map(renderWidget)}
+          {widgets.filter((w) => visibleWidgets.has(w.id)).map(renderWidget)}
         </View>
       </ScrollView>
 
@@ -524,34 +577,34 @@ export default function EnhancedDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    fontWeight: "bold",
+    color: "#1e293b",
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   customizeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   customizeButtonText: {
     fontSize: 18,
@@ -561,40 +614,40 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 12,
   },
 
   // User Metrics
   metricsContainer: {
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     marginBottom: 8,
   },
   metricsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   metricCard: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 12,
   },
   metricValue: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#3b82f6',
+    fontWeight: "bold",
+    color: "#3b82f6",
     marginBottom: 4,
   },
   metricLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
   },
 
   // Quick Actions
   quickActionsContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingVertical: 20,
     marginBottom: 8,
   },
@@ -603,24 +656,24 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: 140,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
     borderRadius: 12,
     padding: 16,
     marginRight: 12,
     borderLeftWidth: 4,
-    position: 'relative',
+    position: "relative",
   },
   urgentAction: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: "#fef2f2",
   },
   urgentIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
   },
   quickActionIcon: {
     fontSize: 24,
@@ -628,26 +681,26 @@ const styles = StyleSheet.create({
   },
   quickActionTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 4,
   },
   quickActionSubtitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
   },
 
   // News
   newsContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     padding: 20,
     marginBottom: 8,
   },
   newsItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: "#f1f5f9",
   },
   newsIndicator: {
     width: 4,
@@ -659,18 +712,18 @@ const styles = StyleSheet.create({
   },
   newsTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 4,
   },
   newsSummary: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 4,
   },
   newsTimestamp: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: "#94a3b8",
   },
 
   // Widgets
@@ -678,27 +731,27 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   widget: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
   },
   widgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   widgetTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   widgetTimestamp: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: "#94a3b8",
   },
   widgetLoader: {
     paddingVertical: 20,
@@ -709,18 +762,18 @@ const styles = StyleSheet.create({
 
   // List widget styles
   listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 8,
   },
   listItemTitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1e293b',
+    fontWeight: "500",
+    color: "#1e293b",
   },
   listItemSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
   },
 
   // Card widget styles
@@ -729,33 +782,33 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1e293b',
+    fontWeight: "500",
+    color: "#1e293b",
   },
   cardSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
   },
 
   // Score widget styles
   scoreItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 8,
   },
   scoreMatchup: {
     fontSize: 14,
-    color: '#1e293b',
+    color: "#1e293b",
   },
   scoreValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Tips widget styles
   tipText: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -763,26 +816,26 @@ const styles = StyleSheet.create({
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   modalClose: {
     fontSize: 16,
-    color: '#3b82f6',
-    fontWeight: '500',
+    color: "#3b82f6",
+    fontWeight: "500",
   },
   modalContent: {
     flex: 1,
@@ -790,66 +843,66 @@ const styles = StyleSheet.create({
   },
   modalSectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 16,
   },
   toggleItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: "#f1f5f9",
   },
   toggleLabel: {
     fontSize: 16,
-    color: '#1e293b',
+    color: "#1e293b",
   },
   toggle: {
     width: 50,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#e2e8f0',
-    justifyContent: 'center',
+    backgroundColor: "#e2e8f0",
+    justifyContent: "center",
     paddingHorizontal: 2,
   },
   toggleActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
   },
   toggleIndicator: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#ffffff',
-    alignSelf: 'flex-end',
+    backgroundColor: "#ffffff",
+    alignSelf: "flex-end",
   },
   modalButtons: {
     marginTop: 32,
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
     paddingVertical: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   secondaryButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     paddingVertical: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryButtonText: {
-    color: '#374151',
+    color: "#374151",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

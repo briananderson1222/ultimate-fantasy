@@ -1,8 +1,19 @@
-import React, { useRef, useCallback, useMemo } from 'react';
-import { View, Animated, PanResponder, Dimensions, StyleSheet } from 'react-native';
-import { PanGestureHandler, TapGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
+import React, { useRef, useCallback, useMemo } from "react";
+import {
+  View,
+  Animated,
+  PanResponder,
+  Dimensions,
+  StyleSheet,
+} from "react-native";
+import {
+  PanGestureHandler,
+  TapGestureHandler,
+  PinchGestureHandler,
+  State,
+} from "react-native-gesture-handler";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export interface SwipeGestureProps {
   onSwipeLeft?: () => void;
@@ -21,32 +32,43 @@ export const SwipeGestureHandler: React.FC<SwipeGestureProps> = ({
   onSwipeDown,
   threshold = 50,
   velocityThreshold = 500,
-  children
+  children,
 }) => {
-  const panResponder = useMemo(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
-      },
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10
+          );
+        },
 
-      onPanResponderRelease: (_, gestureState) => {
-        const { dx, dy, vx, vy } = gestureState;
+        onPanResponderRelease: (_, gestureState) => {
+          const { dx, dy, vx, vy } = gestureState;
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-          if (dx > threshold || vx > velocityThreshold) {
-            onSwipeRight?.();
-          } else if (dx < -threshold || vx < -velocityThreshold) {
-            onSwipeLeft?.();
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > threshold || vx > velocityThreshold) {
+              onSwipeRight?.();
+            } else if (dx < -threshold || vx < -velocityThreshold) {
+              onSwipeLeft?.();
+            }
+          } else {
+            if (dy > threshold || vy > velocityThreshold) {
+              onSwipeDown?.();
+            } else if (dy < -threshold || vy < -velocityThreshold) {
+              onSwipeUp?.();
+            }
           }
-        } else {
-          if (dy > threshold || vy > velocityThreshold) {
-            onSwipeDown?.();
-          } else if (dy < -threshold || vy < -velocityThreshold) {
-            onSwipeUp?.();
-          }
-        }
-      }
-    }), [onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown, threshold, velocityThreshold]
+        },
+      }),
+    [
+      onSwipeLeft,
+      onSwipeRight,
+      onSwipeUp,
+      onSwipeDown,
+      threshold,
+      velocityThreshold,
+    ],
   );
 
   return (
@@ -75,63 +97,69 @@ export const DragDropHandler: React.FC<DragDropProps> = ({
   dragId,
   dropTargetId,
   disabled = false,
-  children
+  children,
 }) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const isDragging = useRef(false);
 
-  const panResponder = useMemo(() =>
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabled,
-      onMoveShouldSetPanResponder: () => !disabled,
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: () => !disabled,
 
-      onPanResponderGrant: () => {
-        isDragging.current = true;
-        onDragStart?.(dragId);
+        onPanResponderGrant: () => {
+          isDragging.current = true;
+          onDragStart?.(dragId);
 
-        Animated.spring(scale, {
-          toValue: 1.1,
-          useNativeDriver: true
-        }).start();
-      },
+          Animated.spring(scale, {
+            toValue: 1.1,
+            useNativeDriver: true,
+          }).start();
+        },
 
-      onPanResponderMove: (_, gestureState) => {
-        translateX.setValue(gestureState.dx);
-        translateY.setValue(gestureState.dy);
-        onDragMove?.(dragId, gestureState.moveX, gestureState.moveY);
-      },
+        onPanResponderMove: (_, gestureState) => {
+          translateX.setValue(gestureState.dx);
+          translateY.setValue(gestureState.dy);
+          onDragMove?.(dragId, gestureState.moveX, gestureState.moveY);
+        },
 
-      onPanResponderRelease: (_, gestureState) => {
-        isDragging.current = false;
-        const finalX = gestureState.moveX;
-        const finalY = gestureState.moveY;
+        onPanResponderRelease: (_, gestureState) => {
+          isDragging.current = false;
+          const finalX = gestureState.moveX;
+          const finalY = gestureState.moveY;
 
-        onDragEnd?.(dragId, finalX, finalY);
+          onDragEnd?.(dragId, finalX, finalY);
 
-        if (dropTargetId) {
-          onDrop?.(dragId, dropTargetId);
-        }
+          if (dropTargetId) {
+            onDrop?.(dragId, dropTargetId);
+          }
 
-        Animated.parallel([
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }),
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
-          Animated.spring(scale, { toValue: 1, useNativeDriver: true })
-        ]).start();
-      }
-    }), [disabled, dragId, dropTargetId, onDragStart, onDragMove, onDragEnd, onDrop]
+          Animated.parallel([
+            Animated.spring(translateX, { toValue: 0, useNativeDriver: true }),
+            Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
+            Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
+          ]).start();
+        },
+      }),
+    [
+      disabled,
+      dragId,
+      dropTargetId,
+      onDragStart,
+      onDragMove,
+      onDragEnd,
+      onDrop,
+    ],
   );
 
   return (
     <Animated.View
       {...panResponder.panHandlers}
       style={{
-        transform: [
-          { translateX },
-          { translateY },
-          { scale }
-        ]
+        transform: [{ translateX }, { translateY }, { scale }],
       }}
     >
       {children}
@@ -148,44 +176,51 @@ export interface PullToRefreshProps {
 export const PullToRefreshHandler: React.FC<PullToRefreshProps> = ({
   onRefresh,
   refreshThreshold = 100,
-  children
+  children,
 }) => {
   const translateY = useRef(new Animated.Value(0)).current;
   const isRefreshing = useRef(false);
 
-  const panResponder = useMemo(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 0 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy);
-      },
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            gestureState.dy > 0 &&
+            Math.abs(gestureState.dx) < Math.abs(gestureState.dy)
+          );
+        },
 
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(Math.min(gestureState.dy, refreshThreshold * 1.5));
-        }
-      },
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dy > 0) {
+            translateY.setValue(
+              Math.min(gestureState.dy, refreshThreshold * 1.5),
+            );
+          }
+        },
 
-      onPanResponderRelease: async (_, gestureState) => {
-        if (gestureState.dy > refreshThreshold && !isRefreshing.current) {
-          isRefreshing.current = true;
+        onPanResponderRelease: async (_, gestureState) => {
+          if (gestureState.dy > refreshThreshold && !isRefreshing.current) {
+            isRefreshing.current = true;
 
-          try {
-            await onRefresh();
-          } finally {
-            isRefreshing.current = false;
+            try {
+              await onRefresh();
+            } finally {
+              isRefreshing.current = false;
+              Animated.spring(translateY, {
+                toValue: 0,
+                useNativeDriver: true,
+              }).start();
+            }
+          } else {
             Animated.spring(translateY, {
               toValue: 0,
-              useNativeDriver: true
+              useNativeDriver: true,
             }).start();
           }
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true
-          }).start();
-        }
-      }
-    }), [onRefresh, refreshThreshold]
+        },
+      }),
+    [onRefresh, refreshThreshold],
   );
 
   return (
@@ -193,7 +228,7 @@ export const PullToRefreshHandler: React.FC<PullToRefreshProps> = ({
       {...panResponder.panHandlers}
       style={{
         flex: 1,
-        transform: [{ translateY }]
+        transform: [{ translateY }],
       }}
     >
       {children}
@@ -210,15 +245,18 @@ export interface DoubleTapProps {
 export const DoubleTapHandler: React.FC<DoubleTapProps> = ({
   onDoubleTap,
   delay = 300,
-  children
+  children,
 }) => {
   const doubleTapRef = useRef<TapGestureHandler>(null);
 
-  const onDoubleTapEvent = useCallback((event: any) => {
-    if (event.nativeEvent.state === State.ACTIVE) {
-      onDoubleTap();
-    }
-  }, [onDoubleTap]);
+  const onDoubleTapEvent = useCallback(
+    (event: any) => {
+      if (event.nativeEvent.state === State.ACTIVE) {
+        onDoubleTap();
+      }
+    },
+    [onDoubleTap],
+  );
 
   return (
     <TapGestureHandler
@@ -227,9 +265,7 @@ export const DoubleTapHandler: React.FC<DoubleTapProps> = ({
       numberOfTaps={2}
       maxDelayMs={delay}
     >
-      <View style={{ flex: 1 }}>
-        {children}
-      </View>
+      <View style={{ flex: 1 }}>{children}</View>
     </TapGestureHandler>
   );
 };
@@ -245,16 +281,22 @@ export const PinchZoomHandler: React.FC<PinchZoomProps> = ({
   onZoomChange,
   minScale = 0.5,
   maxScale = 3,
-  children
+  children,
 }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const lastScale = useRef(1);
 
-  const onPinchEvent = useCallback((event: any) => {
-    const newScale = Math.min(Math.max(lastScale.current * event.nativeEvent.scale, minScale), maxScale);
-    scale.setValue(newScale);
-    onZoomChange?.(newScale);
-  }, [scale, minScale, maxScale, onZoomChange]);
+  const onPinchEvent = useCallback(
+    (event: any) => {
+      const newScale = Math.min(
+        Math.max(lastScale.current * event.nativeEvent.scale, minScale),
+        maxScale,
+      );
+      scale.setValue(newScale);
+      onZoomChange?.(newScale);
+    },
+    [scale, minScale, maxScale, onZoomChange],
+  );
 
   const onPinchStateChange = useCallback((event: any) => {
     if (event.nativeEvent.oldState === State.ACTIVE) {
@@ -283,32 +325,34 @@ export interface LongPressProps {
 export const LongPressHandler: React.FC<LongPressProps> = ({
   onLongPress,
   duration = 500,
-  children
+  children,
 }) => {
   const scale = useRef(new Animated.Value(1)).current;
 
-  const panResponder = useMemo(() =>
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
 
-      onPanResponderGrant: () => {
-        Animated.spring(scale, {
-          toValue: 0.95,
-          useNativeDriver: true
-        }).start();
+        onPanResponderGrant: () => {
+          Animated.spring(scale, {
+            toValue: 0.95,
+            useNativeDriver: true,
+          }).start();
 
-        setTimeout(() => {
-          onLongPress();
-        }, duration);
-      },
+          setTimeout(() => {
+            onLongPress();
+          }, duration);
+        },
 
-      onPanResponderRelease: () => {
-        Animated.spring(scale, {
-          toValue: 1,
-          useNativeDriver: true
-        }).start();
-      }
-    }), [onLongPress, duration, scale]
+        onPanResponderRelease: () => {
+          Animated.spring(scale, {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [onLongPress, duration, scale],
   );
 
   return (
@@ -340,39 +384,52 @@ export const SlideActionsHandler: React.FC<SlideActionsProps> = ({
   leftActions = [],
   rightActions = [],
   actionWidth = 80,
-  children
+  children,
 }) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const maxLeftTranslate = leftActions.length * actionWidth;
   const maxRightTranslate = rightActions.length * actionWidth;
 
-  const panResponder = useMemo(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 10;
-      },
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
+            Math.abs(gestureState.dx) > 10
+          );
+        },
 
-      onPanResponderMove: (_, gestureState) => {
-        const newValue = Math.max(-maxRightTranslate, Math.min(maxLeftTranslate, gestureState.dx));
-        translateX.setValue(newValue);
-      },
+        onPanResponderMove: (_, gestureState) => {
+          const newValue = Math.max(
+            -maxRightTranslate,
+            Math.min(maxLeftTranslate, gestureState.dx),
+          );
+          translateX.setValue(newValue);
+        },
 
-      onPanResponderRelease: (_, gestureState) => {
-        const threshold = 50;
-        let targetValue = 0;
+        onPanResponderRelease: (_, gestureState) => {
+          const threshold = 50;
+          let targetValue = 0;
 
-        if (gestureState.dx > threshold && leftActions.length > 0) {
-          targetValue = maxLeftTranslate;
-        } else if (gestureState.dx < -threshold && rightActions.length > 0) {
-          targetValue = -maxRightTranslate;
-        }
+          if (gestureState.dx > threshold && leftActions.length > 0) {
+            targetValue = maxLeftTranslate;
+          } else if (gestureState.dx < -threshold && rightActions.length > 0) {
+            targetValue = -maxRightTranslate;
+          }
 
-        Animated.spring(translateX, {
-          toValue: targetValue,
-          useNativeDriver: true
-        }).start();
-      }
-    }), [maxLeftTranslate, maxRightTranslate, leftActions.length, rightActions.length]
+          Animated.spring(translateX, {
+            toValue: targetValue,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [
+      maxLeftTranslate,
+      maxRightTranslate,
+      leftActions.length,
+      rightActions.length,
+    ],
   );
 
   const renderActions = (actions: any[], isLeft: boolean) => {
@@ -384,14 +441,11 @@ export const SlideActionsHandler: React.FC<SlideActionsProps> = ({
           {
             backgroundColor: action.color,
             width: actionWidth,
-            [isLeft ? 'left' : 'right']: index * actionWidth
-          }
+            [isLeft ? "left" : "right"]: index * actionWidth,
+          },
         ]}
       >
-        <Animated.Text
-          style={styles.actionText}
-          onPress={action.onPress}
-        >
+        <Animated.Text style={styles.actionText} onPress={action.onPress}>
           {action.text}
         </Animated.Text>
       </Animated.View>
@@ -414,10 +468,7 @@ export const SlideActionsHandler: React.FC<SlideActionsProps> = ({
 
       <Animated.View
         {...panResponder.panHandlers}
-        style={[
-          styles.content,
-          { transform: [{ translateX }] }
-        ]}
+        style={[styles.content, { transform: [{ translateX }] }]}
       >
         {children}
       </Animated.View>
@@ -428,36 +479,36 @@ export const SlideActionsHandler: React.FC<SlideActionsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    overflow: 'hidden'
+    overflow: "hidden",
   },
   actionsContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     bottom: 0,
-    flexDirection: 'row'
+    flexDirection: "row",
   },
   leftActions: {
-    left: 0
+    left: 0,
   },
   rightActions: {
-    right: 0
+    right: 0,
   },
   actionButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center'
+    justifyContent: "center",
+    alignItems: "center",
   },
   actionText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 14,
   },
   content: {
     flex: 1,
-    backgroundColor: 'white'
-  }
+    backgroundColor: "white",
+  },
 });
 
 export interface MultiTouchProps {
@@ -475,7 +526,7 @@ export const MultiTouchHandler: React.FC<MultiTouchProps> = ({
   onTripleTap,
   onPinch,
   onRotate,
-  children
+  children,
 }) => {
   const singleTapRef = useRef<TapGestureHandler>(null);
   const doubleTapRef = useRef<TapGestureHandler>(null);
@@ -515,9 +566,7 @@ export const MultiTouchHandler: React.FC<MultiTouchProps> = ({
               onPinch?.(event.nativeEvent.scale);
             }}
           >
-            <View style={{ flex: 1 }}>
-              {children}
-            </View>
+            <View style={{ flex: 1 }}>{children}</View>
           </PinchGestureHandler>
         </TapGestureHandler>
       </TapGestureHandler>
@@ -533,5 +582,5 @@ export {
   PinchZoomHandler as PinchZoom,
   LongPressHandler as LongPress,
   SlideActionsHandler as SlideActions,
-  MultiTouchHandler as MultiTouch
+  MultiTouchHandler as MultiTouch,
 };

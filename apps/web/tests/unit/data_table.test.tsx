@@ -16,7 +16,7 @@ describe("DataTable", () => {
   ];
 
   it("sorts by header click and updates aria-sort", () => {
-    const { getByText, getAllByRole } = render(
+    const { getAllByRole, getByRole } = render(
       <DataTable
         columns={columns}
         data={data}
@@ -32,14 +32,14 @@ describe("DataTable", () => {
     expect(rows[3]).toHaveTextContent("Charlie");
 
     // Click Points to sort by points asc: 4,7,10
-    fireEvent.click(getByText("Points"));
+    fireEvent.click(getByRole("columnheader", { name: "Points" }));
     rows = getAllByRole("row");
     expect(rows[1]).toHaveTextContent("Charlie");
     expect(rows[2]).toHaveTextContent("Bravo");
     expect(rows[3]).toHaveTextContent("Alpha");
 
     // Click Points again for desc: 10,7,4
-    fireEvent.click(getByText("Points"));
+    fireEvent.click(getByRole("columnheader", { name: "Points" }));
     rows = getAllByRole("row");
     expect(rows[1]).toHaveTextContent("Alpha");
     expect(rows[2]).toHaveTextContent("Bravo");

@@ -28,19 +28,19 @@ describe("DataTable saved views", () => {
     // Hide the Name column via toggle
     const nameToggle = screen.getByLabelText("Name") as HTMLInputElement;
     fireEvent.click(nameToggle);
-    expect(screen.queryByText("Name")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Name" })).toBeNull();
 
     // Save the current view
     fireEvent.click(screen.getByRole("button", { name: /save view/i }));
 
     // Change state back (show Name)
     fireEvent.click(nameToggle);
-    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
 
     // Apply saved view by selecting it
     const select = screen.getByLabelText("Saved views") as HTMLSelectElement;
     fireEvent.change(select, { target: { value: "HideName" } });
-    expect(screen.queryByText("Name")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Name" })).toBeNull();
 
     promptSpy.mockRestore();
   });

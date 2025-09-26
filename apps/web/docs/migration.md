@@ -5,6 +5,7 @@ This guide helps you migrate from the old component structure to the new Ultimat
 ## Overview
 
 The new design system provides:
+
 - Centralized theme management
 - Consistent component APIs
 - Better TypeScript support
@@ -16,24 +17,27 @@ The new design system provides:
 ### Button Components
 
 #### Before (Legacy UI)
+
 ```tsx
-import { Button } from '../components/ui/button';
+import { Button } from "../components/ui/button";
 
 <Button className="btn-primary" size="large">
   Click me
-</Button>
+</Button>;
 ```
 
 #### After (Design System)
+
 ```tsx
-import { Button } from '../components/design-system';
+import { Button } from "../components/design-system";
 
 <Button variant="primary" size="lg">
   Click me
-</Button>
+</Button>;
 ```
 
 **Changes:**
+
 - `className="btn-primary"` → `variant="primary"`
 - `size="large"` → `size="lg"`
 - Automatic theme support
@@ -41,34 +45,33 @@ import { Button } from '../components/design-system';
 ### Card Components
 
 #### Before (Legacy UI)
+
 ```tsx
-import { Card } from '../components/ui/card';
+import { Card } from "../components/ui/card";
 
 <Card>
   <div className="card-header">
     <h3>Title</h3>
   </div>
-  <div className="card-content">
-    Content here
-  </div>
-</Card>
+  <div className="card-content">Content here</div>
+</Card>;
 ```
 
 #### After (Design System)
+
 ```tsx
-import { Card } from '../components/design-system';
+import { Card } from "../components/design-system";
 
 <Card>
   <Card.Header>
     <Card.Title>Title</Card.Title>
   </Card.Header>
-  <Card.Content>
-    Content here
-  </Card.Content>
-</Card>
+  <Card.Content>Content here</Card.Content>
+</Card>;
 ```
 
 **Changes:**
+
 - Structured sub-components (Card.Header, Card.Content)
 - Built-in typography components (Card.Title)
 - Automatic spacing and theming
@@ -76,28 +79,23 @@ import { Card } from '../components/design-system';
 ### Progress Indicators
 
 #### Before (Custom Implementation)
+
 ```tsx
 <div className="progress-bar">
-  <div
-    className="progress-fill"
-    style={{ width: `${percentage}%` }}
-  />
+  <div className="progress-fill" style={{ width: `${percentage}%` }} />
 </div>
 ```
 
 #### After (Design System)
-```tsx
-import { ProgressBar } from '../components/design-system';
 
-<ProgressBar
-  value={75}
-  max={100}
-  variant="success"
-  aria-label="Win percentage"
-/>
+```tsx
+import { ProgressBar } from "../components/design-system";
+
+<ProgressBar value={75} max={100} variant="success" aria-label="Win percentage" />;
 ```
 
 **Changes:**
+
 - Accessible by default
 - Built-in variants and sizing
 - Proper ARIA attributes
@@ -105,6 +103,7 @@ import { ProgressBar } from '../components/design-system';
 ## Theme Migration
 
 ### Before (CSS Variables)
+
 ```css
 :root {
   --primary-color: #0066cc;
@@ -120,8 +119,9 @@ import { ProgressBar } from '../components/design-system';
 ```
 
 ### After (Theme Provider)
+
 ```tsx
-import { ThemeProvider } from '../components/design-system';
+import { ThemeProvider } from "../components/design-system";
 
 function App() {
   return (
@@ -132,20 +132,17 @@ function App() {
 }
 
 // Use theme in components
-import { useTheme } from '../components/design-system';
+import { useTheme } from "../components/design-system";
 
 function Component() {
   const { theme, setTheme, tokens } = useTheme();
 
-  return (
-    <div style={{ color: tokens.colors.primary }}>
-      Current theme: {theme}
-    </div>
-  );
+  return <div style={{ color: tokens.colors.primary }}>Current theme: {theme}</div>;
 }
 ```
 
 **Benefits:**
+
 - Runtime theme switching
 - Type-safe color tokens
 - Automatic localStorage persistence
@@ -154,15 +151,17 @@ function Component() {
 ## Import Structure Changes
 
 ### Before
+
 ```tsx
 // Scattered imports
-import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { ProgressBar } from '../components/custom/progress';
-import { PlayerCard } from '../components/players/PlayerCard';
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { ProgressBar } from "../components/custom/progress";
+import { PlayerCard } from "../components/players/PlayerCard";
 ```
 
 ### After
+
 ```tsx
 // Centralized design system imports
 import {
@@ -171,11 +170,12 @@ import {
   ProgressBar,
   PlayerCard,
   ThemeProvider,
-  useTheme
-} from '../components/design-system';
+  useTheme,
+} from "../components/design-system";
 ```
 
 **Benefits:**
+
 - Single import location
 - Tree-shaking friendly
 - Better IDE autocomplete
@@ -184,17 +184,19 @@ import {
 ## Styling Changes
 
 ### Before (Manual CSS)
+
 ```css
 .custom-card {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 ```
 
 ### After (Design Tokens)
+
 ```css
 .custom-card {
   background: var(--color-surface);
@@ -206,6 +208,7 @@ import {
 ```
 
 **Benefits:**
+
 - Semantic token names
 - Automatic theme switching
 - Consistent spacing scale
@@ -218,8 +221,9 @@ import {
 These components are specifically designed for fantasy sports:
 
 #### MatchCard
+
 ```tsx
-import { MatchCard } from '../components/design-system';
+import { MatchCard } from "../components/design-system";
 
 <MatchCard
   match={{
@@ -227,15 +231,16 @@ import { MatchCard } from '../components/design-system';
     awayTeam: { name: "Dragons", owner: "Jane", record: { wins: 6, losses: 6 } },
     week: 13,
     actualPoints: { home: 118.7, away: 105.3 },
-    status: "completed"
+    status: "completed",
   }}
-  onClick={() => navigate('/match/123')}
-/>
+  onClick={() => navigate("/match/123")}
+/>;
 ```
 
 #### PlayerCard
+
 ```tsx
-import { PlayerCard } from '../components/design-system';
+import { PlayerCard } from "../components/design-system";
 
 <PlayerCard
   player={{
@@ -243,58 +248,54 @@ import { PlayerCard } from '../components/design-system';
     position: "QB",
     team: "KC",
     stats: { points: 24.5, projected: 22.1 },
-    injuryStatus: { status: "healthy" }
+    injuryStatus: { status: "healthy" },
   }}
   draggable
   showActions
   onAdd={() => addPlayer()}
-/>
+/>;
 ```
 
 #### TrendingPlayers
-```tsx
-import { TrendingPlayers } from '../components/design-system';
 
-<TrendingPlayers
-  players={trendingData}
-  showActions
-  onAddPlayer={handleAdd}
-/>
+```tsx
+import { TrendingPlayers } from "../components/design-system";
+
+<TrendingPlayers players={trendingData} showActions onAddPlayer={handleAdd} />;
 ```
 
 ## Migration Steps
 
 ### 1. Install Theme Provider
+
 Wrap your app with the ThemeProvider:
 
 ```tsx
 // In your root App component
-import { ThemeProvider } from '../components/design-system';
+import { ThemeProvider } from "../components/design-system";
 
 function App() {
-  return (
-    <ThemeProvider defaultTheme="dark">
-      {/* Your existing app */}
-    </ThemeProvider>
-  );
+  return <ThemeProvider defaultTheme="dark">{/* Your existing app */}</ThemeProvider>;
 }
 ```
 
 ### 2. Update Imports (Gradual)
+
 Replace imports one component at a time:
 
 ```tsx
 // Week 1: Update buttons
-import { Button } from '../components/design-system';
+import { Button } from "../components/design-system";
 
 // Week 2: Update cards
-import { Card } from '../components/design-system';
+import { Card } from "../components/design-system";
 
 // Week 3: Add new fantasy components
-import { MatchCard, PlayerCard } from '../components/design-system';
+import { MatchCard, PlayerCard } from "../components/design-system";
 ```
 
 ### 3. Update Styling
+
 Replace hardcoded values with design tokens:
 
 ```bash
@@ -307,6 +308,7 @@ Replace hardcoded values with design tokens:
 ```
 
 ### 4. Test Theme Switching
+
 Ensure your components work in both themes:
 
 ```tsx
@@ -315,37 +317,41 @@ function TestThemes() {
 
   return (
     <div>
-      <Button onClick={() => setTheme('light')}>Light</Button>
-      <Button onClick={() => setTheme('dark')}>Dark</Button>
+      <Button onClick={() => setTheme("light")}>Light</Button>
+      <Button onClick={() => setTheme("dark")}>Dark</Button>
     </div>
   );
 }
 ```
 
 ### 5. Update Tests
+
 Update component tests for new APIs:
 
 ```tsx
 // Before
-expect(screen.getByRole('button')).toHaveClass('btn-primary');
+expect(screen.getByRole("button")).toHaveClass("btn-primary");
 
 // After
-expect(screen.getByRole('button')).toHaveAttribute('data-variant', 'primary');
+expect(screen.getByRole("button")).toHaveAttribute("data-variant", "primary");
 ```
 
 ## Breaking Changes
 
 ### Component Props
+
 - `Button`: `variant` replaces `className` styling
 - `Card`: Structured sub-components required
 - `ProgressBar`: `value`/`max` instead of `percentage`
 
 ### CSS Classes
+
 - Theme classes automatically applied
 - Manual theme toggling no longer needed
 - Design token CSS variables renamed
 
 ### TypeScript
+
 - Stricter prop types
 - Required theme context
 - New component interfaces
@@ -355,6 +361,7 @@ expect(screen.getByRole('button')).toHaveAttribute('data-variant', 'primary');
 ### Common Issues
 
 #### Theme Not Applied
+
 **Problem**: Components don't show proper styling
 **Solution**: Ensure ThemeProvider wraps your app
 
@@ -366,15 +373,17 @@ expect(screen.getByRole('button')).toHaveAttribute('data-variant', 'primary');
 ```
 
 #### Import Errors
+
 **Problem**: Cannot find component exports
 **Solution**: Check import path and component name
 
 ```tsx
 // Correct import structure
-import { Button, Card } from '../components/design-system';
+import { Button, Card } from "../components/design-system";
 ```
 
 #### CSS Conflicts
+
 **Problem**: Old styles interfering with new components
 **Solution**: Gradually remove legacy CSS
 
@@ -391,17 +400,19 @@ import { Button, Card } from '../components/design-system';
 ### Performance Issues
 
 #### Large Bundle Size
+
 **Solution**: Use tree-shaking imports
 
 ```tsx
 // Good: Tree-shakable
-import { Button } from '../components/design-system';
+import { Button } from "../components/design-system";
 
 // Avoid: Imports everything
-import * as DS from '../components/design-system';
+import * as DS from "../components/design-system";
 ```
 
 #### Slow Theme Switching
+
 **Solution**: Use CSS custom properties instead of inline styles
 
 ```tsx
@@ -451,6 +462,7 @@ npm run build:analyze
 ### Migration Assistance
 
 For complex migrations:
+
 1. Create a migration issue
 2. Provide example code
 3. Describe expected behavior
@@ -459,21 +471,25 @@ For complex migrations:
 ## Timeline Recommendations
 
 ### Phase 1 (Week 1-2): Foundation
+
 - Install ThemeProvider
 - Migrate Button components
 - Update basic styling
 
 ### Phase 2 (Week 3-4): Core Components
+
 - Migrate Card components
 - Add ProgressBar usage
 - Update forms and inputs
 
 ### Phase 3 (Week 5-6): Fantasy Components
+
 - Implement MatchCard
 - Add PlayerCard usage
 - Integrate TrendingPlayers
 
 ### Phase 4 (Week 7-8): Polish
+
 - Remove legacy code
 - Optimize performance
 - Complete testing

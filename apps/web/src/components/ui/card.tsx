@@ -35,3 +35,23 @@ export function CardTitle({
 }) {
   return <h2 className={"font-medium " + (className || "")}>{children}</h2>;
 }
+
+export function CardContent({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={className || ""}>{children}</div>;
+}
+
+export function CardFooter({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={"mt-4 flex justify-end " + (className || "")}>{children}</div>;
+}

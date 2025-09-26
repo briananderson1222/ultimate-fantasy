@@ -10,7 +10,7 @@ const mockMessages = [
     username: "FantasyGuru",
     message: "Anyone want to trade for a WR? I need RB depth",
     timestamp: new Date("2024-01-15T10:30:00"),
-    type: "message" as const
+    type: "message" as const,
   },
   {
     id: "2",
@@ -22,8 +22,8 @@ const mockMessages = [
     transactionData: {
       type: "waiver_claim" as const,
       player: "Gus Edwards",
-      team: "Team Warriors"
-    }
+      team: "Team Warriors",
+    },
   },
   {
     id: "3",
@@ -31,7 +31,7 @@ const mockMessages = [
     username: "Commissioner",
     message: "Reminder: Trade deadline is this Friday!",
     timestamp: new Date("2024-01-15T08:45:00"),
-    type: "announcement" as const
+    type: "announcement" as const,
   },
   {
     id: "4",
@@ -39,7 +39,7 @@ const mockMessages = [
     username: "TeamRocket",
     message: "Looking good for playoffs! 💪",
     timestamp: new Date("2024-01-15T08:20:00"),
-    type: "message" as const
+    type: "message" as const,
   },
   {
     id: "5",
@@ -53,9 +53,9 @@ const mockMessages = [
       fromTeam: "Team Alpha",
       toTeam: "Team Beta",
       fromPlayer: "Mike Evans",
-      toPlayer: "Josh Jacobs"
-    }
-  }
+      toPlayer: "Josh Jacobs",
+    },
+  },
 ];
 
 export const Default = () => (
@@ -84,7 +84,7 @@ export const MessageTypes = () => (
           username: "Player1",
           message: "Regular chat message",
           timestamp: new Date(),
-          type: "message"
+          type: "message",
         },
         {
           id: "2",
@@ -92,7 +92,7 @@ export const MessageTypes = () => (
           username: "System",
           message: "Trade notification",
           timestamp: new Date(),
-          type: "transaction"
+          type: "transaction",
         },
         {
           id: "3",
@@ -100,8 +100,8 @@ export const MessageTypes = () => (
           username: "Commissioner",
           message: "Important announcement",
           timestamp: new Date(),
-          type: "announcement"
-        }
+          type: "announcement",
+        },
       ]}
     />
   </div>
@@ -114,7 +114,7 @@ export const LongConversation = () => {
     username: `Player${i % 5}`,
     message: `This is message number ${i + 1} in the chat`,
     timestamp: new Date(Date.now() - i * 300000),
-    type: "message" as const
+    type: "message" as const,
   }));
 
   return (
@@ -159,7 +159,7 @@ export const WithMentions = () => (
           message: "Hey @Player2, want to make a trade?",
           timestamp: new Date(),
           type: "message",
-          mentions: ["Player2"]
+          mentions: ["Player2"],
         },
         {
           id: "2",
@@ -168,8 +168,8 @@ export const WithMentions = () => (
           message: "@Player1 Sure! What are you thinking?",
           timestamp: new Date(),
           type: "message",
-          mentions: ["Player1"]
-        }
+          mentions: ["Player1"],
+        },
       ]}
       showComposer
       currentUserId="user2"
@@ -180,7 +180,7 @@ export const WithMentions = () => (
 export const TransactionFocus = () => (
   <div className="p-6 h-96">
     <LeagueChat
-      messages={mockMessages.filter(m => m.type === "transaction")}
+      messages={mockMessages.filter((m) => m.type === "transaction")}
       showTransactionsOnly
     />
   </div>

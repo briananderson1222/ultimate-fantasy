@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
-from typing import Any
 from enum import Enum
+from typing import Any
 
 from sqlalchemy import CheckConstraint, DateTime, Index, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -15,6 +15,7 @@ from domains.shared.models.base import Base
 
 class PlayerPosition(Enum):
     """Player position enumeration."""
+
     # NFL positions
     QB = "QB"
     RB = "RB"
@@ -40,6 +41,7 @@ class PlayerPosition(Enum):
 
 class InjuryStatus(Enum):
     """Injury status enumeration."""
+
     HEALTHY = "healthy"
     QUESTIONABLE = "questionable"
     DOUBTFUL = "doubtful"
@@ -64,9 +66,7 @@ class Player(Base):
     injury_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="healthy"
     )
-    injury_description: Mapped[str | None] = mapped_column(
-        String(500), nullable=True
-    )
+    injury_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     season_stats: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     game_stats: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)

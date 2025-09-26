@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useMemo, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,27 +8,37 @@ import {
   StyleSheet,
   Platform,
   AppState,
-  BackHandler
-} from 'react-native';
-import { NavigationContainer, NavigationState, PartialState } from '@react-navigation/native';
-import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  BackHandler,
+} from "react-native";
+import { NavigationContainer, PartialState } from "@react-navigation/native";
+import type { NavigationState } from "@react-navigation/native";
+import {
+  createBottomTabNavigator,
+  BottomTabBarProps,
+} from "@react-navigation/bottom-tabs";
+import {
+  createStackNavigator,
+  CardStyleInterpolators,
+} from "@react-navigation/stack";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Animated Text component
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 // Lazy-loaded screens
-const HomeScreen = React.lazy(() => import('../screens/HomeScreen'));
-const LeaguesScreen = React.lazy(() => import('../screens/LeaguesScreen'));
-const DashboardScreen = React.lazy(() => import('../screens/DashboardScreen'));
-const AnalyticsScreen = React.lazy(() => import('../screens/AnalyticsScreen'));
-const AuthScreen = React.lazy(() => import('../screens/AuthScreen'));
-const DraftScreen = React.lazy(() => import('../screens/DraftScreen'));
-const LineupScreen = React.lazy(() => import('../screens/LineupScreen'));
-const TradesScreen = React.lazy(() => import('../screens/TradesScreen'));
-const WaiverScreen = React.lazy(() => import('../screens/WaiverScreen'));
-const TradeScreen = React.lazy(() => import('../screens/TradeScreen'));
+const HomeScreen = React.lazy(() => import("../screens/HomeScreen"));
+const LeaguesScreen = React.lazy(() => import("../screens/LeaguesScreen"));
+const DashboardScreen = React.lazy(() => import("../screens/DashboardScreen"));
+const AnalyticsScreen = React.lazy(() => import("../screens/AnalyticsScreen"));
+const AuthScreen = React.lazy(() => import("../screens/AuthScreen"));
+const DraftScreen = React.lazy(() => import("../screens/DraftScreen"));
+const LineupScreen = React.lazy(() => import("../screens/LineupScreen"));
+const TradesScreen = React.lazy(() => import("../screens/TradesScreen"));
+const WaiverScreen = React.lazy(() => import("../screens/WaiverScreen"));
+const TradeScreen = React.lazy(() => import("../screens/TradeScreen"));
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get("window");
 
 // Enhanced Navigation Types
 export type RootStackParamList = {
@@ -50,30 +60,30 @@ export type MainTabParamList = {
   More: undefined;
 };
 
-interface NavigationState {
-  routeNames: string[];
-  index: number;
-  routes: Array<{ name: string; params?: any }>;
-}
-
 // Performance-optimized lazy screen wrapper
 const LazyScreen: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <React.Suspense fallback={
-      <View style={styles.loadingContainer}>
-        <Animated.View style={styles.loadingSpinner} />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    }>
+    <React.Suspense
+      fallback={
+        <View style={styles.loadingContainer}>
+          <Animated.View style={styles.loadingSpinner} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      }
+    >
       {children}
     </React.Suspense>
   );
 };
 
 // Custom optimized tab bar
-const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+const CustomTabBar: React.FC<BottomTabBarProps> = ({
+  state,
+  descriptors,
+  navigation,
+}) => {
   const tabAnimations = useRef(
-    state.routes.map(() => new Animated.Value(0))
+    state.routes.map(() => new Animated.Value(0)),
   ).current;
 
   const indicatorAnimation = useRef(new Animated.Value(0)).current;
@@ -84,7 +94,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
       toValue: state.index,
       useNativeDriver: true,
       tension: 100,
-      friction: 8
+      friction: 8,
     }).start();
 
     // Animate tabs
@@ -93,7 +103,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
         toValue: state.index === index ? 1 : 0,
         useNativeDriver: true,
         tension: 100,
-        friction: 8
+        friction: 8,
       }).start();
     });
   }, [state.index]);
@@ -112,27 +122,30 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
               {
                 translateX: indicatorAnimation.interpolate({
                   inputRange: state.routes.map((_, i) => i),
-                  outputRange: state.routes.map((_, i) => i * tabWidth + tabWidth * 0.2),
-                })
-              }
-            ]
-          }
+                  outputRange: state.routes.map(
+                    (_, i) => i * tabWidth + tabWidth * 0.2,
+                  ),
+                }),
+              },
+            ],
+          },
         ]}
       />
 
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
-        const label = options.tabBarLabel !== undefined
-          ? options.tabBarLabel
-          : options.title !== undefined
-          ? options.title
-          : route.name;
+        const label =
+          typeof options.tabBarLabel === "string"
+            ? options.tabBarLabel
+            : options.title !== undefined
+              ? options.title
+              : route.name;
 
         const isFocused = state.index === index;
 
         const onPress = useCallback(() => {
           const event = navigation.emit({
-            type: 'tabPress',
+            type: "tabPress",
             target: route.key,
             canPreventDefault: true,
           });
@@ -144,21 +157,36 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
 
         const onLongPress = useCallback(() => {
           navigation.emit({
-            type: 'tabLongPress',
+            type: "tabLongPress",
             target: route.key,
           });
         }, [navigation, route.key]);
 
-        const getIconName = useCallback((routeName: string, focused: boolean) => {
-          const icons: Record<string, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }> = {
-            Home: { focused: 'home', unfocused: 'home-outline' },
-            Leagues: { focused: 'trophy', unfocused: 'trophy-outline' },
-            Dashboard: { focused: 'grid', unfocused: 'grid-outline' },
-            Analytics: { focused: 'analytics', unfocused: 'analytics-outline' },
-            More: { focused: 'menu', unfocused: 'menu-outline' }
-          };
-          return icons[routeName]?.[focused ? 'focused' : 'unfocused'] || 'help-outline';
-        }, []);
+        const getIconName = useCallback(
+          (routeName: string, focused: boolean) => {
+            const icons: Record<
+              string,
+              {
+                focused: keyof typeof Ionicons.glyphMap;
+                unfocused: keyof typeof Ionicons.glyphMap;
+              }
+            > = {
+              Home: { focused: "home", unfocused: "home-outline" },
+              Leagues: { focused: "trophy", unfocused: "trophy-outline" },
+              Dashboard: { focused: "grid", unfocused: "grid-outline" },
+              Analytics: {
+                focused: "analytics",
+                unfocused: "analytics-outline",
+              },
+              More: { focused: "menu", unfocused: "menu-outline" },
+            };
+            return (
+              icons[routeName]?.[focused ? "focused" : "unfocused"] ||
+              "help-outline"
+            );
+          },
+          [],
+        );
 
         return (
           <TouchableOpacity
@@ -166,7 +194,6 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : {}}
             accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarTestID}
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tabButton}
@@ -180,51 +207,51 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
                     {
                       scale: tabAnimations[index].interpolate({
                         inputRange: [0, 1],
-                        outputRange: [1, 1.1]
-                      })
-                    }
-                  ]
-                }
+                        outputRange: [1, 1.1],
+                      }),
+                    },
+                  ],
+                },
               ]}
             >
               <Animated.View
                 style={{
                   opacity: tabAnimations[index].interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.6, 1]
-                  })
+                    outputRange: [0.6, 1],
+                  }),
                 }}
               >
                 <Ionicons
                   name={getIconName(route.name, isFocused)}
                   size={24}
-                  color={isFocused ? '#2563eb' : '#6b7280'}
+                  color={isFocused ? "#2563eb" : "#6b7280"}
                 />
               </Animated.View>
-              <Animated.Text
-                style={[
-                  styles.tabLabel,
-                  {
-                    color: isFocused ? '#2563eb' : '#6b7280',
-                    opacity: tabAnimations[index].interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.6, 1]
-                    }),
-                    transform: [
-                      {
-                        translateY: tabAnimations[index].interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [2, 0]
-                        })
-                      }
-                    ]
-                  }
-                ]}
-                numberOfLines={1}
-                allowFontScaling={false}
+              <Animated.View
+                style={{
+                  opacity: tabAnimations[index].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.6, 1],
+                  }),
+                  transform: [
+                    {
+                      translateY: tabAnimations[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [2, 0],
+                      }),
+                    },
+                  ],
+                }}
               >
-                {label}
-              </Animated.Text>
+                <Text
+                  style={[styles.tabLabel, { color: "#6b7280" }]}
+                  numberOfLines={1}
+                  allowFontScaling={false}
+                >
+                  {label}
+                </Text>
+              </Animated.View>
             </Animated.View>
           </TouchableOpacity>
         );
@@ -237,20 +264,28 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
 // Memoized tab screen components
-const MemoizedHomeScreen = React.memo(() => (
-  <LazyScreen><HomeScreen /></LazyScreen>
+const MemoizedHomeScreen = React.memo(({ navigation }: { navigation: any }) => (
+  <LazyScreen>
+    <HomeScreen navigation={navigation} />
+  </LazyScreen>
 ));
 
 const MemoizedLeaguesScreen = React.memo(() => (
-  <LazyScreen><LeaguesScreen /></LazyScreen>
+  <LazyScreen>
+    <LeaguesScreen />
+  </LazyScreen>
 ));
 
 const MemoizedDashboardScreen = React.memo(() => (
-  <LazyScreen><DashboardScreen /></LazyScreen>
+  <LazyScreen>
+    <DashboardScreen />
+  </LazyScreen>
 ));
 
 const MemoizedAnalyticsScreen = React.memo(() => (
-  <LazyScreen><AnalyticsScreen /></LazyScreen>
+  <LazyScreen>
+    <AnalyticsScreen />
+  </LazyScreen>
 ));
 
 // More screen with additional navigation options
@@ -275,24 +310,26 @@ const MoreScreen: React.FC = React.memo(() => {
 });
 
 // Navigation state persistence
-const PERSISTENCE_KEY = 'NAVIGATION_STATE';
+const PERSISTENCE_KEY = "NAVIGATION_STATE";
 
-const getInitialState = async (): Promise<PartialState<NavigationState> | undefined> => {
+const getInitialState = async (): Promise<
+  PartialState<NavigationState> | undefined
+> => {
   try {
     const savedStateString = await AsyncStorage.getItem(PERSISTENCE_KEY);
     const state = savedStateString ? JSON.parse(savedStateString) : undefined;
     return state;
   } catch (error) {
-    console.warn('Failed to restore navigation state:', error);
+    console.warn("Failed to restore navigation state:", error);
     return undefined;
   }
 };
 
-const saveNavigationState = async (state: NavigationState) => {
+const saveNavigationState = async (state: NavigationState | undefined) => {
   try {
     await AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.warn('Failed to save navigation state:', error);
+    console.warn("Failed to save navigation state:", error);
   }
 };
 
@@ -304,7 +341,7 @@ const MainTabNavigator: React.FC = React.memo(() => {
       screenOptions={{
         headerShown: false,
         lazy: true,
-        unmountOnBlur: false,
+
         freezeOnBlur: true,
       }}
       initialRouteName="Home"
@@ -313,40 +350,40 @@ const MainTabNavigator: React.FC = React.memo(() => {
         name="Home"
         component={MemoizedHomeScreen}
         options={{
-          title: 'Home',
-          tabBarLabel: 'Home'
+          title: "Home",
+          tabBarLabel: "Home",
         }}
       />
       <Tab.Screen
         name="Leagues"
         component={MemoizedLeaguesScreen}
         options={{
-          title: 'Leagues',
-          tabBarLabel: 'Leagues'
+          title: "Leagues",
+          tabBarLabel: "Leagues",
         }}
       />
       <Tab.Screen
         name="Dashboard"
         component={MemoizedDashboardScreen}
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard'
+          title: "Dashboard",
+          tabBarLabel: "Dashboard",
         }}
       />
       <Tab.Screen
         name="Analytics"
         component={MemoizedAnalyticsScreen}
         options={{
-          title: 'Analytics',
-          tabBarLabel: 'Analytics'
+          title: "Analytics",
+          tabBarLabel: "Analytics",
         }}
       />
       <Tab.Screen
         name="More"
         component={MoreScreen}
         options={{
-          title: 'More',
-          tabBarLabel: 'More'
+          title: "More",
+          tabBarLabel: "More",
         }}
       />
     </Tab.Navigator>
@@ -356,15 +393,19 @@ const MainTabNavigator: React.FC = React.memo(() => {
 // Enhanced Root Navigator with optimizations
 export const OptimizedTabNavigator: React.FC = () => {
   const [isReady, setIsReady] = React.useState(false);
-  const [initialState, setInitialState] = React.useState<PartialState<NavigationState>>();
+  const [initialState, setInitialState] =
+    React.useState<PartialState<NavigationState>>();
 
   // Handle back button for Android
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-        // Custom back button handling logic
-        return false; // Let default behavior handle it
-      });
+    if (Platform.OS === "android") {
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          // Custom back button handling logic
+          return false; // Let default behavior handle it
+        },
+      );
 
       return () => backHandler.remove();
     }
@@ -373,16 +414,19 @@ export const OptimizedTabNavigator: React.FC = () => {
   // Handle app state changes for performance
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'background') {
+      if (nextAppState === "background") {
         // App is going to background, save state
-        console.log('App backgrounded, saving navigation state');
-      } else if (nextAppState === 'active') {
+        console.log("App backgrounded, saving navigation state");
+      } else if (nextAppState === "active") {
         // App is coming to foreground
-        console.log('App foregrounded');
+        console.log("App foregrounded");
       }
     };
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
     return () => subscription?.remove();
   }, []);
 
@@ -403,21 +447,24 @@ export const OptimizedTabNavigator: React.FC = () => {
     }
   }, [isReady]);
 
-  const screenOptions = useMemo(() => ({
-    headerStyle: {
-      backgroundColor: '#2563eb',
-      elevation: 0,
-      shadowOpacity: 0,
-    },
-    headerTintColor: '#fff',
-    headerTitleStyle: {
-      fontWeight: 'bold' as const,
-      fontSize: 18,
-    },
-    cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-    gestureEnabled: true,
-    gestureDirection: 'horizontal' as const,
-  }), []);
+  const screenOptions = useMemo(
+    () => ({
+      headerStyle: {
+        backgroundColor: "#2563eb",
+        elevation: 0,
+        shadowOpacity: 0,
+      },
+      headerTintColor: "#fff",
+      headerTitleStyle: {
+        fontWeight: "bold" as const,
+        fontSize: 18,
+      },
+      cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+      gestureEnabled: true,
+      gestureDirection: "horizontal" as const,
+    }),
+    [],
+  );
 
   if (!isReady) {
     return (
@@ -433,81 +480,109 @@ export const OptimizedTabNavigator: React.FC = () => {
       initialState={initialState}
       onStateChange={saveNavigationState}
     >
-      <Stack.Navigator
-        initialRouteName="Auth"
-        screenOptions={screenOptions}
-      >
+      <Stack.Navigator initialRouteName="Auth" screenOptions={screenOptions}>
         <Stack.Screen
           name="Auth"
           options={{
             headerShown: false,
-            cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
+            cardStyleInterpolator:
+              CardStyleInterpolators.forFadeFromBottomAndroid,
           }}
         >
-          {() => <LazyScreen><AuthScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <AuthScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
         <Stack.Screen
           name="Main"
           component={MainTabNavigator}
           options={{
             headerShown: false,
-            cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
+            cardStyleInterpolator:
+              CardStyleInterpolators.forFadeFromBottomAndroid,
           }}
         />
         <Stack.Screen
           name="Draft"
           options={{
-            title: 'Live Draft',
-            presentation: 'modal',
-            cardStyleInterpolator: CardStyleInterpolators.forModalPresentationIOS,
+            title: "Live Draft",
+            presentation: "modal",
+            cardStyleInterpolator:
+              CardStyleInterpolators.forModalPresentationIOS,
           }}
         >
-          {() => <LazyScreen><DraftScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <DraftScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
         <Stack.Screen
           name="Lineup"
           options={{
-            title: 'Set Lineup',
+            title: "Set Lineup",
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
           }}
         >
-          {() => <LazyScreen><LineupScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <LineupScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
         <Stack.Screen
           name="Trades"
           options={{
-            title: 'Trades',
+            title: "Trades",
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
           }}
         >
-          {() => <LazyScreen><TradesScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <TradesScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
         <Stack.Screen
           name="Trade"
           options={{
-            title: 'Trade Details',
+            title: "Trade Details",
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
           }}
         >
-          {() => <LazyScreen><TradeScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <TradeScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
         <Stack.Screen
           name="Waiver"
           options={{
-            title: 'Waiver Wire',
+            title: "Waiver Wire",
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
           }}
         >
-          {() => <LazyScreen><WaiverScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <WaiverScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
         <Stack.Screen
           name="Analytics"
           options={{
-            title: 'Analytics',
+            title: "Analytics",
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
           }}
         >
-          {() => <LazyScreen><AnalyticsScreen /></LazyScreen>}
+          {() => (
+            <LazyScreen>
+              <AnalyticsScreen />
+            </LazyScreen>
+          )}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
@@ -517,87 +592,87 @@ export const OptimizedTabNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
   },
   loadingSpinner: {
     width: 40,
     height: 40,
     borderRadius: 20,
     borderWidth: 3,
-    borderColor: '#e5e7eb',
-    borderTopColor: '#2563eb',
+    borderColor: "#e5e7eb",
+    borderTopColor: "#2563eb",
     marginBottom: 16,
   },
   loadingText: {
     fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   tabBarContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    borderTopColor: "#e5e7eb",
+    paddingBottom: Platform.OS === "ios" ? 20 : 10,
     paddingTop: 8,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    position: 'relative',
+    position: "relative",
   },
   tabIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     height: 3,
-    backgroundColor: '#2563eb',
+    backgroundColor: "#2563eb",
     borderRadius: 2,
   },
   tabButton: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 8,
   },
   tabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: 50,
   },
   tabLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   moreContainer: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     paddingTop: 20,
   },
   moreTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: "bold",
+    color: "#111827",
     marginHorizontal: 20,
     marginBottom: 20,
   },
   moreItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   moreItemText: {
     fontSize: 16,
-    color: '#374151',
+    color: "#374151",
     marginLeft: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
 

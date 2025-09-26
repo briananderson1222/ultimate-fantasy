@@ -1,9 +1,9 @@
-const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
+const { getDefaultConfig } = require("expo/metro-config");
+const path = require("path");
 
 // Find the project and workspace directories
 const projectRoot = __dirname;
-const monorepoRoot = path.resolve(projectRoot, '../..');
+const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
@@ -12,8 +12,8 @@ config.watchFolders = [monorepoRoot];
 
 // 2. Let Metro know where to resolve packages and in what order
 config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(monorepoRoot, 'node_modules'),
+  path.resolve(projectRoot, "node_modules"),
+  path.resolve(monorepoRoot, "node_modules"),
 ];
 
 // 3. Force Metro to resolve (sub)dependencies only from the `nodeModulesPaths`
@@ -23,10 +23,10 @@ config.resolver.disableHierarchicalLookup = true;
 config.transformer = {
   ...config.transformer,
   // Enable Hermes bytecode generation for better performance
-  hermesCommand: 'hermesc',
+  hermesCommand: "hermesc",
 
   // Optimize asset bundling
-  assetRegistryPath: 'react-native/Libraries/Image/AssetRegistry',
+  assetRegistryPath: "react-native/Libraries/Image/AssetRegistry",
 
   // Enable minification for production builds
   minifierConfig: {
@@ -43,7 +43,7 @@ config.transformer = {
     },
     toplevel: false,
     compress: {
-      drop_console: process.env.NODE_ENV === 'production',
+      drop_console: process.env.NODE_ENV === "production",
       reduce_funcs: false,
     },
   },
@@ -61,10 +61,10 @@ config.serializer = {
 
       // Use shorter names for frequently imported modules
       const commonModules = {
-        'node_modules/react/index.js': 'react',
-        'node_modules/react-native/index.js': 'react-native',
-        'packages/shared-logic/src/index.ts': 'shared-logic',
-        'packages/ui-components/src/index.ts': 'ui-components',
+        "node_modules/react/index.js": "react",
+        "node_modules/react-native/index.js": "react-native",
+        "packages/shared-logic/src/index.ts": "shared-logic",
+        "packages/ui-components/src/index.ts": "ui-components",
       };
 
       if (commonModules[name]) {
@@ -73,8 +73,8 @@ config.serializer = {
 
       // Hash long paths to reduce bundle size
       if (name.length > 50) {
-        const crypto = require('crypto');
-        return crypto.createHash('md5').update(name).digest('hex').substr(0, 8);
+        const crypto = require("crypto");
+        return crypto.createHash("md5").update(name).digest("hex").substr(0, 8);
       }
 
       return name;
@@ -87,19 +87,23 @@ config.serializer = {
     const filePath = module.path;
 
     // Exclude test files and stories
-    if (filePath.includes('__tests__') ||
-        filePath.includes('test.') ||
-        filePath.includes('.test.') ||
-        filePath.includes('.stories.') ||
-        filePath.includes('storybook')) {
+    if (
+      filePath.includes("__tests__") ||
+      filePath.includes("test.") ||
+      filePath.includes(".test.") ||
+      filePath.includes(".stories.") ||
+      filePath.includes("storybook")
+    ) {
       return false;
     }
 
     // Exclude development-only modules in production
-    if (process.env.NODE_ENV === 'production') {
-      if (filePath.includes('reactotron') ||
-          filePath.includes('flipper') ||
-          filePath.includes('react-devtools')) {
+    if (process.env.NODE_ENV === "production") {
+      if (
+        filePath.includes("reactotron") ||
+        filePath.includes("flipper") ||
+        filePath.includes("react-devtools")
+      ) {
         return false;
       }
     }
@@ -111,28 +115,28 @@ config.serializer = {
 // Cache configuration for faster builds
 config.cacheStores = [
   {
-    name: 'filesystem',
-    type: 'FileStore',
-    root: path.join(projectRoot, '.metro-cache'),
+    name: "filesystem",
+    type: "FileStore",
+    root: path.join(projectRoot, ".metro-cache"),
   },
 ];
 
 // Asset optimization
 config.resolver.assetExts = [
   ...config.resolver.assetExts,
-  'lottie', // Lottie animations
-  'webp', // WebP images for better compression
+  "lottie", // Lottie animations
+  "webp", // WebP images for better compression
 ];
 
 // Platform-specific optimizations
-config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+config.resolver.platforms = ["ios", "android", "native", "web"];
 
 // Source map configuration
 config.symbolicator = {
   ...config.symbolicator,
   customizeFrame: (frame) => {
     // Simplify stack traces for better debugging
-    if (frame.file && frame.file.includes('node_modules')) {
+    if (frame.file && frame.file.includes("node_modules")) {
       const match = frame.file.match(/node_modules\/([^\/]+)/);
       if (match) {
         frame.file = `node_modules/${match[1]}`;
@@ -147,18 +151,18 @@ config.symbolicator = {
 // but monorepo hoisting may expose v30 at the root which breaks HMR on web.
 try {
   const prettyFormatRoot = require.resolve(
-    '@expo/metro-runtime/node_modules/pretty-format/build/index.js'
+    "@expo/metro-runtime/node_modules/pretty-format/build/index.js",
   );
   // 4a. Ensure any import of `pretty-format` resolves to Expo's bundled v29.
   config.resolver.resolveRequest = (context, moduleName, platform) => {
-    if (moduleName === 'pretty-format') {
+    if (moduleName === "pretty-format") {
       return {
-        type: 'sourceFile',
+        type: "sourceFile",
         filePath: prettyFormatRoot,
       };
     }
     // Defer to Metro's default resolver
-    return require('metro-resolver').resolve(context, moduleName, platform);
+    return require("metro-resolver").resolve(context, moduleName, platform);
   };
 } catch (_) {
   // Fallback: if resolution fails, keep default behavior.

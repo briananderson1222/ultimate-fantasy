@@ -5,56 +5,56 @@
 
 export interface SpacingTokens {
   // Base spacing units (px values)
-  xs: string;      // 4px  - Minimal spacing
-  sm: string;      // 8px  - Small spacing
-  md: string;      // 16px - Base spacing unit
-  lg: string;      // 24px - Large spacing
-  xl: string;      // 32px - Extra large spacing
-  '2xl': string;   // 48px - 2x extra large
-  '3xl': string;   // 64px - 3x extra large
-  '4xl': string;   // 96px - 4x extra large
+  xs: string; // 4px  - Minimal spacing
+  sm: string; // 8px  - Small spacing
+  md: string; // 16px - Base spacing unit
+  lg: string; // 24px - Large spacing
+  xl: string; // 32px - Extra large spacing
+  "2xl": string; // 48px - 2x extra large
+  "3xl": string; // 64px - 3x extra large
+  "4xl": string; // 96px - 4x extra large
 
   // Semantic spacing
-  component: string;     // Internal component spacing
-  section: string;       // Between sections
-  page: string;         // Page margins/padding
+  component: string; // Internal component spacing
+  section: string; // Between sections
+  page: string; // Page margins/padding
 
   // Interactive elements
-  button: string;       // Button padding
-  input: string;        // Input field padding
-  card: string;         // Card internal padding
+  button: string; // Button padding
+  input: string; // Input field padding
+  card: string; // Card internal padding
 
   // Layout spacing
-  grid: string;         // Grid gaps
-  stack: string;        // Vertical stack spacing
-  inline: string;       // Inline element spacing
+  grid: string; // Grid gaps
+  stack: string; // Vertical stack spacing
+  inline: string; // Inline element spacing
 }
 
 export const spacingTokens: SpacingTokens = {
   // Base scale using 4px as fundamental unit
-  xs: '0.25rem',    // 4px
-  sm: '0.5rem',     // 8px
-  md: '1rem',       // 16px
-  lg: '1.5rem',     // 24px
-  xl: '2rem',       // 32px
-  '2xl': '3rem',    // 48px
-  '3xl': '4rem',    // 64px
-  '4xl': '6rem',    // 96px
+  xs: "0.25rem", // 4px
+  sm: "0.5rem", // 8px
+  md: "1rem", // 16px
+  lg: "1.5rem", // 24px
+  xl: "2rem", // 32px
+  "2xl": "3rem", // 48px
+  "3xl": "4rem", // 64px
+  "4xl": "6rem", // 96px
 
   // Semantic spacing based on use cases
-  component: '0.5rem',   // 8px - internal component spacing
-  section: '1.5rem',     // 24px - between logical sections
-  page: '1rem',          // 16px - page-level margins (mobile-friendly)
+  component: "0.5rem", // 8px - internal component spacing
+  section: "1.5rem", // 24px - between logical sections
+  page: "1rem", // 16px - page-level margins (mobile-friendly)
 
   // Interactive element spacing
-  button: '0.75rem 1rem', // 12px vertical, 16px horizontal
-  input: '0.75rem',       // 12px - input field padding
-  card: '1rem',           // 16px - card internal padding
+  button: "0.75rem 1rem", // 12px vertical, 16px horizontal
+  input: "0.75rem", // 12px - input field padding
+  card: "1rem", // 16px - card internal padding
 
   // Layout spacing
-  grid: '1rem',           // 16px - grid gaps
-  stack: '0.75rem',       // 12px - vertical spacing in stacks
-  inline: '0.5rem',       // 8px - horizontal spacing for inline elements
+  grid: "1rem", // 16px - grid gaps
+  stack: "0.75rem", // 12px - vertical spacing in stacks
+  inline: "0.5rem", // 8px - horizontal spacing for inline elements
 };
 
 // Responsive spacing tokens for different screen sizes
@@ -68,54 +68,56 @@ export const responsiveSpacing: ResponsiveSpacing = {
   mobile: {
     ...spacingTokens,
     // Override specific values for mobile
-    page: '0.75rem',       // 12px - tighter page margins on mobile
-    section: '1rem',       // 16px - reduced section spacing
-    card: '0.75rem',       // 12px - tighter card padding
+    page: "0.75rem", // 12px - tighter page margins on mobile
+    section: "1rem", // 16px - reduced section spacing
+    card: "0.75rem", // 12px - tighter card padding
   },
 
   tablet: {
     ...spacingTokens,
     // Default values work well for tablet
-    page: '1.5rem',        // 24px - more breathing room on tablet
-    section: '2rem',       // 32px - increased section spacing
+    page: "1.5rem", // 24px - more breathing room on tablet
+    section: "2rem", // 32px - increased section spacing
   },
 
   desktop: {
     ...spacingTokens,
     // Enhanced spacing for larger screens
-    page: '2rem',          // 32px - generous page margins
-    section: '3rem',       // 48px - large section spacing
-    card: '1.5rem',        // 24px - more generous card padding
-    grid: '1.5rem',        // 24px - larger grid gaps
+    page: "2rem", // 32px - generous page margins
+    section: "3rem", // 48px - large section spacing
+    card: "1.5rem", // 24px - more generous card padding
+    grid: "1.5rem", // 24px - larger grid gaps
   },
 };
 
 // CSS custom property names for spacing
 export const spacingVariables = {
-  xs: '--space-xs',
-  sm: '--space-sm',
-  md: '--space-md',
-  lg: '--space-lg',
-  xl: '--space-xl',
-  '2xl': '--space-2xl',
-  '3xl': '--space-3xl',
-  '4xl': '--space-4xl',
+  xs: "--space-xs",
+  sm: "--space-sm",
+  md: "--space-md",
+  lg: "--space-lg",
+  xl: "--space-xl",
+  "2xl": "--space-2xl",
+  "3xl": "--space-3xl",
+  "4xl": "--space-4xl",
 
-  component: '--space-component',
-  section: '--space-section',
-  page: '--space-page',
+  component: "--space-component",
+  section: "--space-section",
+  page: "--space-page",
 
-  button: '--space-button',
-  input: '--space-input',
-  card: '--space-card',
+  button: "--space-button",
+  input: "--space-input",
+  card: "--space-card",
 
-  grid: '--space-grid',
-  stack: '--space-stack',
-  inline: '--space-inline',
+  grid: "--space-grid",
+  stack: "--space-stack",
+  inline: "--space-inline",
 } as const;
 
 // Helper function to generate CSS custom properties
-export const generateSpacingVariables = (breakpoint: keyof ResponsiveSpacing): Record<string, string> => {
+export const generateSpacingVariables = (
+  breakpoint: keyof ResponsiveSpacing,
+): Record<string, string> => {
   const tokens = responsiveSpacing[breakpoint];
 
   return {
@@ -124,9 +126,9 @@ export const generateSpacingVariables = (breakpoint: keyof ResponsiveSpacing): R
     [spacingVariables.md]: tokens.md,
     [spacingVariables.lg]: tokens.lg,
     [spacingVariables.xl]: tokens.xl,
-    [spacingVariables['2xl']]: tokens['2xl'],
-    [spacingVariables['3xl']]: tokens['3xl'],
-    [spacingVariables['4xl']]: tokens['4xl'],
+    [spacingVariables["2xl"]]: tokens["2xl"],
+    [spacingVariables["3xl"]]: tokens["3xl"],
+    [spacingVariables["4xl"]]: tokens["4xl"],
 
     [spacingVariables.component]: tokens.component,
     [spacingVariables.section]: tokens.section,
@@ -147,14 +149,14 @@ export const addSpacing = (space1: string, space2: string): string => {
   // Simple implementation - could be enhanced with calc() for complex cases
   const value1 = parseFloat(space1);
   const value2 = parseFloat(space2);
-  const unit = space1.includes('rem') ? 'rem' : 'px';
+  const unit = space1.includes("rem") ? "rem" : "px";
 
   return `${value1 + value2}${unit}`;
 };
 
 export const multiplySpacing = (space: string, multiplier: number): string => {
   const value = parseFloat(space);
-  const unit = space.includes('rem') ? 'rem' : 'px';
+  const unit = space.includes("rem") ? "rem" : "px";
 
   return `${value * multiplier}${unit}`;
 };
@@ -166,12 +168,12 @@ export const spacingCombinations = {
 
   // Button spacing with hover state expansion
   buttonComfort: spacingTokens.button,
-  buttonCompact: '0.5rem 0.75rem',  // 8px 12px
-  buttonLarge: '1rem 1.5rem',       // 16px 24px
+  buttonCompact: "0.5rem 0.75rem", // 8px 12px
+  buttonLarge: "1rem 1.5rem", // 16px 24px
 
   // Form element spacing
-  formField: spacingTokens.stack,    // Between form fields
-  formGroup: spacingTokens.section,  // Between form groups
+  formField: spacingTokens.stack, // Between form fields
+  formGroup: spacingTokens.section, // Between form groups
 
   // Layout containers
   containerPadding: spacingTokens.page,

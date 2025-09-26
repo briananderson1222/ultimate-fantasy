@@ -40,68 +40,68 @@ export const typographyTokens: TypographyTokens = {
   // Mobile-first: Optimized for small screens and touch interfaces
   mobile: {
     h1: {
-      fontSize: '1.75rem',      // 28px
+      fontSize: "1.75rem", // 28px
       fontWeight: 700,
-      lineHeight: '1.2',
-      letterSpacing: '-0.025em',
+      lineHeight: "1.2",
+      letterSpacing: "-0.025em",
       fontFamily: fontStacks.sans,
     },
     h2: {
-      fontSize: '1.5rem',       // 24px
+      fontSize: "1.5rem", // 24px
       fontWeight: 600,
-      lineHeight: '1.25',
-      letterSpacing: '-0.02em',
+      lineHeight: "1.25",
+      letterSpacing: "-0.02em",
       fontFamily: fontStacks.sans,
     },
     h3: {
-      fontSize: '1.25rem',      // 20px
+      fontSize: "1.25rem", // 20px
       fontWeight: 600,
-      lineHeight: '1.3',
-      letterSpacing: '-0.015em',
+      lineHeight: "1.3",
+      letterSpacing: "-0.015em",
       fontFamily: fontStacks.sans,
     },
     h4: {
-      fontSize: '1.125rem',     // 18px
+      fontSize: "1.125rem", // 18px
       fontWeight: 500,
-      lineHeight: '1.35',
+      lineHeight: "1.35",
       fontFamily: fontStacks.sans,
     },
     bodyLarge: {
-      fontSize: '1.125rem',     // 18px
+      fontSize: "1.125rem", // 18px
       fontWeight: 400,
-      lineHeight: '1.6',
+      lineHeight: "1.6",
       fontFamily: fontStacks.sans,
     },
     body: {
-      fontSize: '1rem',         // 16px
+      fontSize: "1rem", // 16px
       fontWeight: 400,
-      lineHeight: '1.5',
+      lineHeight: "1.5",
       fontFamily: fontStacks.sans,
     },
     bodySmall: {
-      fontSize: '0.875rem',     // 14px
+      fontSize: "0.875rem", // 14px
       fontWeight: 400,
-      lineHeight: '1.4',
+      lineHeight: "1.4",
       fontFamily: fontStacks.sans,
     },
     caption: {
-      fontSize: '0.75rem',      // 12px
+      fontSize: "0.75rem", // 12px
       fontWeight: 400,
-      lineHeight: '1.3',
-      letterSpacing: '0.025em',
+      lineHeight: "1.3",
+      letterSpacing: "0.025em",
       fontFamily: fontStacks.sans,
     },
     button: {
-      fontSize: '0.875rem',     // 14px
+      fontSize: "0.875rem", // 14px
       fontWeight: 500,
-      lineHeight: '1',
-      letterSpacing: '0.05em',
+      lineHeight: "1",
+      letterSpacing: "0.05em",
       fontFamily: fontStacks.sans,
     },
     label: {
-      fontSize: '0.875rem',     // 14px
+      fontSize: "0.875rem", // 14px
       fontWeight: 500,
-      lineHeight: '1.2',
+      lineHeight: "1.2",
       fontFamily: fontStacks.sans,
     },
   },
@@ -109,68 +109,68 @@ export const typographyTokens: TypographyTokens = {
   // Base: Default scale for general use
   base: {
     h1: {
-      fontSize: '2rem',         // 32px
+      fontSize: "2rem", // 32px
       fontWeight: 700,
-      lineHeight: '1.2',
-      letterSpacing: '-0.025em',
+      lineHeight: "1.2",
+      letterSpacing: "-0.025em",
       fontFamily: fontStacks.sans,
     },
     h2: {
-      fontSize: '1.75rem',      // 28px
+      fontSize: "1.75rem", // 28px
       fontWeight: 600,
-      lineHeight: '1.25',
-      letterSpacing: '-0.02em',
+      lineHeight: "1.25",
+      letterSpacing: "-0.02em",
       fontFamily: fontStacks.sans,
     },
     h3: {
-      fontSize: '1.5rem',       // 24px
+      fontSize: "1.5rem", // 24px
       fontWeight: 600,
-      lineHeight: '1.3',
-      letterSpacing: '-0.015em',
+      lineHeight: "1.3",
+      letterSpacing: "-0.015em",
       fontFamily: fontStacks.sans,
     },
     h4: {
-      fontSize: '1.25rem',      // 20px
+      fontSize: "1.25rem", // 20px
       fontWeight: 500,
-      lineHeight: '1.35',
+      lineHeight: "1.35",
       fontFamily: fontStacks.sans,
     },
     bodyLarge: {
-      fontSize: '1.25rem',      // 20px
+      fontSize: "1.25rem", // 20px
       fontWeight: 400,
-      lineHeight: '1.6',
+      lineHeight: "1.6",
       fontFamily: fontStacks.sans,
     },
     body: {
-      fontSize: '1rem',         // 16px
+      fontSize: "1rem", // 16px
       fontWeight: 400,
-      lineHeight: '1.5',
+      lineHeight: "1.5",
       fontFamily: fontStacks.sans,
     },
     bodySmall: {
-      fontSize: '0.875rem',     // 14px
+      fontSize: "0.875rem", // 14px
       fontWeight: 400,
-      lineHeight: '1.4',
+      lineHeight: "1.4",
       fontFamily: fontStacks.sans,
     },
     caption: {
-      fontSize: '0.75rem',      // 12px
+      fontSize: "0.75rem", // 12px
       fontWeight: 400,
-      lineHeight: '1.3',
-      letterSpacing: '0.025em',
+      lineHeight: "1.3",
+      letterSpacing: "0.025em",
       fontFamily: fontStacks.sans,
     },
     button: {
-      fontSize: '1rem',         // 16px
+      fontSize: "1rem", // 16px
       fontWeight: 500,
-      lineHeight: '1',
-      letterSpacing: '0.025em',
+      lineHeight: "1",
+      letterSpacing: "0.025em",
       fontFamily: fontStacks.sans,
     },
     label: {
-      fontSize: '0.875rem',     // 14px
+      fontSize: "0.875rem", // 14px
       fontWeight: 500,
-      lineHeight: '1.2',
+      lineHeight: "1.2",
       fontFamily: fontStacks.sans,
     },
   },
@@ -178,69 +178,69 @@ export const typographyTokens: TypographyTokens = {
   // Desktop: Enhanced scale for larger screens
   desktop: {
     h1: {
-      fontSize: '2.5rem',       // 40px
+      fontSize: "2.5rem", // 40px
       fontWeight: 700,
-      lineHeight: '1.1',
-      letterSpacing: '-0.03em',
+      lineHeight: "1.1",
+      letterSpacing: "-0.03em",
       fontFamily: fontStacks.sans,
     },
     h2: {
-      fontSize: '2rem',         // 32px
+      fontSize: "2rem", // 32px
       fontWeight: 600,
-      lineHeight: '1.2',
-      letterSpacing: '-0.025em',
+      lineHeight: "1.2",
+      letterSpacing: "-0.025em",
       fontFamily: fontStacks.sans,
     },
     h3: {
-      fontSize: '1.75rem',      // 28px
+      fontSize: "1.75rem", // 28px
       fontWeight: 600,
-      lineHeight: '1.25',
-      letterSpacing: '-0.02em',
+      lineHeight: "1.25",
+      letterSpacing: "-0.02em",
       fontFamily: fontStacks.sans,
     },
     h4: {
-      fontSize: '1.5rem',       // 24px
+      fontSize: "1.5rem", // 24px
       fontWeight: 500,
-      lineHeight: '1.3',
-      letterSpacing: '-0.015em',
+      lineHeight: "1.3",
+      letterSpacing: "-0.015em",
       fontFamily: fontStacks.sans,
     },
     bodyLarge: {
-      fontSize: '1.375rem',     // 22px
+      fontSize: "1.375rem", // 22px
       fontWeight: 400,
-      lineHeight: '1.6',
+      lineHeight: "1.6",
       fontFamily: fontStacks.sans,
     },
     body: {
-      fontSize: '1.125rem',     // 18px
+      fontSize: "1.125rem", // 18px
       fontWeight: 400,
-      lineHeight: '1.5',
+      lineHeight: "1.5",
       fontFamily: fontStacks.sans,
     },
     bodySmall: {
-      fontSize: '1rem',         // 16px
+      fontSize: "1rem", // 16px
       fontWeight: 400,
-      lineHeight: '1.4',
+      lineHeight: "1.4",
       fontFamily: fontStacks.sans,
     },
     caption: {
-      fontSize: '0.875rem',     // 14px
+      fontSize: "0.875rem", // 14px
       fontWeight: 400,
-      lineHeight: '1.3',
-      letterSpacing: '0.025em',
+      lineHeight: "1.3",
+      letterSpacing: "0.025em",
       fontFamily: fontStacks.sans,
     },
     button: {
-      fontSize: '1rem',         // 16px
+      fontSize: "1rem", // 16px
       fontWeight: 500,
-      lineHeight: '1',
-      letterSpacing: '0.025em',
+      lineHeight: "1",
+      letterSpacing: "0.025em",
       fontFamily: fontStacks.sans,
     },
     label: {
-      fontSize: '1rem',         // 16px
+      fontSize: "1rem", // 16px
       fontWeight: 500,
-      lineHeight: '1.2',
+      lineHeight: "1.2",
       fontFamily: fontStacks.sans,
     },
   },
@@ -249,31 +249,33 @@ export const typographyTokens: TypographyTokens = {
 // CSS custom property names for typography
 export const typographyVariables = {
   // Font families
-  fontSans: '--font-sans',
-  fontMono: '--font-mono',
+  fontSans: "--font-sans",
+  fontMono: "--font-mono",
 
   // Font sizes
-  h1Size: '--text-h1-size',
-  h2Size: '--text-h2-size',
-  h3Size: '--text-h3-size',
-  h4Size: '--text-h4-size',
-  bodyLargeSize: '--text-body-large-size',
-  bodySize: '--text-body-size',
-  bodySmallSize: '--text-body-small-size',
-  captionSize: '--text-caption-size',
-  buttonSize: '--text-button-size',
-  labelSize: '--text-label-size',
+  h1Size: "--text-h1-size",
+  h2Size: "--text-h2-size",
+  h3Size: "--text-h3-size",
+  h4Size: "--text-h4-size",
+  bodyLargeSize: "--text-body-large-size",
+  bodySize: "--text-body-size",
+  bodySmallSize: "--text-body-small-size",
+  captionSize: "--text-caption-size",
+  buttonSize: "--text-button-size",
+  labelSize: "--text-label-size",
 
   // Font weights
-  weightLight: '--font-weight-light',
-  weightNormal: '--font-weight-normal',
-  weightMedium: '--font-weight-medium',
-  weightSemibold: '--font-weight-semibold',
-  weightBold: '--font-weight-bold',
+  weightLight: "--font-weight-light",
+  weightNormal: "--font-weight-normal",
+  weightMedium: "--font-weight-medium",
+  weightSemibold: "--font-weight-semibold",
+  weightBold: "--font-weight-bold",
 } as const;
 
 // Helper function to generate CSS custom properties for a scale
-export const generateTypographyVariables = (scale: keyof TypographyTokens): Record<string, string> => {
+export const generateTypographyVariables = (
+  scale: keyof TypographyTokens,
+): Record<string, string> => {
   const tokens = typographyTokens[scale];
 
   return {
@@ -291,11 +293,11 @@ export const generateTypographyVariables = (scale: keyof TypographyTokens): Reco
     [typographyVariables.buttonSize]: tokens.button.fontSize,
     [typographyVariables.labelSize]: tokens.label.fontSize,
 
-    [typographyVariables.weightLight]: '300',
-    [typographyVariables.weightNormal]: '400',
-    [typographyVariables.weightMedium]: '500',
-    [typographyVariables.weightSemibold]: '600',
-    [typographyVariables.weightBold]: '700',
+    [typographyVariables.weightLight]: "300",
+    [typographyVariables.weightNormal]: "400",
+    [typographyVariables.weightMedium]: "500",
+    [typographyVariables.weightSemibold]: "600",
+    [typographyVariables.weightBold]: "700",
   };
 };
 

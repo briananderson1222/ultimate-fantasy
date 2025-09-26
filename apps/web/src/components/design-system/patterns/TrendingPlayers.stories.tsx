@@ -14,10 +14,10 @@ const mockTrendingData = [
       direction: "up" as const,
       percentage: 15.3,
       reason: "Target share increasing",
-      addDropPercentage: 23.1
+      addDropPercentage: 23.1,
     },
     weeklyPoints: [12.3, 18.7, 24.1, 19.5],
-    projectedPoints: 21.8
+    projectedPoints: 21.8,
   },
   {
     id: "2",
@@ -29,10 +29,10 @@ const mockTrendingData = [
       direction: "down" as const,
       percentage: -8.7,
       reason: "Injury concerns",
-      addDropPercentage: -12.4
+      addDropPercentage: -12.4,
     },
     weeklyPoints: [15.2, 8.1, 6.3, 4.9],
-    projectedPoints: 8.2
+    projectedPoints: 8.2,
   },
   {
     id: "3",
@@ -44,11 +44,11 @@ const mockTrendingData = [
       direction: "hot" as const,
       percentage: 28.9,
       reason: "Breakout performance",
-      addDropPercentage: 45.2
+      addDropPercentage: 45.2,
     },
     weeklyPoints: [3.1, 8.4, 19.7, 26.3],
-    projectedPoints: 18.9
-  }
+    projectedPoints: 18.9,
+  },
 ];
 
 export const Default = () => (
@@ -60,7 +60,7 @@ export const Default = () => (
 export const TrendingUp = () => (
   <div className="p-6">
     <TrendingPlayers
-      players={mockTrendingData.filter(p => p.trendData.direction === "up")}
+      players={mockTrendingData.filter((p) => p.trendData.direction === "up")}
       title="Trending Up"
     />
   </div>
@@ -69,7 +69,7 @@ export const TrendingUp = () => (
 export const TrendingDown = () => (
   <div className="p-6">
     <TrendingPlayers
-      players={mockTrendingData.filter(p => p.trendData.direction === "down")}
+      players={mockTrendingData.filter((p) => p.trendData.direction === "down")}
       title="Trending Down"
     />
   </div>
@@ -78,7 +78,7 @@ export const TrendingDown = () => (
 export const HotPlayers = () => (
   <div className="p-6">
     <TrendingPlayers
-      players={mockTrendingData.filter(p => p.trendData.direction === "hot")}
+      players={mockTrendingData.filter((p) => p.trendData.direction === "hot")}
       title="Hot Pickups"
     />
   </div>
@@ -91,7 +91,7 @@ export const WithFilters = () => (
       filters={{
         position: ["QB", "RB", "WR", "TE"],
         trend: ["up", "down", "hot"],
-        availability: ["available", "rostered"]
+        availability: ["available", "rostered"],
       }}
       onFilterChange={(filters) => console.log("Filters changed:", filters)}
     />
@@ -123,8 +123,8 @@ export const LargeDataset = () => {
     trendData: {
       ...mockTrendingData[i % 3].trendData,
       percentage: Math.random() * 40 - 20,
-      addDropPercentage: Math.random() * 60 - 30
-    }
+      addDropPercentage: Math.random() * 60 - 30,
+    },
   }));
 
   return (

@@ -1,5 +1,5 @@
-import type { Story } from '@ladle/react';
-import { colorTokens } from '../components/design-system/tokens/colors';
+import type { Story } from "@ladle/react";
+import { colorTokens } from "../components/design-system/tokens/colors";
 
 interface ColorSwatchProps {
   name: string;
@@ -14,50 +14,32 @@ const ColorSwatch = ({ name, color, description }: ColorSwatchProps) => (
       style={{ backgroundColor: color }}
     >
       {/* Show contrast text on light colors */}
-      <span className="text-xs font-mono text-white mix-blend-difference">
-        {color}
-      </span>
+      <span className="text-xs font-mono text-white mix-blend-difference">{color}</span>
     </div>
     <div className="text-center">
       <div className="font-semibold text-sm">{name}</div>
-      {description && (
-        <div className="text-xs text-gray-600">{description}</div>
-      )}
+      {description && <div className="text-xs text-gray-600">{description}</div>}
     </div>
   </div>
 );
 
-const ColorPalette = ({ theme }: { theme: 'light' | 'dark' }) => {
+const ColorPalette = ({ theme }: { theme: "light" | "dark" }) => {
   const tokens = colorTokens[theme];
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">{theme === 'dark' ? 'Dark' : 'Light'} Theme Colors</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        {theme === "dark" ? "Dark" : "Light"} Theme Colors
+      </h2>
 
       <div className="space-y-8">
         <section>
           <h3 className="text-lg font-semibold mb-4">Semantic Colors</h3>
           <div className="grid grid-cols-4 gap-6">
-            <ColorSwatch
-              name="Primary"
-              color={tokens.primary}
-              description="Main accent color"
-            />
-            <ColorSwatch
-              name="Success"
-              color={tokens.success}
-              description="Positive actions"
-            />
-            <ColorSwatch
-              name="Warning"
-              color={tokens.warning}
-              description="Alerts and warnings"
-            />
-            <ColorSwatch
-              name="Surface"
-              color={tokens.surface}
-              description="Card backgrounds"
-            />
+            <ColorSwatch name="Primary" color={tokens.primary} description="Main accent color" />
+            <ColorSwatch name="Success" color={tokens.success} description="Positive actions" />
+            <ColorSwatch name="Warning" color={tokens.warning} description="Alerts and warnings" />
+            <ColorSwatch name="Surface" color={tokens.surface} description="Card backgrounds" />
           </div>
         </section>
 
@@ -85,11 +67,7 @@ const ColorPalette = ({ theme }: { theme: 'light' | 'dark' }) => {
         <section>
           <h3 className="text-lg font-semibold mb-4">Border</h3>
           <div className="grid grid-cols-1 gap-6">
-            <ColorSwatch
-              name="Border"
-              color={tokens.border}
-              description="Component borders"
-            />
+            <ColorSwatch name="Border" color={tokens.border} description="Component borders" />
           </div>
         </section>
 
@@ -98,7 +76,7 @@ const ColorPalette = ({ theme }: { theme: 'light' | 'dark' }) => {
           <div
             className="h-24 rounded-lg flex items-center justify-center text-white font-semibold"
             style={{
-              background: `linear-gradient(${tokens.background.direction || 'to-b'}, ${tokens.background.from}, ${tokens.background.to})`
+              background: `linear-gradient(${tokens.background.direction || "to-b"}, ${tokens.background.from}, ${tokens.background.to})`,
             }}
           >
             Background Gradient
@@ -121,5 +99,5 @@ export const Comparison: Story = () => (
 );
 
 DarkTheme.meta = {
-  title: 'Design System/Color Tokens',
+  title: "Design System/Color Tokens",
 };

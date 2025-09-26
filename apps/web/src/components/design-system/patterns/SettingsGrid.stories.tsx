@@ -10,7 +10,7 @@ const mockSettings = [
     description: "Configure how points are awarded",
     value: "Standard",
     type: "select" as const,
-    options: ["Standard", "PPR", "Half PPR", "Custom"]
+    options: ["Standard", "PPR", "Half PPR", "Custom"],
   },
   {
     id: "roster_size",
@@ -19,7 +19,7 @@ const mockSettings = [
     value: "16",
     type: "number" as const,
     min: 12,
-    max: 20
+    max: 20,
   },
   {
     id: "waiver_type",
@@ -27,22 +27,22 @@ const mockSettings = [
     description: "How waiver claims are processed",
     value: "FAAB",
     type: "select" as const,
-    options: ["FAAB", "Rolling Waivers", "Reverse Standings"]
+    options: ["FAAB", "Rolling Waivers", "Reverse Standings"],
   },
   {
     id: "trade_deadline",
     title: "Trade Deadline",
     description: "Last day trades can be made",
     value: "2024-11-15",
-    type: "date" as const
+    type: "date" as const,
   },
   {
     id: "auto_draft",
     title: "Auto Draft",
     description: "Automatically draft if owner is absent",
     value: true,
-    type: "boolean" as const
-  }
+    type: "boolean" as const,
+  },
 ];
 
 export const Default = () => (
@@ -70,16 +70,16 @@ export const WithCategories = () => (
               description: "How the draft is conducted",
               value: "Snake",
               type: "select",
-              options: ["Snake", "Auction", "Linear"]
+              options: ["Snake", "Auction", "Linear"],
             },
             {
               id: "draft_time",
               title: "Draft Date",
               description: "When the draft takes place",
               value: "2024-08-25T19:00:00",
-              type: "datetime"
-            }
-          ]
+              type: "datetime",
+            },
+          ],
         },
         {
           category: "Regular Season",
@@ -91,7 +91,7 @@ export const WithCategories = () => (
               value: "14",
               type: "number",
               min: 10,
-              max: 17
+              max: 17,
             },
             {
               id: "playoff_teams",
@@ -99,10 +99,10 @@ export const WithCategories = () => (
               description: "Teams that make playoffs",
               value: "6",
               type: "select",
-              options: ["4", "6", "8"]
-            }
-          ]
-        }
+              options: ["4", "6", "8"],
+            },
+          ],
+        },
       ]}
     />
   </div>
@@ -123,9 +123,9 @@ export const Interactive = () => (
 export const ValidationErrors = () => (
   <div className="p-6">
     <SettingsGrid
-      settings={mockSettings.map(setting => ({
+      settings={mockSettings.map((setting) => ({
         ...setting,
-        error: setting.id === "roster_size" ? "Must be between 12 and 20" : undefined
+        error: setting.id === "roster_size" ? "Must be between 12 and 20" : undefined,
       }))}
     />
   </div>
@@ -144,7 +144,7 @@ export const CustomActions = () => (
       actions={[
         { label: "Reset to Default", action: () => alert("Reset settings") },
         { label: "Import Settings", action: () => alert("Import settings") },
-        { label: "Export Settings", action: () => alert("Export settings") }
+        { label: "Export Settings", action: () => alert("Export settings") },
       ]}
     />
   </div>
