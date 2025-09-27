@@ -14,12 +14,12 @@ Provides comprehensive job scheduling for:
 """
 
 import asyncio
-from datetime import datetime, timedelta, time
-from typing import Any, Dict, List, Optional, Set
-from uuid import uuid4
+from datetime import datetime, timedelta
+from typing import Any
 
 try:
     import schedule
+
     SCHEDULE_AVAILABLE = True
 except ImportError:
     schedule = None
@@ -27,7 +27,6 @@ except ImportError:
 
 from sqlalchemy.orm import Session
 
-from domains.shared.enums import DataProvider, SportType
 from domains.sports.models.player import Player
 from domains.sports.providers.espn_provider import ESPNAPIProvider
 from domains.sports.services.data_normalizer import get_data_normalizer
@@ -42,6 +41,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 try:
@@ -54,7 +54,6 @@ logger = get_logger(__name__)
 
 class IngestionJobError(Exception):
     """Ingestion job errors."""
-    pass
 
 
 class IngestionJob:
@@ -70,7 +69,7 @@ class IngestionJob:
         enabled: bool = True,
         max_retries: int = 3,
         timeout_minutes: int = 30,
-        providers: Optional[List[str]] = None,
+        providers: list[str] | None = None,
     ):
         self.job_id = job_id
         self.name = name
@@ -83,8 +82,8 @@ class IngestionJob:
         self.providers = providers or ["espn", "mock"]
 
         # Runtime state
-        self.last_run: Optional[datetime] = None
-        self.last_success: Optional[datetime] = None
+        self.last_run: datetime | None = None
+        self.last_success: datetime | None = None
         self.consecutive_failures = 0
         self.total_runs = 0
         self.total_successes = 0
@@ -93,10 +92,10 @@ class IngestionJob:
 class IngestionScheduler:
     """Scheduler for sports data ingestion jobs."""
 
-    def __init__(self, session: Optional[Session] = None):
+    def __init__(self, session: Session | None = None):
         self.session = session
-        self.jobs: Dict[str, IngestionJob] = {}
-        self.running_jobs: Set[str] = set()
+        self.jobs: dict[str, IngestionJob] = {}
+        self.running_jobs: set[str] = set()
         self.shutdown_requested = False
 
         # Services
@@ -112,79 +111,95 @@ class IngestionScheduler:
         """Setup default ingestion jobs for all sports."""
 
         # NFL Jobs
-        self.register_job(IngestionJob(
-            job_id="nfl_players_sync",
-            name="NFL Players Synchronization",
-            sport="nfl",
-            job_type="players_sync",
-            schedule_expression="daily_06:00",  # 6 AM daily
-            timeout_minutes=60,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="nfl_players_sync",
+                name="NFL Players Synchronization",
+                sport="nfl",
+                job_type="players_sync",
+                schedule_expression="daily_06:00",  # 6 AM daily
+                timeout_minutes=60,
+            )
+        )
 
-        self.register_job(IngestionJob(
-            job_id="nfl_scores_live",
-            name="NFL Live Scores",
-            sport="nfl",
-            job_type="scores_live",
-            schedule_expression="every_5_minutes",  # During game days
-            timeout_minutes=10,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="nfl_scores_live",
+                name="NFL Live Scores",
+                sport="nfl",
+                job_type="scores_live",
+                schedule_expression="every_5_minutes",  # During game days
+                timeout_minutes=10,
+            )
+        )
 
-        self.register_job(IngestionJob(
-            job_id="nfl_schedule_sync",
-            name="NFL Schedule Sync",
-            sport="nfl",
-            job_type="schedule_sync",
-            schedule_expression="daily_03:00",  # 3 AM daily
-            timeout_minutes=30,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="nfl_schedule_sync",
+                name="NFL Schedule Sync",
+                sport="nfl",
+                job_type="schedule_sync",
+                schedule_expression="daily_03:00",  # 3 AM daily
+                timeout_minutes=30,
+            )
+        )
 
-        self.register_job(IngestionJob(
-            job_id="nfl_injury_reports",
-            name="NFL Injury Reports",
-            sport="nfl",
-            job_type="injury_reports",
-            schedule_expression="every_30_minutes",  # Frequent updates during season
-            timeout_minutes=15,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="nfl_injury_reports",
+                name="NFL Injury Reports",
+                sport="nfl",
+                job_type="injury_reports",
+                schedule_expression="every_30_minutes",  # Frequent updates during season
+                timeout_minutes=15,
+            )
+        )
 
         # MLB Jobs
-        self.register_job(IngestionJob(
-            job_id="mlb_players_sync",
-            name="MLB Players Synchronization",
-            sport="mlb",
-            job_type="players_sync",
-            schedule_expression="daily_05:00",
-            timeout_minutes=60,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="mlb_players_sync",
+                name="MLB Players Synchronization",
+                sport="mlb",
+                job_type="players_sync",
+                schedule_expression="daily_05:00",
+                timeout_minutes=60,
+            )
+        )
 
-        self.register_job(IngestionJob(
-            job_id="mlb_scores_live",
-            name="MLB Live Scores",
-            sport="mlb",
-            job_type="scores_live",
-            schedule_expression="every_10_minutes",
-            timeout_minutes=10,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="mlb_scores_live",
+                name="MLB Live Scores",
+                sport="mlb",
+                job_type="scores_live",
+                schedule_expression="every_10_minutes",
+                timeout_minutes=10,
+            )
+        )
 
         # WNBA Jobs
-        self.register_job(IngestionJob(
-            job_id="wnba_players_sync",
-            name="WNBA Players Synchronization",
-            sport="wnba",
-            job_type="players_sync",
-            schedule_expression="daily_07:00",
-            timeout_minutes=30,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="wnba_players_sync",
+                name="WNBA Players Synchronization",
+                sport="wnba",
+                job_type="players_sync",
+                schedule_expression="daily_07:00",
+                timeout_minutes=30,
+            )
+        )
 
-        self.register_job(IngestionJob(
-            job_id="wnba_scores_live",
-            name="WNBA Live Scores",
-            sport="wnba",
-            job_type="scores_live",
-            schedule_expression="every_15_minutes",
-            timeout_minutes=10,
-        ))
+        self.register_job(
+            IngestionJob(
+                job_id="wnba_scores_live",
+                name="WNBA Live Scores",
+                sport="wnba",
+                job_type="scores_live",
+                schedule_expression="every_15_minutes",
+                timeout_minutes=10,
+            )
+        )
 
     def register_job(self, job: IngestionJob) -> None:
         """Register a new ingestion job."""
@@ -220,7 +235,9 @@ class IngestionScheduler:
         logger.info("Starting sports data ingestion scheduler")
 
         if not SCHEDULE_AVAILABLE:
-            logger.warning("Schedule library not available, using simple timer-based scheduling")
+            logger.warning(
+                "Schedule library not available, using simple timer-based scheduling"
+            )
             await self._start_simple_scheduler()
         else:
             await self._start_advanced_scheduler()
@@ -294,7 +311,7 @@ class IngestionScheduler:
             current_date = current_time.date()
             current_time_only = current_time.time()
 
-            return (current_date > last_run_date and current_time_only >= target_time)
+            return current_date > last_run_date and current_time_only >= target_time
 
         elif job.schedule_expression.startswith("every_"):
             interval_str = job.schedule_expression.split("_")[1]
@@ -323,8 +340,7 @@ class IngestionScheduler:
         try:
             # Execute job with timeout
             await asyncio.wait_for(
-                self._run_job_logic(job),
-                timeout=job.timeout_minutes * 60
+                self._run_job_logic(job), timeout=job.timeout_minutes * 60
             )
 
             # Mark success
@@ -334,7 +350,7 @@ class IngestionScheduler:
 
             logger.info(f"Job completed successfully: {job.name}")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"Job timed out: {job.name}")
             job.consecutive_failures += 1
 
@@ -376,7 +392,7 @@ class IngestionScheduler:
         players_data = await sports_service.get_players(
             sport=job.sport.upper(),
             active_only=True,
-            use_cache=False  # Force fresh data
+            use_cache=False,  # Force fresh data
         )
 
         logger.info(f"Retrieved {len(players_data)} players for {job.sport}")
@@ -400,13 +416,13 @@ class IngestionScheduler:
 
         # Fetch live scores
         scores_data = await sports_service.get_schedule(
-            season="2024",  # Current season
-            use_cache=False
+            season="2024", use_cache=False  # Current season
         )
 
         # Filter for live/recent games
         live_games = [
-            game for game in scores_data
+            game
+            for game in scores_data
             if game.get("status") in ["in_progress", "final"]
         ]
 
@@ -427,8 +443,7 @@ class IngestionScheduler:
 
         # Fetch schedule data
         schedule_data = await sports_service.get_schedule(
-            season="2024",
-            use_cache=False
+            season="2024", use_cache=False
         )
 
         logger.info(f"Retrieved {len(schedule_data)} games for {job.sport}")
@@ -474,12 +489,12 @@ class IngestionScheduler:
         # For each team, fetch roster
         for team in teams_data:
             team_players = await sports_service.get_players(
-                sport=job.sport.upper(),
-                team=team.get("team_id"),
-                use_cache=False
+                sport=job.sport.upper(), team=team.get("team_id"), use_cache=False
             )
 
-            logger.info(f"Retrieved {len(team_players)} players for team {team.get('name')}")
+            logger.info(
+                f"Retrieved {len(team_players)} players for team {team.get('name')}"
+            )
 
             # Update team roster
             # This would involve updating team roster relationships
@@ -487,7 +502,9 @@ class IngestionScheduler:
 
         logger.info(f"Team rosters sync completed for {job.sport}")
 
-    async def _upsert_player(self, session: Session, player_data: Dict[str, Any], sport: str) -> None:
+    async def _upsert_player(
+        self, session: Session, player_data: dict[str, Any], sport: str
+    ) -> None:
         """Insert or update player record."""
         try:
             # Normalize the player data
@@ -496,10 +513,14 @@ class IngestionScheduler:
             )
 
             # Find existing player by external_id
-            existing_player = session.query(Player).filter(
-                Player.external_id == normalized_data["external_id"],
-                Player.sport == sport.lower()
-            ).first()
+            existing_player = (
+                session.query(Player)
+                .filter(
+                    Player.external_id == normalized_data["external_id"],
+                    Player.sport == sport.lower(),
+                )
+                .first()
+            )
 
             if existing_player:
                 # Update existing player
@@ -515,7 +536,7 @@ class IngestionScheduler:
         except Exception as e:
             logger.error(f"Failed to upsert player: {e}")
 
-    async def _process_game_scores(self, game_data: Dict[str, Any], sport: str) -> None:
+    async def _process_game_scores(self, game_data: dict[str, Any], sport: str) -> None:
         """Process and store game score data."""
         try:
             # Normalize game data
@@ -531,7 +552,7 @@ class IngestionScheduler:
             logger.error(f"Failed to process game scores: {e}")
 
     async def _update_player_injury_status(
-        self, session: Session, injury_report: Dict[str, Any]
+        self, session: Session, injury_report: dict[str, Any]
     ) -> None:
         """Update player injury status from injury report."""
         try:
@@ -539,9 +560,9 @@ class IngestionScheduler:
             if not player_id:
                 return
 
-            player = session.query(Player).filter(
-                Player.external_id == player_id
-            ).first()
+            player = (
+                session.query(Player).filter(Player.external_id == player_id).first()
+            )
 
             if player:
                 player.injury_status = injury_report.get("injury_status", "healthy")
@@ -563,7 +584,7 @@ class IngestionScheduler:
 
         logger.info("Sports data ingestion scheduler stopped")
 
-    def get_job_status(self, job_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_job_status(self, job_id: str | None = None) -> dict[str, Any]:
         """Get status of jobs."""
         if job_id:
             if job_id in self.jobs:
@@ -573,11 +594,17 @@ class IngestionScheduler:
                     "name": job.name,
                     "enabled": job.enabled,
                     "last_run": job.last_run.isoformat() if job.last_run else None,
-                    "last_success": job.last_success.isoformat() if job.last_success else None,
+                    "last_success": (
+                        job.last_success.isoformat() if job.last_success else None
+                    ),
                     "consecutive_failures": job.consecutive_failures,
                     "total_runs": job.total_runs,
                     "total_successes": job.total_successes,
-                    "success_rate": job.total_successes / job.total_runs if job.total_runs > 0 else 0,
+                    "success_rate": (
+                        job.total_successes / job.total_runs
+                        if job.total_runs > 0
+                        else 0
+                    ),
                     "currently_running": job.job_id in self.running_jobs,
                 }
             else:
@@ -589,9 +616,8 @@ class IngestionScheduler:
                 "enabled_jobs": len([j for j in self.jobs.values() if j.enabled]),
                 "running_jobs": len(self.running_jobs),
                 "jobs": {
-                    job_id: self.get_job_status(job_id)
-                    for job_id in self.jobs.keys()
-                }
+                    job_id: self.get_job_status(job_id) for job_id in self.jobs
+                },
             }
 
     async def trigger_job(self, job_id: str) -> bool:
@@ -610,10 +636,10 @@ class IngestionScheduler:
 
 
 # Global scheduler instance
-_ingestion_scheduler: Optional[IngestionScheduler] = None
+_ingestion_scheduler: IngestionScheduler | None = None
 
 
-def get_ingestion_scheduler(session: Optional[Session] = None) -> IngestionScheduler:
+def get_ingestion_scheduler(session: Session | None = None) -> IngestionScheduler:
     """Get the global ingestion scheduler instance."""
     global _ingestion_scheduler
     if _ingestion_scheduler is None:

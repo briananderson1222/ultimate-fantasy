@@ -86,9 +86,7 @@ async def trading_detailed_health_check(
         # Check for pending waivers
         from infrastructure.database.sql_utils import HEALTH_QUERIES
 
-        pending_waivers = db.execute(
-            text(HEALTH_QUERIES["pending_waivers"]())
-        ).scalar()
+        pending_waivers = db.execute(text(HEALTH_QUERIES["pending_waivers"]())).scalar()
 
         detailed_status["checks"]["pending_waivers"] = {
             "status": "healthy",

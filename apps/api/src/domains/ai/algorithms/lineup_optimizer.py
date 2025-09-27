@@ -12,28 +12,29 @@ Provides comprehensive lineup optimization including:
 - Tournament and cash game strategies
 """
 
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, Set
-from dataclasses import dataclass
-from enum import Enum
-import itertools
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+import numpy as np
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
-from domains.ai.models.performance_predictor import get_performance_predictor, PredictionResult, Sport
+from domains.ai.models.performance_predictor import Sport, get_performance_predictor
 
 logger = get_logger(__name__)
 
 
 class OptimizationObjective(Enum):
     """Optimization objectives."""
+
     MAX_POINTS = "max_points"
     MAX_CEILING = "max_ceiling"
     MIN_RISK = "min_risk"
@@ -43,10 +44,11 @@ class OptimizationObjective(Enum):
 
 class LineupStrategy(Enum):
     """Lineup construction strategies."""
-    CASH_GAME = "cash_game"      # Conservative, high floor
-    TOURNAMENT = "tournament"     # High upside, higher risk
-    BALANCED = "balanced"         # Mix of safety and upside
-    CONTRARIAN = "contrarian"     # Low ownership plays
+
+    CASH_GAME = "cash_game"  # Conservative, high floor
+    TOURNAMENT = "tournament"  # High upside, higher risk
+    BALANCED = "balanced"  # Mix of safety and upside
+    CONTRARIAN = "contrarian"  # Low ownership plays
 
 
 @dataclass
@@ -81,19 +83,19 @@ class LineupConstraints:
     """Lineup construction constraints."""
 
     max_salary: int
-    positions: Dict[str, int]  # position -> required count
+    positions: dict[str, int]  # position -> required count
     max_per_team: int
     min_teams: int
-    max_ownership: Optional[float] = None
-    banned_players: Set[str] = None
-    locked_players: Set[str] = None
+    max_ownership: float | None = None
+    banned_players: set[str] = None
+    locked_players: set[str] = None
 
 
 @dataclass
 class OptimizedLineup:
     """Optimized lineup result."""
 
-    players: List[PlayerProjection]
+    players: list[PlayerProjection]
     total_salary: int
     projected_points: float
     projected_floor: float
@@ -102,8 +104,8 @@ class OptimizedLineup:
     value_score: float
 
     # Advanced metrics
-    team_distribution: Dict[str, int]
-    position_distribution: Dict[str, int]
+    team_distribution: dict[str, int]
+    position_distribution: dict[str, int]
     ownership_total: float
     correlation_score: float
 
@@ -117,7 +119,6 @@ class OptimizedLineup:
 
 class LineupOptimizerError(Exception):
     """Lineup optimizer errors."""
-    pass
 
 
 class LineupOptimizer:
@@ -138,12 +139,18 @@ class LineupOptimizer:
 
         logger.info(f"Initialized lineup optimizer for {sport.value}")
 
-    def _get_position_configs(self, sport: Sport) -> Dict[str, Any]:
+    def _get_position_configs(self, sport: Sport) -> dict[str, Any]:
         """Get sport-specific position configurations."""
         configs = {
             Sport.NFL: {
                 "positions": {
-                    "QB": 1, "RB": 2, "WR": 3, "TE": 1, "FLEX": 1, "K": 1, "DEF": 1
+                    "QB": 1,
+                    "RB": 2,
+                    "WR": 3,
+                    "TE": 1,
+                    "FLEX": 1,
+                    "K": 1,
+                    "DEF": 1,
                 },
                 "flex_positions": ["RB", "WR", "TE"],
                 "max_per_team": 4,
@@ -152,7 +159,14 @@ class LineupOptimizer:
             },
             Sport.MLB: {
                 "positions": {
-                    "C": 1, "1B": 1, "2B": 1, "3B": 1, "SS": 1, "OF": 3, "UTIL": 1, "P": 2
+                    "C": 1,
+                    "1B": 1,
+                    "2B": 1,
+                    "3B": 1,
+                    "SS": 1,
+                    "OF": 3,
+                    "UTIL": 1,
+                    "P": 2,
                 },
                 "flex_positions": ["C", "1B", "2B", "3B", "SS", "OF"],
                 "max_per_team": 5,
@@ -161,27 +175,36 @@ class LineupOptimizer:
             },
             Sport.WNBA: {
                 "positions": {
-                    "PG": 1, "SG": 1, "SF": 1, "PF": 1, "C": 1, "G": 1, "F": 1, "UTIL": 1
+                    "PG": 1,
+                    "SG": 1,
+                    "SF": 1,
+                    "PF": 1,
+                    "C": 1,
+                    "G": 1,
+                    "F": 1,
+                    "UTIL": 1,
                 },
                 "flex_positions": ["PG", "SG", "SF", "PF", "C"],
                 "max_per_team": 4,
                 "min_teams": 3,
                 "salary_cap": 40000,
-            }
+            },
         }
         return configs.get(sport, configs[Sport.NFL])
 
-    def _initialize_correlation_matrix(self) -> Dict[Tuple[str, str], float]:
+    def _initialize_correlation_matrix(self) -> dict[tuple[str, str], float]:
         """Initialize player correlation matrix."""
         # This would be populated with historical correlation data
         return defaultdict(float)
 
-    async def optimize_lineup(self,
-                            available_players: List[Dict[str, Any]],
-                            constraints: Optional[LineupConstraints] = None,
-                            objective: OptimizationObjective = OptimizationObjective.MAX_POINTS,
-                            strategy: LineupStrategy = LineupStrategy.BALANCED,
-                            num_lineups: int = 1) -> List[OptimizedLineup]:
+    async def optimize_lineup(
+        self,
+        available_players: list[dict[str, Any]],
+        constraints: LineupConstraints | None = None,
+        objective: OptimizationObjective = OptimizationObjective.MAX_POINTS,
+        strategy: LineupStrategy = LineupStrategy.BALANCED,
+        num_lineups: int = 1,
+    ) -> list[OptimizedLineup]:
         """
         Optimize fantasy lineup using advanced algorithms.
 
@@ -197,14 +220,14 @@ class LineupOptimizer:
         """
         try:
             logger.info(
-                f"Optimizing lineup",
+                "Optimizing lineup",
                 extra={
                     "sport": self.sport.value,
                     "players": len(available_players),
                     "objective": objective.value,
                     "strategy": strategy.value,
                     "num_lineups": num_lineups,
-                }
+                },
             )
 
             # Generate player projections
@@ -232,7 +255,9 @@ class LineupOptimizer:
             validated_lineups = []
             for lineup in lineups:
                 if self._validate_lineup(lineup, constraints):
-                    enhanced_lineup = await self._enhance_lineup_analysis(lineup, strategy)
+                    enhanced_lineup = await self._enhance_lineup_analysis(
+                        lineup, strategy
+                    )
                     validated_lineups.append(enhanced_lineup)
 
             logger.info(f"Generated {len(validated_lineups)} valid lineups")
@@ -242,7 +267,9 @@ class LineupOptimizer:
             logger.error(f"Lineup optimization failed: {e}")
             raise LineupOptimizerError(f"Optimization failed: {e}")
 
-    async def _generate_projections(self, available_players: List[Dict[str, Any]]) -> List[PlayerProjection]:
+    async def _generate_projections(
+        self, available_players: list[dict[str, Any]]
+    ) -> list[PlayerProjection]:
         """Generate enhanced projections for all available players."""
         try:
             projections = []
@@ -250,11 +277,15 @@ class LineupOptimizer:
             for player_data in available_players:
                 # Get AI prediction
                 try:
-                    prediction = await self.performance_predictor.predict_performance(player_data)
+                    prediction = await self.performance_predictor.predict_performance(
+                        player_data
+                    )
                     projected_points = prediction.predicted_points
                     confidence = prediction.confidence_score
                 except Exception as e:
-                    logger.warning(f"Prediction failed for player {player_data.get('player_id')}: {e}")
+                    logger.warning(
+                        f"Prediction failed for player {player_data.get('player_id')}: {e}"
+                    )
                     projected_points = player_data.get("projected_points", 0)
                     confidence = 0.5
 
@@ -270,7 +301,9 @@ class LineupOptimizer:
                 consistency = self._calculate_consistency(player_data)
                 recent_form = self._calculate_recent_form(player_data)
                 injury_risk = self._calculate_injury_risk(player_data)
-                ownership_projection = self._estimate_ownership(player_data, projected_points, salary)
+                ownership_projection = self._estimate_ownership(
+                    player_data, projected_points, salary
+                )
 
                 projection = PlayerProjection(
                     player_id=player_data.get("player_id", ""),
@@ -300,13 +333,14 @@ class LineupOptimizer:
             logger.error(f"Projection generation failed: {e}")
             raise LineupOptimizerError(f"Projection generation failed: {e}")
 
-    def _calculate_floor_ceiling(self, projected_points: float, confidence: float,
-                               player_data: Dict[str, Any]) -> Tuple[float, float]:
+    def _calculate_floor_ceiling(
+        self, projected_points: float, confidence: float, player_data: dict[str, Any]
+    ) -> tuple[float, float]:
         """Calculate player's floor and ceiling projections."""
         try:
             # Base variance calculation
             variance_factor = 1.0 - confidence
-            base_variance = projected_points * variance_factor * 0.4
+            projected_points * variance_factor * 0.4
 
             # Adjust for player type
             position = player_data.get("position", "")
@@ -340,7 +374,7 @@ class LineupOptimizer:
             logger.error(f"Floor/ceiling calculation failed: {e}")
             return projected_points * 0.6, projected_points * 1.4
 
-    def _calculate_consistency(self, player_data: Dict[str, Any]) -> float:
+    def _calculate_consistency(self, player_data: dict[str, Any]) -> float:
         """Calculate player consistency score."""
         try:
             recent_games = player_data.get("recent_games", [])
@@ -361,7 +395,7 @@ class LineupOptimizer:
             logger.error(f"Consistency calculation failed: {e}")
             return 0.5
 
-    def _calculate_recent_form(self, player_data: Dict[str, Any]) -> float:
+    def _calculate_recent_form(self, player_data: dict[str, Any]) -> float:
         """Calculate recent form trend."""
         try:
             recent_games = player_data.get("recent_games", [])
@@ -370,7 +404,11 @@ class LineupOptimizer:
 
             # Compare recent 3 games to previous 3 games
             recent_3 = [game.get("fantasy_points", 0) for game in recent_games[-3:]]
-            previous_3 = [game.get("fantasy_points", 0) for game in recent_games[-6:-3]] if len(recent_games) >= 6 else recent_3
+            previous_3 = (
+                [game.get("fantasy_points", 0) for game in recent_games[-6:-3]]
+                if len(recent_games) >= 6
+                else recent_3
+            )
 
             recent_avg = np.mean(recent_3)
             previous_avg = np.mean(previous_3)
@@ -388,7 +426,7 @@ class LineupOptimizer:
             logger.error(f"Recent form calculation failed: {e}")
             return 0.5
 
-    def _calculate_injury_risk(self, player_data: Dict[str, Any]) -> float:
+    def _calculate_injury_risk(self, player_data: dict[str, Any]) -> float:
         """Calculate injury risk score."""
         injury_status = player_data.get("injury_status", "healthy").lower()
 
@@ -402,7 +440,9 @@ class LineupOptimizer:
 
         return injury_risks.get(injury_status, 0.1)
 
-    def _estimate_ownership(self, player_data: Dict[str, Any], projected_points: float, salary: int) -> float:
+    def _estimate_ownership(
+        self, player_data: dict[str, Any], projected_points: float, salary: int
+    ) -> float:
         """Estimate player ownership percentage."""
         try:
             # Simplified ownership model based on value and name recognition
@@ -432,7 +472,7 @@ class LineupOptimizer:
             logger.error(f"Ownership estimation failed: {e}")
             return 0.15
 
-    def _grade_matchup(self, player_data: Dict[str, Any]) -> str:
+    def _grade_matchup(self, player_data: dict[str, Any]) -> str:
         """Grade the player's matchup."""
         opponent_rank = player_data.get("opponent_defensive_rank", 16)
 
@@ -445,7 +485,7 @@ class LineupOptimizer:
         else:
             return "A"
 
-    def _calculate_weather_impact(self, player_data: Dict[str, Any]) -> float:
+    def _calculate_weather_impact(self, player_data: dict[str, Any]) -> float:
         """Calculate weather impact on performance."""
         game_context = player_data.get("game_context", {})
 
@@ -473,12 +513,12 @@ class LineupOptimizer:
 
         return impact
 
-    def _get_team_correlation(self, player_data: Dict[str, Any]) -> float:
+    def _get_team_correlation(self, player_data: dict[str, Any]) -> float:
         """Get team correlation factor."""
         # This would be based on historical team correlation data
         return 0.1  # Simplified
 
-    def _get_position_correlation(self, player_data: Dict[str, Any]) -> float:
+    def _get_position_correlation(self, player_data: dict[str, Any]) -> float:
         """Get position correlation factor."""
         # This would be based on positional correlation analysis
         return 0.05  # Simplified
@@ -498,12 +538,14 @@ class LineupOptimizer:
 
     # Optimization algorithms
 
-    async def _genetic_algorithm_optimization(self,
-                                            projections: List[PlayerProjection],
-                                            constraints: LineupConstraints,
-                                            objective: OptimizationObjective,
-                                            strategy: LineupStrategy,
-                                            num_lineups: int) -> List[OptimizedLineup]:
+    async def _genetic_algorithm_optimization(
+        self,
+        projections: list[PlayerProjection],
+        constraints: LineupConstraints,
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+        num_lineups: int,
+    ) -> list[OptimizedLineup]:
         """Genetic algorithm optimization for large player pools."""
         try:
             logger.info("Using genetic algorithm optimization")
@@ -513,7 +555,7 @@ class LineupOptimizer:
 
             best_lineups = []
 
-            for generation in range(self.generations):
+            for _generation in range(self.generations):
                 # Evaluate fitness
                 fitness_scores = []
                 for individual in population:
@@ -558,12 +600,14 @@ class LineupOptimizer:
             logger.error(f"Genetic algorithm optimization failed: {e}")
             raise LineupOptimizerError(f"Genetic algorithm failed: {e}")
 
-    async def _heuristic_optimization(self,
-                                    projections: List[PlayerProjection],
-                                    constraints: LineupConstraints,
-                                    objective: OptimizationObjective,
-                                    strategy: LineupStrategy,
-                                    num_lineups: int) -> List[OptimizedLineup]:
+    async def _heuristic_optimization(
+        self,
+        projections: list[PlayerProjection],
+        constraints: LineupConstraints,
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+        num_lineups: int,
+    ) -> list[OptimizedLineup]:
         """Heuristic optimization for very large player pools."""
         try:
             logger.info("Using heuristic optimization")
@@ -584,9 +628,7 @@ class LineupOptimizer:
 
                 # Sort players by criterion
                 sorted_players = sorted(
-                    projections,
-                    key=lambda p: getattr(p, criterion),
-                    reverse=descending
+                    projections, key=lambda p: getattr(p, criterion), reverse=descending
                 )
 
                 # Greedy selection with constraints
@@ -618,12 +660,14 @@ class LineupOptimizer:
             logger.error(f"Heuristic optimization failed: {e}")
             raise LineupOptimizerError(f"Heuristic optimization failed: {e}")
 
-    async def _brute_force_optimization(self,
-                                      projections: List[PlayerProjection],
-                                      constraints: LineupConstraints,
-                                      objective: OptimizationObjective,
-                                      strategy: LineupStrategy,
-                                      num_lineups: int) -> List[OptimizedLineup]:
+    async def _brute_force_optimization(
+        self,
+        projections: list[PlayerProjection],
+        constraints: LineupConstraints,
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+        num_lineups: int,
+    ) -> list[OptimizedLineup]:
         """Brute force optimization for small player pools."""
         try:
             logger.info("Using brute force optimization")
@@ -652,7 +696,7 @@ class LineupOptimizer:
             # Sort by fitness
             best_lineups.sort(
                 key=lambda l: self._calculate_lineup_fitness(l, objective, strategy),
-                reverse=True
+                reverse=True,
             )
 
             return best_lineups
@@ -663,8 +707,9 @@ class LineupOptimizer:
 
     # Helper methods for optimization
 
-    def _initialize_population(self, projections: List[PlayerProjection],
-                             constraints: LineupConstraints) -> List[List[PlayerProjection]]:
+    def _initialize_population(
+        self, projections: list[PlayerProjection], constraints: LineupConstraints
+    ) -> list[list[PlayerProjection]]:
         """Initialize genetic algorithm population."""
         population = []
 
@@ -675,9 +720,12 @@ class LineupOptimizer:
 
         return population
 
-    def _calculate_fitness(self, lineup: List[PlayerProjection],
-                         objective: OptimizationObjective,
-                         strategy: LineupStrategy) -> float:
+    def _calculate_fitness(
+        self,
+        lineup: list[PlayerProjection],
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+    ) -> float:
         """Calculate fitness score for a lineup."""
         if not lineup:
             return 0.0
@@ -694,19 +742,32 @@ class LineupOptimizer:
         elif objective == OptimizationObjective.MIN_RISK:
             return total_floor - risk_score * 10
         else:  # BALANCED
-            return total_points * 0.6 + total_ceiling * 0.2 + total_floor * 0.2 - risk_score * 5
+            return (
+                total_points * 0.6
+                + total_ceiling * 0.2
+                + total_floor * 0.2
+                - risk_score * 5
+            )
 
-    def _tournament_selection(self, population: List[List[PlayerProjection]],
-                            fitness_scores: List[float]) -> List[PlayerProjection]:
+    def _tournament_selection(
+        self, population: list[list[PlayerProjection]], fitness_scores: list[float]
+    ) -> list[PlayerProjection]:
         """Tournament selection for genetic algorithm."""
         tournament_size = 5
-        tournament_indices = np.random.choice(len(population), tournament_size, replace=False)
+        tournament_indices = np.random.choice(
+            len(population), tournament_size, replace=False
+        )
         tournament_fitness = [fitness_scores[i] for i in tournament_indices]
         winner_index = tournament_indices[np.argmax(tournament_fitness)]
         return population[winner_index]
 
-    def _crossover(self, parent1: List[PlayerProjection], parent2: List[PlayerProjection],
-                  projections: List[PlayerProjection], constraints: LineupConstraints) -> List[PlayerProjection]:
+    def _crossover(
+        self,
+        parent1: list[PlayerProjection],
+        parent2: list[PlayerProjection],
+        projections: list[PlayerProjection],
+        constraints: LineupConstraints,
+    ) -> list[PlayerProjection]:
         """Crossover operation for genetic algorithm."""
         # Simple uniform crossover
         child = []
@@ -718,7 +779,7 @@ class LineupOptimizer:
 
         for player in all_parent_players:
             if player.player_id not in used_players:
-                temp_lineup = child + [player]
+                temp_lineup = [*child, player]
                 if self._can_add_player(temp_lineup, player, constraints):
                     child.append(player)
                     used_players.add(player.player_id)
@@ -729,8 +790,12 @@ class LineupOptimizer:
 
         return child
 
-    def _mutate(self, lineup: List[PlayerProjection], projections: List[PlayerProjection],
-               constraints: LineupConstraints) -> List[PlayerProjection]:
+    def _mutate(
+        self,
+        lineup: list[PlayerProjection],
+        projections: list[PlayerProjection],
+        constraints: LineupConstraints,
+    ) -> list[PlayerProjection]:
         """Mutation operation for genetic algorithm."""
         if not lineup:
             return lineup
@@ -743,8 +808,14 @@ class LineupOptimizer:
         removed_player = mutation_lineup.pop(remove_index)
 
         # Add replacement player
-        available_players = [p for p in projections if p.player_id not in [pl.player_id for pl in mutation_lineup]]
-        suitable_players = [p for p in available_players if p.position == removed_player.position]
+        available_players = [
+            p
+            for p in projections
+            if p.player_id not in [pl.player_id for pl in mutation_lineup]
+        ]
+        suitable_players = [
+            p for p in available_players if p.position == removed_player.position
+        ]
 
         if suitable_players:
             replacement = np.random.choice(suitable_players)
@@ -752,14 +823,17 @@ class LineupOptimizer:
 
         return mutation_lineup
 
-    def _greedy_lineup_construction(self, sorted_players: List[PlayerProjection],
-                                  constraints: LineupConstraints,
-                                  objective: OptimizationObjective,
-                                  strategy: LineupStrategy) -> List[PlayerProjection]:
+    def _greedy_lineup_construction(
+        self,
+        sorted_players: list[PlayerProjection],
+        constraints: LineupConstraints,
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+    ) -> list[PlayerProjection]:
         """Greedy lineup construction algorithm."""
         lineup = []
         used_players = set()
-        position_counts = {pos: 0 for pos in constraints.positions.keys()}
+        position_counts = dict.fromkeys(constraints.positions.keys(), 0)
         total_salary = 0
 
         for player in sorted_players:
@@ -767,7 +841,7 @@ class LineupOptimizer:
                 continue
 
             # Check constraints
-            if self._can_add_player(lineup + [player], player, constraints):
+            if self._can_add_player([*lineup, player], player, constraints):
                 lineup.append(player)
                 used_players.add(player.player_id)
                 position_counts[player.position] += 1
@@ -779,29 +853,36 @@ class LineupOptimizer:
 
         return lineup if len(lineup) == sum(constraints.positions.values()) else None
 
-    def _random_lineup_construction(self, projections: List[PlayerProjection],
-                                  constraints: LineupConstraints) -> List[PlayerProjection]:
+    def _random_lineup_construction(
+        self, projections: list[PlayerProjection], constraints: LineupConstraints
+    ) -> list[PlayerProjection]:
         """Random lineup construction with constraints."""
         lineup = []
         available_players = projections.copy()
         np.random.shuffle(available_players)
 
         for position, count in constraints.positions.items():
-            position_players = [p for p in available_players if p.position == position and p.player_id not in [pl.player_id for pl in lineup]]
+            position_players = [
+                p
+                for p in available_players
+                if p.position == position
+                and p.player_id not in [pl.player_id for pl in lineup]
+            ]
 
             for _ in range(count):
                 if not position_players:
                     break
 
                 player = np.random.choice(position_players)
-                if self._can_add_player(lineup + [player], player, constraints):
+                if self._can_add_player([*lineup, player], player, constraints):
                     lineup.append(player)
                     position_players.remove(player)
 
         return lineup if len(lineup) == sum(constraints.positions.values()) else None
 
-    def _smart_random_lineup(self, projections: List[PlayerProjection],
-                           constraints: LineupConstraints) -> List[PlayerProjection]:
+    def _smart_random_lineup(
+        self, projections: list[PlayerProjection], constraints: LineupConstraints
+    ) -> list[PlayerProjection]:
         """Smart random lineup construction with bias toward good players."""
         lineup = []
 
@@ -812,7 +893,12 @@ class LineupOptimizer:
         available_players = projections.copy()
 
         for position, count in constraints.positions.items():
-            position_players = [p for p in available_players if p.position == position and p.player_id not in [pl.player_id for pl in lineup]]
+            position_players = [
+                p
+                for p in available_players
+                if p.position == position
+                and p.player_id not in [pl.player_id for pl in lineup]
+            ]
             position_weights = [weights[projections.index(p)] for p in position_players]
 
             if not position_players:
@@ -827,18 +913,24 @@ class LineupOptimizer:
                     position_weights = np.array(position_weights)
                     position_weights = position_weights / position_weights.sum()
 
-                    player_index = np.random.choice(len(position_players), p=position_weights)
+                    player_index = np.random.choice(
+                        len(position_players), p=position_weights
+                    )
                     player = position_players[player_index]
 
-                    if self._can_add_player(lineup + [player], player, constraints):
+                    if self._can_add_player([*lineup, player], player, constraints):
                         lineup.append(player)
                         position_players.remove(player)
                         position_weights = np.delete(position_weights, player_index)
 
         return lineup if len(lineup) == sum(constraints.positions.values()) else None
 
-    def _can_add_player(self, lineup: List[PlayerProjection], player: PlayerProjection,
-                       constraints: LineupConstraints) -> bool:
+    def _can_add_player(
+        self,
+        lineup: list[PlayerProjection],
+        player: PlayerProjection,
+        constraints: LineupConstraints,
+    ) -> bool:
         """Check if player can be added to lineup."""
         # Salary check
         total_salary = sum(p.salary for p in lineup)
@@ -854,14 +946,14 @@ class LineupOptimizer:
             return False
 
         # Banned players
-        if constraints.banned_players and player.player_id in constraints.banned_players:
-            return False
+        return not (constraints.banned_players and player.player_id in constraints.banned_players)
 
-        return True
-
-    def _complete_lineup(self, partial_lineup: List[PlayerProjection],
-                        projections: List[PlayerProjection],
-                        constraints: LineupConstraints) -> List[PlayerProjection]:
+    def _complete_lineup(
+        self,
+        partial_lineup: list[PlayerProjection],
+        projections: list[PlayerProjection],
+        constraints: LineupConstraints,
+    ) -> list[PlayerProjection]:
         """Complete a partial lineup."""
         lineup = partial_lineup.copy()
         used_players = {p.player_id for p in lineup}
@@ -876,27 +968,28 @@ class LineupOptimizer:
             needed = required_count - current_count
 
             if needed > 0:
-                available = [p for p in projections
-                           if p.position == position and
-                           p.player_id not in used_players]
+                available = [
+                    p
+                    for p in projections
+                    if p.position == position and p.player_id not in used_players
+                ]
 
                 # Sort by value and take best available
                 available.sort(key=lambda p: p.projected_points, reverse=True)
 
                 for i in range(min(needed, len(available))):
                     player = available[i]
-                    if self._can_add_player(lineup + [player], player, constraints):
+                    if self._can_add_player([*lineup, player], player, constraints):
                         lineup.append(player)
                         used_players.add(player.player_id)
 
         return lineup
 
-    def _validate_lineup(self, lineup: OptimizedLineup, constraints: LineupConstraints) -> bool:
+    def _validate_lineup(
+        self, lineup: OptimizedLineup, constraints: LineupConstraints
+    ) -> bool:
         """Validate lineup against constraints."""
-        if isinstance(lineup, OptimizedLineup):
-            players = lineup.players
-        else:
-            players = lineup
+        players = lineup.players if isinstance(lineup, OptimizedLineup) else lineup
 
         if not players:
             return False
@@ -934,9 +1027,12 @@ class LineupOptimizer:
 
         return True
 
-    def _create_optimized_lineup(self, players: List[PlayerProjection],
-                               objective: OptimizationObjective,
-                               strategy: LineupStrategy) -> OptimizedLineup:
+    def _create_optimized_lineup(
+        self,
+        players: list[PlayerProjection],
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+    ) -> OptimizedLineup:
         """Create OptimizedLineup object with analysis."""
         total_salary = sum(p.salary for p in players)
         projected_points = sum(p.projected_points for p in players)
@@ -979,7 +1075,7 @@ class LineupOptimizer:
             generated_at=datetime.utcnow(),
         )
 
-    def _calculate_correlation_score(self, players: List[PlayerProjection]) -> float:
+    def _calculate_correlation_score(self, players: list[PlayerProjection]) -> float:
         """Calculate lineup correlation score."""
         # Simplified correlation calculation
         team_correlation = 0.0
@@ -989,23 +1085,29 @@ class LineupOptimizer:
             teams[player.team] += 1
 
         # Penalty for too many players from same team
-        for team, count in teams.items():
+        for _team, count in teams.items():
             if count > 1:
                 team_correlation += (count - 1) * 0.1
 
         return min(1.0, team_correlation)
 
-    def _calculate_strategy_fit(self, players: List[PlayerProjection], strategy: LineupStrategy) -> float:
+    def _calculate_strategy_fit(
+        self, players: list[PlayerProjection], strategy: LineupStrategy
+    ) -> float:
         """Calculate how well lineup fits the strategy."""
         if strategy == LineupStrategy.CASH_GAME:
             # Favor consistency and floor
             consistency_avg = sum(p.consistency for p in players) / len(players)
-            floor_ratio = sum(p.floor for p in players) / sum(p.projected_points for p in players)
+            floor_ratio = sum(p.floor for p in players) / sum(
+                p.projected_points for p in players
+            )
             return (consistency_avg + floor_ratio) / 2
 
         elif strategy == LineupStrategy.TOURNAMENT:
             # Favor ceiling and upside
-            ceiling_ratio = sum(p.ceiling for p in players) / sum(p.projected_points for p in players)
+            ceiling_ratio = sum(p.ceiling for p in players) / sum(
+                p.projected_points for p in players
+            )
             return min(1.0, ceiling_ratio / 1.5)
 
         elif strategy == LineupStrategy.CONTRARIAN:
@@ -1016,9 +1118,12 @@ class LineupOptimizer:
         else:  # BALANCED
             return 0.7  # Neutral score
 
-    def _calculate_lineup_fitness(self, lineup: OptimizedLineup,
-                                objective: OptimizationObjective,
-                                strategy: LineupStrategy) -> float:
+    def _calculate_lineup_fitness(
+        self,
+        lineup: OptimizedLineup,
+        objective: OptimizationObjective,
+        strategy: LineupStrategy,
+    ) -> float:
         """Calculate overall lineup fitness."""
         base_score = lineup.projected_points
 
@@ -1032,11 +1137,15 @@ class LineupOptimizer:
 
         return base_score + strategy_bonus
 
-    def _is_similar_lineup(self, lineup: OptimizedLineup, existing_lineups: List[OptimizedLineup]) -> bool:
+    def _is_similar_lineup(
+        self, lineup: OptimizedLineup, existing_lineups: list[OptimizedLineup]
+    ) -> bool:
         """Check if lineup is too similar to existing lineups."""
         for existing in existing_lineups:
-            overlap = len(set(p.player_id for p in lineup.players) &
-                         set(p.player_id for p in existing.players))
+            overlap = len(
+                {p.player_id for p in lineup.players}
+                & {p.player_id for p in existing.players}
+            )
 
             # If more than 6 players overlap, consider it too similar
             if overlap > 6:
@@ -1044,7 +1153,9 @@ class LineupOptimizer:
 
         return False
 
-    async def _enhance_lineup_analysis(self, lineup: OptimizedLineup, strategy: LineupStrategy) -> OptimizedLineup:
+    async def _enhance_lineup_analysis(
+        self, lineup: OptimizedLineup, strategy: LineupStrategy
+    ) -> OptimizedLineup:
         """Enhance lineup with additional analysis."""
         # This could include more advanced analysis
         # For now, just return the lineup as-is
@@ -1052,7 +1163,7 @@ class LineupOptimizer:
 
 
 # Global optimizer instances
-_optimizers: Dict[Sport, LineupOptimizer] = {}
+_optimizers: dict[Sport, LineupOptimizer] = {}
 
 
 def get_lineup_optimizer(sport: Sport) -> LineupOptimizer:

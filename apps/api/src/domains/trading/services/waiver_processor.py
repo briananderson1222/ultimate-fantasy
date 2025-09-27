@@ -12,11 +12,9 @@ Provides comprehensive waiver claim processing including:
 - Integration with league rules and settings
 """
 
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from enum import Enum
 from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
 
 from sqlalchemy.orm import Session
 
@@ -24,12 +22,14 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
+
+from domains.teams.models.team import Team
+from domains.trading.models.waiver_bid import WaiverBid
 
 from domains.leagues.models.league import League
 from domains.notifications.services.notification_service import get_notification_service
-from domains.teams.models.team import Team
-from domains.trading.models.waiver_bid import WaiverBid
 from domains.sports.services.sports_data_service import get_sports_data_service
 
 logger = get_logger(__name__)
@@ -37,18 +37,19 @@ logger = get_logger(__name__)
 
 class WaiverProcessorError(Exception):
     """Waiver processor service errors."""
-    pass
 
 
 class WaiverType(Enum):
     """Types of waiver systems."""
+
     PRIORITY = "priority"  # Traditional waiver priority order
-    FAAB = "faab"         # Free Agent Acquisition Budget
+    FAAB = "faab"  # Free Agent Acquisition Budget
     BLIND_BID = "blind_bid"  # Blind bidding auction
 
 
 class ProcessingResult(Enum):
     """Waiver processing results."""
+
     SUCCESSFUL = "successful"
     INSUFFICIENT_BUDGET = "insufficient_budget"
     ROSTER_FULL = "roster_full"
@@ -65,7 +66,7 @@ class WaiverClaim:
     bid_id: str
     team_id: str
     player_id: str
-    drop_player_id: Optional[str]
+    drop_player_id: str | None
     bid_amount: float
     priority: int
     submitted_at: datetime
@@ -81,8 +82,8 @@ class ProcessingOutcome:
     player_id: str
     result: ProcessingResult
     bid_amount: float
-    winning_amount: Optional[float]
-    drop_player_id: Optional[str]
+    winning_amount: float | None
+    drop_player_id: str | None
     reason: str
     processed_at: datetime
 
@@ -98,9 +99,9 @@ class WaiverPeriodResult:
     successful_claims: int
     failed_claims: int
     total_budget_spent: float
-    player_results: Dict[str, List[ProcessingOutcome]]
-    team_budget_updates: Dict[str, float]
-    roster_updates: Dict[str, List[Dict[str, any]]]
+    player_results: dict[str, list[ProcessingOutcome]]
+    team_budget_updates: dict[str, float]
+    roster_updates: dict[str, list[dict[str, any]]]
     notifications_sent: int
 
 
@@ -130,18 +131,16 @@ class WaiverProcessor:
         """
         try:
             logger.info(
-                f"Starting waiver processing",
+                "Starting waiver processing",
                 extra={
                     "league_id": league_id,
                     "waiver_period": waiver_period,
                     "force_process": force_process,
-                }
+                },
             )
 
             # Get league and validate waiver settings
-            league = self.db.query(League).filter(
-                League.league_id == league_id
-            ).first()
+            league = self.db.query(League).filter(League.league_id == league_id).first()
 
             if not league:
                 raise WaiverProcessorError(f"League {league_id} not found")
@@ -150,7 +149,9 @@ class WaiverProcessor:
             waiver_type = WaiverType(waiver_settings.get("type", "priority"))
 
             # Validate processing time
-            if not force_process and not self._is_processing_time(league, waiver_period):
+            if not force_process and not self._is_processing_time(
+                league, waiver_period
+            ):
                 raise WaiverProcessorError("Not yet time to process this waiver period")
 
             # Get all pending claims for this period
@@ -202,16 +203,20 @@ class WaiverProcessor:
                         if outcome.team_id not in roster_updates:
                             roster_updates[outcome.team_id] = []
 
-                        roster_updates[outcome.team_id].append({
-                            "action": "add",
-                            "player_id": outcome.player_id,
-                            "drop_player_id": outcome.drop_player_id,
-                            "acquired_via": "waiver",
-                            "cost": spent_amount,
-                        })
+                        roster_updates[outcome.team_id].append(
+                            {
+                                "action": "add",
+                                "player_id": outcome.player_id,
+                                "drop_player_id": outcome.drop_player_id,
+                                "acquired_via": "waiver",
+                                "cost": spent_amount,
+                            }
+                        )
 
             # Apply all roster and budget updates
-            await self._apply_processing_results(all_outcomes, team_budget_updates, roster_updates)
+            await self._apply_processing_results(
+                all_outcomes, team_budget_updates, roster_updates
+            )
 
             # Send notifications
             notifications_sent = await self._send_processing_notifications(
@@ -225,7 +230,9 @@ class WaiverProcessor:
                     player_results[outcome.player_id] = []
                 player_results[outcome.player_id].append(outcome)
 
-            successful_claims = len([o for o in all_outcomes if o.result == ProcessingResult.SUCCESSFUL])
+            successful_claims = len(
+                [o for o in all_outcomes if o.result == ProcessingResult.SUCCESSFUL]
+            )
             failed_claims = len(all_outcomes) - successful_claims
 
             result = WaiverPeriodResult(
@@ -243,7 +250,7 @@ class WaiverProcessor:
             )
 
             logger.info(
-                f"Waiver processing completed",
+                "Waiver processing completed",
                 extra={
                     "league_id": league_id,
                     "waiver_period": waiver_period,
@@ -251,7 +258,7 @@ class WaiverProcessor:
                     "successful": successful_claims,
                     "failed": failed_claims,
                     "budget_spent": total_budget_spent,
-                }
+                },
             )
 
             return result
@@ -264,9 +271,9 @@ class WaiverProcessor:
         self,
         league: League,
         player_id: str,
-        claims: List[WaiverClaim],
+        claims: list[WaiverClaim],
         waiver_type: WaiverType,
-    ) -> List[ProcessingOutcome]:
+    ) -> list[ProcessingOutcome]:
         """Process all claims for a specific player."""
         try:
             # Validate player is available
@@ -336,8 +343,8 @@ class WaiverProcessor:
         self,
         league: League,
         player_id: str,
-        claims: List[WaiverClaim],
-    ) -> List[ProcessingOutcome]:
+        claims: list[WaiverClaim],
+    ) -> list[ProcessingOutcome]:
         """Process FAAB (Free Agent Acquisition Budget) claims."""
         outcomes = []
 
@@ -356,17 +363,19 @@ class WaiverProcessor:
 
             current_budget = team.waiver_budget or 0.0
             if current_budget < claim.bid_amount:
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.INSUFFICIENT_BUDGET,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=None,
-                    drop_player_id=claim.drop_player_id,
-                    reason=f"Insufficient budget (have ${current_budget}, need ${claim.bid_amount})",
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=ProcessingResult.INSUFFICIENT_BUDGET,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=None,
+                        drop_player_id=claim.drop_player_id,
+                        reason=f"Insufficient budget (have ${current_budget}, need ${claim.bid_amount})",
+                        processed_at=datetime.utcnow(),
+                    )
+                )
                 continue
 
             # Validate roster space and drop player
@@ -374,17 +383,23 @@ class WaiverProcessor:
                 team, player_id, claim.drop_player_id
             )
             if not roster_valid:
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.ROSTER_FULL if "roster full" in roster_error.lower() else ProcessingResult.INVALID_DROP,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=None,
-                    drop_player_id=claim.drop_player_id,
-                    reason=roster_error,
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=(
+                            ProcessingResult.ROSTER_FULL
+                            if "roster full" in roster_error.lower()
+                            else ProcessingResult.INVALID_DROP
+                        ),
+                        bid_amount=claim.bid_amount,
+                        winning_amount=None,
+                        drop_player_id=claim.drop_player_id,
+                        reason=roster_error,
+                        processed_at=datetime.utcnow(),
+                    )
+                )
                 continue
 
             # This claim wins
@@ -395,30 +410,34 @@ class WaiverProcessor:
         # Process all claims
         for claim in claims:
             if claim == winning_claim:
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.SUCCESSFUL,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=winning_amount,
-                    drop_player_id=claim.drop_player_id,
-                    reason="Highest valid bid",
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=ProcessingResult.SUCCESSFUL,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=winning_amount,
+                        drop_player_id=claim.drop_player_id,
+                        reason="Highest valid bid",
+                        processed_at=datetime.utcnow(),
+                    )
+                )
             else:
                 reason = "Outbid" if winning_claim else "No valid bids"
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.OUTBID,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=winning_amount if winning_claim else None,
-                    drop_player_id=claim.drop_player_id,
-                    reason=reason,
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=ProcessingResult.OUTBID,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=winning_amount if winning_claim else None,
+                        drop_player_id=claim.drop_player_id,
+                        reason=reason,
+                        processed_at=datetime.utcnow(),
+                    )
+                )
 
         return outcomes
 
@@ -426,8 +445,8 @@ class WaiverProcessor:
         self,
         league: League,
         player_id: str,
-        claims: List[WaiverClaim],
-    ) -> List[ProcessingOutcome]:
+        claims: list[WaiverClaim],
+    ) -> list[ProcessingOutcome]:
         """Process blind bidding claims (second-price auction)."""
         # In blind bidding, winner pays the second-highest bid amount
         valid_claims = []
@@ -469,34 +488,42 @@ class WaiverProcessor:
 
         # Winner pays second-highest price (or minimum if only one bid)
         winning_claim = valid_claims[0]
-        winning_amount = valid_claims[1].bid_amount if len(valid_claims) > 1 else winning_claim.bid_amount
+        winning_amount = (
+            valid_claims[1].bid_amount
+            if len(valid_claims) > 1
+            else winning_claim.bid_amount
+        )
 
         outcomes = []
         for claim in claims:
             if claim == winning_claim:
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.SUCCESSFUL,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=winning_amount,
-                    drop_player_id=claim.drop_player_id,
-                    reason="Winning bid in blind auction",
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=ProcessingResult.SUCCESSFUL,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=winning_amount,
+                        drop_player_id=claim.drop_player_id,
+                        reason="Winning bid in blind auction",
+                        processed_at=datetime.utcnow(),
+                    )
+                )
             else:
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.OUTBID,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=winning_amount,
-                    drop_player_id=claim.drop_player_id,
-                    reason="Outbid in blind auction",
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=ProcessingResult.OUTBID,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=winning_amount,
+                        drop_player_id=claim.drop_player_id,
+                        reason="Outbid in blind auction",
+                        processed_at=datetime.utcnow(),
+                    )
+                )
 
         return outcomes
 
@@ -504,8 +531,8 @@ class WaiverProcessor:
         self,
         league: League,
         player_id: str,
-        claims: List[WaiverClaim],
-    ) -> List[ProcessingOutcome]:
+        claims: list[WaiverClaim],
+    ) -> list[ProcessingOutcome]:
         """Process traditional priority-based waiver claims."""
         # Sort by priority (lower number = higher priority)
         claims.sort(key=lambda c: (c.priority, c.submitted_at))
@@ -526,36 +553,44 @@ class WaiverProcessor:
             if roster_valid and not winning_claim:
                 # This claim wins
                 winning_claim = claim
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=ProcessingResult.SUCCESSFUL,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=0.0,  # No cost in priority system
-                    drop_player_id=claim.drop_player_id,
-                    reason=f"Highest priority (#{claim.priority})",
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=ProcessingResult.SUCCESSFUL,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=0.0,  # No cost in priority system
+                        drop_player_id=claim.drop_player_id,
+                        reason=f"Highest priority (#{claim.priority})",
+                        processed_at=datetime.utcnow(),
+                    )
+                )
             else:
                 result = ProcessingResult.LOWER_PRIORITY
                 reason = "Lower priority"
 
                 if not roster_valid:
-                    result = ProcessingResult.ROSTER_FULL if "roster full" in roster_error.lower() else ProcessingResult.INVALID_DROP
+                    result = (
+                        ProcessingResult.ROSTER_FULL
+                        if "roster full" in roster_error.lower()
+                        else ProcessingResult.INVALID_DROP
+                    )
                     reason = roster_error
 
-                outcomes.append(ProcessingOutcome(
-                    bid_id=claim.bid_id,
-                    team_id=claim.team_id,
-                    player_id=player_id,
-                    result=result,
-                    bid_amount=claim.bid_amount,
-                    winning_amount=None,
-                    drop_player_id=claim.drop_player_id,
-                    reason=reason,
-                    processed_at=datetime.utcnow(),
-                ))
+                outcomes.append(
+                    ProcessingOutcome(
+                        bid_id=claim.bid_id,
+                        team_id=claim.team_id,
+                        player_id=player_id,
+                        result=result,
+                        bid_amount=claim.bid_amount,
+                        winning_amount=None,
+                        drop_player_id=claim.drop_player_id,
+                        reason=reason,
+                        processed_at=datetime.utcnow(),
+                    )
+                )
 
         return outcomes
 
@@ -566,22 +601,30 @@ class WaiverProcessor:
         waiver_settings = league.waiver_settings or {}
 
         # Default processing schedule: Wednesday mornings
-        processing_day = waiver_settings.get("processing_day", 2)  # 0=Monday, 2=Wednesday
+        processing_day = waiver_settings.get(
+            "processing_day", 2
+        )  # 0=Monday, 2=Wednesday
         processing_hour = waiver_settings.get("processing_hour", 9)  # 9 AM
 
         now = datetime.utcnow()
 
         # Simple check - in production this would be more sophisticated
-        return (now.weekday() == processing_day and now.hour >= processing_hour)
+        return now.weekday() == processing_day and now.hour >= processing_hour
 
-    def _get_pending_claims(self, league_id: str, waiver_period: int) -> List[WaiverClaim]:
+    def _get_pending_claims(
+        self, league_id: str, waiver_period: int
+    ) -> list[WaiverClaim]:
         """Get all pending waiver claims for a period."""
         try:
-            bids = self.db.query(WaiverBid).filter(
-                WaiverBid.league_id == league_id,
-                WaiverBid.waiver_period == waiver_period,
-                WaiverBid.status == "pending"
-            ).all()
+            bids = (
+                self.db.query(WaiverBid)
+                .filter(
+                    WaiverBid.league_id == league_id,
+                    WaiverBid.waiver_period == waiver_period,
+                    WaiverBid.status == "pending",
+                )
+                .all()
+            )
 
             return [
                 WaiverClaim(
@@ -601,7 +644,9 @@ class WaiverProcessor:
             logger.error(f"Failed to get pending claims: {e}")
             return []
 
-    def _group_claims_by_player(self, claims: List[WaiverClaim]) -> Dict[str, List[WaiverClaim]]:
+    def _group_claims_by_player(
+        self, claims: list[WaiverClaim]
+    ) -> dict[str, list[WaiverClaim]]:
         """Group waiver claims by player ID."""
         groups = {}
         for claim in claims:
@@ -610,7 +655,7 @@ class WaiverProcessor:
             groups[claim.player_id].append(claim)
         return groups
 
-    def _check_player_ownership(self, league_id: str, player_id: str) -> Optional[str]:
+    def _check_player_ownership(self, league_id: str, player_id: str) -> str | None:
         """Check if player is already owned by a team."""
         teams = self.db.query(Team).filter(Team.league_id == league_id).all()
 
@@ -623,8 +668,8 @@ class WaiverProcessor:
         return None
 
     async def _validate_roster_transaction(
-        self, team: Team, add_player_id: str, drop_player_id: Optional[str]
-    ) -> Tuple[bool, str]:
+        self, team: Team, add_player_id: str, drop_player_id: str | None
+    ) -> tuple[bool, str]:
         """Validate if roster transaction is valid."""
         try:
             roster = team.roster or []
@@ -652,9 +697,9 @@ class WaiverProcessor:
 
     async def _apply_processing_results(
         self,
-        outcomes: List[ProcessingOutcome],
-        budget_updates: Dict[str, float],
-        roster_updates: Dict[str, List[Dict[str, any]]],
+        outcomes: list[ProcessingOutcome],
+        budget_updates: dict[str, float],
+        roster_updates: dict[str, list[dict[str, any]]],
     ) -> None:
         """Apply all processing results to the database."""
         try:
@@ -679,27 +724,43 @@ class WaiverProcessor:
                     if update["action"] == "add":
                         # Remove dropped player if specified
                         if update["drop_player_id"]:
-                            roster = [p for p in roster if p.get("player_id") != update["drop_player_id"]]
+                            roster = [
+                                p
+                                for p in roster
+                                if p.get("player_id") != update["drop_player_id"]
+                            ]
 
                         # Add new player
-                        player_data = await sports_service.get_player_details(update["player_id"])
+                        player_data = await sports_service.get_player_details(
+                            update["player_id"]
+                        )
                         if player_data:
-                            roster.append({
-                                "player_id": update["player_id"],
-                                "name": player_data.get("name"),
-                                "position": player_data.get("position"),
-                                "acquired_via": update["acquired_via"],
-                                "acquired_date": datetime.utcnow().isoformat(),
-                                "waiver_cost": update["cost"],
-                            })
+                            roster.append(
+                                {
+                                    "player_id": update["player_id"],
+                                    "name": player_data.get("name"),
+                                    "position": player_data.get("position"),
+                                    "acquired_via": update["acquired_via"],
+                                    "acquired_date": datetime.utcnow().isoformat(),
+                                    "waiver_cost": update["cost"],
+                                }
+                            )
 
                 team.roster = roster
 
             # Update waiver bid statuses
             for outcome in outcomes:
-                bid = self.db.query(WaiverBid).filter(WaiverBid.bid_id == outcome.bid_id).first()
+                bid = (
+                    self.db.query(WaiverBid)
+                    .filter(WaiverBid.bid_id == outcome.bid_id)
+                    .first()
+                )
                 if bid:
-                    bid.status = "successful" if outcome.result == ProcessingResult.SUCCESSFUL else "failed"
+                    bid.status = (
+                        "successful"
+                        if outcome.result == ProcessingResult.SUCCESSFUL
+                        else "failed"
+                    )
                     bid.result_reason = outcome.reason
                     bid.processed_at = outcome.processed_at
 
@@ -711,7 +772,7 @@ class WaiverProcessor:
             raise
 
     async def _send_processing_notifications(
-        self, league_id: str, outcomes: List[ProcessingOutcome], waiver_period: int
+        self, league_id: str, outcomes: list[ProcessingOutcome], waiver_period: int
     ) -> int:
         """Send notifications for waiver processing results."""
         try:
@@ -733,15 +794,25 @@ class WaiverProcessor:
                 if not team or not team.owner_id:
                     continue
 
-                successful_claims = [o for o in team_outcomes_list if o.result == ProcessingResult.SUCCESSFUL]
-                failed_claims = [o for o in team_outcomes_list if o.result != ProcessingResult.SUCCESSFUL]
+                successful_claims = [
+                    o
+                    for o in team_outcomes_list
+                    if o.result == ProcessingResult.SUCCESSFUL
+                ]
+                failed_claims = [
+                    o
+                    for o in team_outcomes_list
+                    if o.result != ProcessingResult.SUCCESSFUL
+                ]
 
                 # Build notification message
                 title = f"Waiver Results - Period {waiver_period}"
                 message_parts = []
 
                 if successful_claims:
-                    message_parts.append(f"✅ {len(successful_claims)} successful claim(s)")
+                    message_parts.append(
+                        f"✅ {len(successful_claims)} successful claim(s)"
+                    )
                 if failed_claims:
                     message_parts.append(f"❌ {len(failed_claims)} failed claim(s)")
 

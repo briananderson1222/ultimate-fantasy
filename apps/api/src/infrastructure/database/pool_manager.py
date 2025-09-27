@@ -10,33 +10,35 @@ Provides advanced database connection management with:
 """
 
 import asyncio
-import time
 import logging
-from typing import Optional, Dict, Any, List, Callable, AsyncContextManager
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any, AsyncContextManager
 
 import sqlalchemy as sa
+from sqlalchemy.exc import DisconnectionError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
     AsyncEngine,
     AsyncSession,
-    async_sessionmaker
+    async_sessionmaker,
+    create_async_engine,
 )
-from sqlalchemy.pool import StaticPool, QueuePool
-from sqlalchemy.exc import SQLAlchemyError, DisconnectionError
+from sqlalchemy.pool import QueuePool, StaticPool
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 try:
     from infrastructure.observability.tracing import get_tracer, trace_fantasy_operation
 except ImportError:
+
     class MockSpan:
         def set_attribute(self, key, value):
             pass
@@ -57,12 +59,14 @@ except ImportError:
 
         return mock_trace()
 
+
 logger = get_logger(__name__)
 tracer = get_tracer()
 
 
 class PoolType(Enum):
     """Database pool types."""
+
     PRIMARY = "primary"
     REPLICA = "replica"
     ANALYTICS = "analytics"
@@ -70,6 +74,7 @@ class PoolType(Enum):
 
 class ConnectionState(Enum):
     """Connection states."""
+
     HEALTHY = "healthy"
     UNHEALTHY = "unhealthy"
     RECOVERING = "recovering"
@@ -79,6 +84,7 @@ class ConnectionState(Enum):
 @dataclass
 class PoolConfig:
     """Database pool configuration."""
+
     # Basic connection settings
     database_url: str
     pool_size: int = 10
@@ -111,6 +117,7 @@ class PoolConfig:
 @dataclass
 class PoolMetrics:
     """Pool performance metrics."""
+
     total_connections: int = 0
     active_connections: int = 0
     idle_connections: int = 0
@@ -125,7 +132,7 @@ class PoolMetrics:
     # Health metrics
     healthy_connections: int = 0
     unhealthy_connections: int = 0
-    last_health_check: Optional[datetime] = None
+    last_health_check: datetime | None = None
 
     # Query metrics
     total_queries: int = 0
@@ -137,13 +144,14 @@ class PoolMetrics:
 @dataclass
 class ConnectionInfo:
     """Connection information."""
+
     connection_id: str
     created_at: datetime
     last_used: datetime
     state: ConnectionState = ConnectionState.HEALTHY
     query_count: int = 0
     error_count: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class DatabasePool:
@@ -152,18 +160,18 @@ class DatabasePool:
     def __init__(self, config: PoolConfig, pool_type: PoolType = PoolType.PRIMARY):
         self.config = config
         self.pool_type = pool_type
-        self.engine: Optional[AsyncEngine] = None
-        self.session_factory: Optional[async_sessionmaker] = None
+        self.engine: AsyncEngine | None = None
+        self.session_factory: async_sessionmaker | None = None
 
         self.metrics = PoolMetrics()
-        self.connections: Dict[str, ConnectionInfo] = {}
+        self.connections: dict[str, ConnectionInfo] = {}
         self._initialized = False
-        self._health_check_task: Optional[asyncio.Task] = None
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
+        self._cleanup_task: asyncio.Task | None = None
 
         # Performance tracking
-        self._checkout_times: List[float] = []
-        self._query_times: List[float] = []
+        self._checkout_times: list[float] = []
+        self._query_times: list[float] = []
 
     async def initialize(self):
         """Initialize the database pool."""
@@ -187,8 +195,10 @@ class DatabasePool:
             # Add PostgreSQL-specific optimizations
             if "postgresql" in self.config.database_url:
                 engine_kwargs["connect_args"] = {
-                    "statement_timeout": self.config.statement_timeout * 1000,  # Convert to ms
-                    "idle_in_transaction_session_timeout": self.config.idle_in_transaction_session_timeout * 1000,
+                    "statement_timeout": self.config.statement_timeout
+                    * 1000,  # Convert to ms
+                    "idle_in_transaction_session_timeout": self.config.idle_in_transaction_session_timeout
+                    * 1000,
                     "lock_timeout": self.config.lock_timeout,
                     "application_name": f"ultimate-fantasy-{self.pool_type.value}",
                 }
@@ -203,9 +213,7 @@ class DatabasePool:
 
             # Create session factory
             self.session_factory = async_sessionmaker(
-                bind=self.engine,
-                class_=AsyncSession,
-                expire_on_commit=False
+                bind=self.engine, class_=AsyncSession, expire_on_commit=False
             )
 
             # Start background tasks
@@ -213,10 +221,14 @@ class DatabasePool:
             self._cleanup_task = asyncio.create_task(self._cleanup_loop())
 
             self._initialized = True
-            logger.info(f"Database pool {self.pool_type.value} initialized successfully")
+            logger.info(
+                f"Database pool {self.pool_type.value} initialized successfully"
+            )
 
         except Exception as e:
-            logger.error(f"Failed to initialize database pool {self.pool_type.value}: {e}")
+            logger.error(
+                f"Failed to initialize database pool {self.pool_type.value}: {e}"
+            )
             raise
 
     async def close(self):
@@ -272,7 +284,7 @@ class DatabasePool:
             with trace_fantasy_operation(
                 tracer,
                 f"db_session_{self.pool_type.value}",
-                pool_type=self.pool_type.value
+                pool_type=self.pool_type.value,
             ) as span:
                 span.set_attribute("checkout_time", checkout_time)
                 yield session
@@ -312,7 +324,7 @@ class DatabasePool:
                 if attempt < self.config.max_retries:
                     delay = self.config.retry_delay
                     if self.config.exponential_backoff:
-                        delay *= (2 ** attempt)
+                        delay *= 2**attempt
 
                     logger.warning(
                         f"Database connection attempt {attempt + 1} failed, "
@@ -327,8 +339,8 @@ class DatabasePool:
     async def execute_query(
         self,
         query: str,
-        params: Optional[Dict[str, Any]] = None,
-        session: Optional[AsyncSession] = None
+        params: dict[str, Any] | None = None,
+        session: AsyncSession | None = None,
     ) -> Any:
         """
         Execute query with performance tracking.
@@ -422,11 +434,13 @@ class DatabasePool:
 
     async def _update_pool_metrics(self):
         """Update pool metrics."""
-        if self.engine and hasattr(self.engine.pool, 'size'):
+        if self.engine and hasattr(self.engine.pool, "size"):
             pool = self.engine.pool
-            self.metrics.total_connections = getattr(pool, 'size', 0)
-            self.metrics.active_connections = getattr(pool, 'checked_out', 0)
-            self.metrics.idle_connections = self.metrics.total_connections - self.metrics.active_connections
+            self.metrics.total_connections = getattr(pool, "size", 0)
+            self.metrics.active_connections = getattr(pool, "checked_out", 0)
+            self.metrics.idle_connections = (
+                self.metrics.total_connections - self.metrics.active_connections
+            )
 
     async def _cleanup_old_connections(self):
         """Clean up old connections."""
@@ -455,7 +469,9 @@ class DatabasePool:
         self._checkout_times.append(checkout_time)
 
         if self._checkout_times:
-            self.metrics.avg_checkout_time = sum(self._checkout_times) / len(self._checkout_times)
+            self.metrics.avg_checkout_time = sum(self._checkout_times) / len(
+                self._checkout_times
+            )
             self.metrics.max_checkout_time = max(self._checkout_times)
 
     def _record_query_time(self, query_time: float):
@@ -463,9 +479,11 @@ class DatabasePool:
         self._query_times.append(query_time)
 
         if self._query_times:
-            self.metrics.avg_query_time = sum(self._query_times) / len(self._query_times)
+            self.metrics.avg_query_time = sum(self._query_times) / len(
+                self._query_times
+            )
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get current pool metrics."""
         return {
             "pool_type": self.pool_type.value,
@@ -481,13 +499,17 @@ class DatabasePool:
             "failed_queries": self.metrics.failed_queries,
             "avg_query_time": self.metrics.avg_query_time,
             "slow_queries": self.metrics.slow_queries,
-            "last_health_check": self.metrics.last_health_check.isoformat() if self.metrics.last_health_check else None,
+            "last_health_check": (
+                self.metrics.last_health_check.isoformat()
+                if self.metrics.last_health_check
+                else None
+            ),
             "config": {
                 "pool_size": self.config.pool_size,
                 "max_overflow": self.config.max_overflow,
                 "pool_timeout": self.config.pool_timeout,
-                "pool_recycle": self.config.pool_recycle
-            }
+                "pool_recycle": self.config.pool_recycle,
+            },
         }
 
 
@@ -497,10 +519,10 @@ class DatabasePoolManager:
     """
 
     def __init__(self):
-        self.pools: Dict[PoolType, DatabasePool] = {}
+        self.pools: dict[PoolType, DatabasePool] = {}
         self._initialized = False
 
-    async def initialize(self, configs: Dict[PoolType, PoolConfig]):
+    async def initialize(self, configs: dict[PoolType, PoolConfig]):
         """
         Initialize database pools.
 
@@ -544,9 +566,7 @@ class DatabasePoolManager:
 
     @asynccontextmanager
     async def get_session(
-        self,
-        pool_type: PoolType = PoolType.PRIMARY,
-        read_only: bool = False
+        self, pool_type: PoolType = PoolType.PRIMARY, read_only: bool = False
     ) -> AsyncContextManager[AsyncSession]:
         """
         Get database session with automatic read/write routing.
@@ -569,9 +589,9 @@ class DatabasePoolManager:
     async def execute_query(
         self,
         query: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
         pool_type: PoolType = PoolType.PRIMARY,
-        read_only: bool = False
+        read_only: bool = False,
     ) -> Any:
         """
         Execute query with automatic pool routing.
@@ -586,10 +606,14 @@ class DatabasePoolManager:
             Query result
         """
         async with self.get_session(pool_type, read_only) as session:
-            pool = self.get_pool(pool_type if not read_only or PoolType.REPLICA not in self.pools else PoolType.REPLICA)
+            pool = self.get_pool(
+                pool_type
+                if not read_only or PoolType.REPLICA not in self.pools
+                else PoolType.REPLICA
+            )
             return await pool.execute_query(query, params, session)
 
-    async def health_check_all(self) -> Dict[str, bool]:
+    async def health_check_all(self) -> dict[str, bool]:
         """
         Perform health check on all pools.
 
@@ -603,7 +627,7 @@ class DatabasePoolManager:
 
         return results
 
-    def get_all_metrics(self) -> Dict[str, Any]:
+    def get_all_metrics(self) -> dict[str, Any]:
         """Get metrics for all pools."""
         return {
             pool_type.value: pool.get_metrics()
@@ -612,7 +636,7 @@ class DatabasePoolManager:
 
 
 # Global pool manager instance
-_pool_manager: Optional[DatabasePoolManager] = None
+_pool_manager: DatabasePoolManager | None = None
 
 
 async def get_pool_manager() -> DatabasePoolManager:
@@ -625,7 +649,7 @@ async def get_pool_manager() -> DatabasePoolManager:
     return _pool_manager
 
 
-async def initialize_database_pools(configs: Dict[PoolType, PoolConfig]):
+async def initialize_database_pools(configs: dict[PoolType, PoolConfig]):
     """Initialize global database pool manager."""
     global _pool_manager
 

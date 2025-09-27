@@ -13,10 +13,8 @@ Provides comprehensive player search and filtering with:
 - Response caching
 """
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user, get_db
@@ -28,6 +26,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -42,21 +41,21 @@ class PlayerResponse(BaseModel):
     external_id: str
     name: str
     position: str
-    team_id: Optional[str]
+    team_id: str | None
     sport: str
     injury_status: str = "healthy"
-    injury_description: Optional[str] = None
-    season_stats: Optional[dict] = None
-    game_stats: Optional[dict] = None
-    projections: Optional[dict] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    injury_description: str | None = None
+    season_stats: dict | None = None
+    game_stats: dict | None = None
+    projections: dict | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class PlayersResponse(BaseModel):
     """Paginated players response model."""
 
-    items: List[PlayerResponse]
+    items: list[PlayerResponse]
     total: int
     limit: int
     offset: int
@@ -66,14 +65,12 @@ class PlayersResponse(BaseModel):
 @router.get("/players", response_model=StandardResponse[PlayersResponse])
 async def get_players(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
-    position: Optional[str] = Query(None, description="Filter by position"),
-    team: Optional[str] = Query(None, description="Filter by team"),
-    status: Optional[str] = Query(
-        None,
-        description="Filter by status",
-        regex="^(active|injured|inactive)$"
+    position: str | None = Query(None, description="Filter by position"),
+    team: str | None = Query(None, description="Filter by team"),
+    status: str | None = Query(
+        None, description="Filter by status", regex="^(active|injured|inactive)$"
     ),
-    search: Optional[str] = Query(None, description="Search by player name"),
+    search: str | None = Query(None, description="Search by player name"),
     limit: int = Query(50, description="Maximum results", ge=1, le=100),
     offset: int = Query(0, description="Results offset", ge=0),
     db: Session = Depends(get_db),
@@ -94,7 +91,7 @@ async def get_players(
     """
     try:
         logger.info(
-            f"Players search request",
+            "Players search request",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
@@ -103,7 +100,7 @@ async def get_players(
                 "search": search,
                 "limit": limit,
                 "offset": offset,
-            }
+            },
         )
 
         # Get sports data service
@@ -115,11 +112,11 @@ async def get_players(
                 query=search,
                 sport=sport.upper(),
                 limit=limit + offset,  # Get extra to handle offset
-                use_cache=True
+                use_cache=True,
             )
 
             # Apply offset manually for search results
-            players_data = players_data[offset:offset + limit]
+            players_data = players_data[offset : offset + limit]
             total_count = len(players_data)  # Approximate for search
 
         else:
@@ -129,25 +126,23 @@ async def get_players(
                 position=position,
                 team=team,
                 active_only=(status == "active" if status else True),
-                use_cache=True
+                use_cache=True,
             )
 
             # Apply pagination
             total_count = len(players_data)
-            players_data = players_data[offset:offset + limit]
+            players_data = players_data[offset : offset + limit]
 
         # Apply status filter if specified
         if status:
             if status == "injured":
                 players_data = [
-                    p for p in players_data
+                    p
+                    for p in players_data
                     if p.get("injury_status", "healthy") not in ["healthy", ""]
                 ]
             elif status == "inactive":
-                players_data = [
-                    p for p in players_data
-                    if not p.get("active", True)
-                ]
+                players_data = [p for p in players_data if not p.get("active", True)]
 
         # Convert to response models
         player_responses = []
@@ -186,32 +181,32 @@ async def get_players(
         )
 
         logger.info(
-            f"Players search completed",
+            "Players search completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "results_count": len(player_responses),
                 "total_count": total_count,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Found {len(player_responses)} players"
+            message=f"Found {len(player_responses)} players",
         )
 
     except Exception as e:
         logger.error(
-            f"Players search failed",
+            "Players search failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve players. Please try again later."
+            detail="Failed to retrieve players. Please try again later.",
         )
 
 
@@ -234,13 +229,13 @@ async def search_players_by_name(
     """
     try:
         logger.info(
-            f"Player name search request",
+            "Player name search request",
             extra={
                 "user_id": str(current_user.user_id),
                 "query": query,
                 "sport": sport,
                 "limit": limit,
-            }
+            },
         )
 
         # Get sports data service
@@ -248,10 +243,7 @@ async def search_players_by_name(
 
         # Perform text search
         players_data = await sports_service.search_players(
-            query=query,
-            sport=sport.upper(),
-            limit=limit,
-            use_cache=True
+            query=query, sport=sport.upper(), limit=limit, use_cache=True
         )
 
         # Convert to response models
@@ -286,41 +278,40 @@ async def search_players_by_name(
         )
 
         logger.info(
-            f"Player name search completed",
+            "Player name search completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "results_count": len(player_responses),
                 "query": query,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Found {len(player_responses)} players matching '{query}'"
+            message=f"Found {len(player_responses)} players matching '{query}'",
         )
 
     except Exception as e:
         logger.error(
-            f"Player name search failed",
+            "Player name search failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "query": query,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to search players. Please try again later."
+            status_code=500, detail="Failed to search players. Please try again later."
         )
 
 
-@router.get("/players/positions/{sport}", response_model=StandardResponse[List[str]])
+@router.get("/players/positions/{sport}", response_model=StandardResponse[list[str]])
 async def get_sport_positions(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[str]]:
+) -> StandardResponse[list[str]]:
     """
     Get available positions for a sport.
 
@@ -341,12 +332,11 @@ async def get_sport_positions(
         return StandardResponse(
             success=True,
             data=positions,
-            message=f"Available positions for {sport.upper()}"
+            message=f"Available positions for {sport.upper()}",
         )
 
     except Exception as e:
         logger.error(f"Failed to get sport positions: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve sport positions."
+            status_code=500, detail="Failed to retrieve sport positions."
         )

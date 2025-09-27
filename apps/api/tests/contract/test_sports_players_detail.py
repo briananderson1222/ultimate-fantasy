@@ -49,7 +49,9 @@ class TestSportsPlayersDetailContract:
         assert "message" in data
         assert "player not found" in data["message"].lower()
 
-    def test_get_player_response_includes_all_required_fields(self, authenticated_client):
+    def test_get_player_response_includes_all_required_fields(
+        self, authenticated_client
+    ):
         """
         Contract Test: Player detail response includes all required fields.
 
@@ -260,7 +262,9 @@ class TestSportsPlayersDetailContract:
         malformed_ids = ["", " ", "id with spaces", "id/with/slashes", "id?with=query"]
 
         for malformed_id in malformed_ids:
-            response = authenticated_client.get(f"/api/v1/sports/players/{malformed_id}")
+            response = authenticated_client.get(
+                f"/api/v1/sports/players/{malformed_id}"
+            )
 
             # Should return 400 or 404 depending on validation approach
             assert response.status_code in [400, 404]

@@ -11,16 +11,17 @@ Provides secure WebSocket connection management with:
 
 import asyncio
 import json
-import time
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Set, Any, List, Callable
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any
 
-from fastapi import WebSocket, WebSocketDisconnect, status
-from starlette.websockets import WebSocketState
 import jwt
+from fastapi import WebSocket, status
+from starlette.websockets import WebSocketState
 
 try:
     from infrastructure.cache.redis_pool import get_redis_pool
@@ -31,6 +32,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 logger = get_logger(__name__)
@@ -38,6 +40,7 @@ logger = get_logger(__name__)
 
 class ConnectionState(Enum):
     """WebSocket connection states."""
+
     CONNECTING = "connecting"
     AUTHENTICATING = "authenticating"
     AUTHENTICATED = "authenticated"
@@ -47,6 +50,7 @@ class ConnectionState(Enum):
 
 class MessageType(Enum):
     """WebSocket message types."""
+
     AUTH = "auth"
     AUTH_SUCCESS = "auth_success"
     AUTH_ERROR = "auth_error"
@@ -61,21 +65,23 @@ class MessageType(Enum):
 @dataclass
 class ConnectionInfo:
     """WebSocket connection information."""
+
     websocket: WebSocket
-    user_id: Optional[str] = None
+    user_id: str | None = None
     connection_id: str = ""
     state: ConnectionState = ConnectionState.CONNECTING
-    authenticated_at: Optional[datetime] = None
+    authenticated_at: datetime | None = None
     last_activity: datetime = field(default_factory=datetime.utcnow)
     message_count: int = 0
     rate_limit_reset: datetime = field(default_factory=datetime.utcnow)
-    subscriptions: Set[str] = field(default_factory=set)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    subscriptions: set[str] = field(default_factory=set)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class WebSocketConfig:
     """WebSocket authentication configuration."""
+
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     auth_timeout_seconds: int = 30
@@ -83,7 +89,7 @@ class WebSocketConfig:
     max_connections_per_user: int = 5
     max_message_rate_per_minute: int = 60
     max_message_size: int = 1024 * 1024  # 1MB
-    allowed_origins: List[str] = field(default_factory=list)
+    allowed_origins: list[str] = field(default_factory=list)
     require_auth: bool = True
 
 
@@ -92,13 +98,10 @@ class WebSocketRateLimiter:
 
     def __init__(self, redis_pool=None):
         self.redis_pool = redis_pool
-        self._memory_counters: Dict[str, Dict[str, Any]] = {}
+        self._memory_counters: dict[str, dict[str, Any]] = {}
 
     async def check_rate_limit(
-        self,
-        connection_id: str,
-        rate_limit: int,
-        window_seconds: int = 60
+        self, connection_id: str, rate_limit: int, window_seconds: int = 60
     ) -> bool:
         """
         Check if connection is rate limited.
@@ -132,18 +135,13 @@ class WebSocketRateLimiter:
             return False  # Fail open
 
     def _memory_rate_check(
-        self,
-        key: str,
-        limit: int,
-        now: float,
-        window_seconds: int
+        self, key: str, limit: int, now: float, window_seconds: int
     ) -> bool:
         """Memory-based rate limiting."""
         # Clean up old entries
         cutoff = now - window_seconds
         self._memory_counters = {
-            k: v for k, v in self._memory_counters.items()
-            if v["window_start"] > cutoff
+            k: v for k, v in self._memory_counters.items() if v["window_start"] > cutoff
         }
 
         if key not in self._memory_counters:
@@ -163,14 +161,14 @@ class WebSocketAuthMiddleware:
 
     def __init__(self, config: WebSocketConfig):
         self.config = config
-        self.connections: Dict[str, ConnectionInfo] = {}
-        self.user_connections: Dict[str, Set[str]] = {}
+        self.connections: dict[str, ConnectionInfo] = {}
+        self.user_connections: dict[str, set[str]] = {}
         self.rate_limiter = WebSocketRateLimiter()
         self.redis_pool = None
         self._initialized = False
 
         # Message handlers
-        self.message_handlers: Dict[MessageType, Callable] = {
+        self.message_handlers: dict[MessageType, Callable] = {
             MessageType.AUTH: self._handle_auth_message,
             MessageType.PING: self._handle_ping_message,
             MessageType.DATA: self._handle_data_message,
@@ -210,7 +208,9 @@ class WebSocketAuthMiddleware:
         if self.config.allowed_origins:
             origin = websocket.headers.get("origin")
             if origin not in self.config.allowed_origins:
-                logger.warning(f"WebSocket connection rejected: invalid origin {origin}")
+                logger.warning(
+                    f"WebSocket connection rejected: invalid origin {origin}"
+                )
                 await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                 raise Exception("Invalid origin")
 
@@ -221,7 +221,7 @@ class WebSocketAuthMiddleware:
         connection = ConnectionInfo(
             websocket=websocket,
             connection_id=connection_id,
-            state=ConnectionState.CONNECTING
+            state=ConnectionState.CONNECTING,
         )
 
         self.connections[connection_id] = connection
@@ -290,8 +290,7 @@ class WebSocketAuthMiddleware:
 
             # Check rate limiting
             if await self.rate_limiter.check_rate_limit(
-                connection_id,
-                self.config.max_message_rate_per_minute
+                connection_id, self.config.max_message_rate_per_minute
             ):
                 await self._send_rate_limit_error(connection)
                 return False
@@ -316,7 +315,9 @@ class WebSocketAuthMiddleware:
             try:
                 message_type = MessageType(message_data["type"])
             except ValueError:
-                await self._send_error(connection, f"Unknown message type: {message_data['type']}")
+                await self._send_error(
+                    connection, f"Unknown message type: {message_data['type']}"
+                )
                 return False
 
             # Handle message based on type
@@ -324,7 +325,9 @@ class WebSocketAuthMiddleware:
             if handler:
                 return await handler(connection, message_data)
             else:
-                await self._send_error(connection, f"Unhandled message type: {message_type.value}")
+                await self._send_error(
+                    connection, f"Unhandled message type: {message_type.value}"
+                )
                 return False
 
         except Exception as e:
@@ -333,9 +336,7 @@ class WebSocketAuthMiddleware:
             return False
 
     async def _handle_auth_message(
-        self,
-        connection: ConnectionInfo,
-        message_data: Dict[str, Any]
+        self, connection: ConnectionInfo, message_data: dict[str, Any]
     ) -> bool:
         """Handle authentication message."""
         if connection.state != ConnectionState.AUTHENTICATING:
@@ -350,9 +351,7 @@ class WebSocketAuthMiddleware:
         try:
             # Validate JWT token
             payload = jwt.decode(
-                token,
-                self.config.jwt_secret,
-                algorithms=[self.config.jwt_algorithm]
+                token, self.config.jwt_secret, algorithms=[self.config.jwt_algorithm]
             )
 
             user_id = payload.get("user_id")
@@ -377,7 +376,9 @@ class WebSocketAuthMiddleware:
             self.user_connections[user_id].add(connection.connection_id)
 
             await self._send_auth_success(connection, user_id)
-            logger.info(f"WebSocket connection {connection.connection_id} authenticated for user {user_id}")
+            logger.info(
+                f"WebSocket connection {connection.connection_id} authenticated for user {user_id}"
+            )
 
             return True
 
@@ -389,21 +390,20 @@ class WebSocketAuthMiddleware:
             return False
 
     async def _handle_ping_message(
-        self,
-        connection: ConnectionInfo,
-        message_data: Dict[str, Any]
+        self, connection: ConnectionInfo, message_data: dict[str, Any]
     ) -> bool:
         """Handle ping message."""
-        await self._send_message(connection, {
-            "type": MessageType.PONG.value,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        await self._send_message(
+            connection,
+            {
+                "type": MessageType.PONG.value,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
         return True
 
     async def _handle_data_message(
-        self,
-        connection: ConnectionInfo,
-        message_data: Dict[str, Any]
+        self, connection: ConnectionInfo, message_data: dict[str, Any]
     ) -> bool:
         """Handle data message (application-specific)."""
         if connection.state != ConnectionState.AUTHENTICATED:
@@ -412,11 +412,14 @@ class WebSocketAuthMiddleware:
 
         # This would be handled by application-specific logic
         # For now, just acknowledge receipt
-        await self._send_message(connection, {
-            "type": "ack",
-            "message_id": message_data.get("id"),
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        await self._send_message(
+            connection,
+            {
+                "type": "ack",
+                "message_id": message_data.get("id"),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
 
         return True
 
@@ -427,39 +430,51 @@ class WebSocketAuthMiddleware:
 
     async def _send_auth_required(self, connection: ConnectionInfo):
         """Send authentication required message."""
-        await self._send_message(connection, {
-            "type": MessageType.AUTH.value,
-            "message": "Authentication required",
-            "timeout": self.config.auth_timeout_seconds
-        })
+        await self._send_message(
+            connection,
+            {
+                "type": MessageType.AUTH.value,
+                "message": "Authentication required",
+                "timeout": self.config.auth_timeout_seconds,
+            },
+        )
 
-    async def _send_auth_success(self, connection: ConnectionInfo, user_id: Optional[str]):
+    async def _send_auth_success(self, connection: ConnectionInfo, user_id: str | None):
         """Send authentication success message."""
-        await self._send_message(connection, {
-            "type": MessageType.AUTH_SUCCESS.value,
-            "user_id": user_id,
-            "connection_id": connection.connection_id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        await self._send_message(
+            connection,
+            {
+                "type": MessageType.AUTH_SUCCESS.value,
+                "user_id": user_id,
+                "connection_id": connection.connection_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
 
     async def _send_error(self, connection: ConnectionInfo, error_message: str):
         """Send error message."""
-        await self._send_message(connection, {
-            "type": MessageType.ERROR.value,
-            "error": error_message,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        await self._send_message(
+            connection,
+            {
+                "type": MessageType.ERROR.value,
+                "error": error_message,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
 
     async def _send_rate_limit_error(self, connection: ConnectionInfo):
         """Send rate limit error message."""
-        await self._send_message(connection, {
-            "type": MessageType.RATE_LIMIT.value,
-            "error": "Rate limit exceeded",
-            "retry_after": 60,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        await self._send_message(
+            connection,
+            {
+                "type": MessageType.RATE_LIMIT.value,
+                "error": "Rate limit exceeded",
+                "retry_after": 60,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
 
-    async def _send_message(self, connection: ConnectionInfo, message: Dict[str, Any]):
+    async def _send_message(self, connection: ConnectionInfo, message: dict[str, Any]):
         """Send message to WebSocket connection."""
         if connection.websocket.client_state != WebSocketState.CONNECTED:
             return
@@ -480,7 +495,7 @@ class WebSocketAuthMiddleware:
                 await connection.websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                 await self.disconnect(connection_id)
 
-    async def broadcast_to_user(self, user_id: str, message: Dict[str, Any]):
+    async def broadcast_to_user(self, user_id: str, message: dict[str, Any]):
         """
         Broadcast message to all connections for a user.
 
@@ -495,7 +510,9 @@ class WebSocketAuthMiddleware:
                 connection = self.connections[connection_id]
                 await self._send_message(connection, message)
 
-    async def broadcast_to_subscription(self, subscription: str, message: Dict[str, Any]):
+    async def broadcast_to_subscription(
+        self, subscription: str, message: dict[str, Any]
+    ):
         """
         Broadcast message to all connections subscribed to a topic.
 
@@ -548,10 +565,11 @@ class WebSocketAuthMiddleware:
         logger.info(f"Connection {connection_id} unsubscribed from {subscription}")
         return True
 
-    def get_connection_stats(self) -> Dict[str, Any]:
+    def get_connection_stats(self) -> dict[str, Any]:
         """Get WebSocket connection statistics."""
         authenticated_count = sum(
-            1 for conn in self.connections.values()
+            1
+            for conn in self.connections.values()
             if conn.state == ConnectionState.AUTHENTICATED
         )
 
@@ -561,11 +579,10 @@ class WebSocketAuthMiddleware:
             "unique_users": len(self.user_connections),
             "connections_by_state": {
                 state.value: sum(
-                    1 for conn in self.connections.values()
-                    if conn.state == state
+                    1 for conn in self.connections.values() if conn.state == state
                 )
                 for state in ConnectionState
-            }
+            },
         }
 
     async def cleanup_inactive_connections(self, max_idle_minutes: int = 30):
@@ -579,22 +596,29 @@ class WebSocketAuthMiddleware:
 
         for connection_id in inactive_connections:
             connection = self.connections[connection_id]
-            await self._send_message(connection, {
-                "type": MessageType.DISCONNECT.value,
-                "reason": "Inactive connection cleanup"
-            })
+            await self._send_message(
+                connection,
+                {
+                    "type": MessageType.DISCONNECT.value,
+                    "reason": "Inactive connection cleanup",
+                },
+            )
             await connection.websocket.close(code=status.WS_1001_GOING_AWAY)
             await self.disconnect(connection_id)
 
         if inactive_connections:
-            logger.info(f"Cleaned up {len(inactive_connections)} inactive WebSocket connections")
+            logger.info(
+                f"Cleaned up {len(inactive_connections)} inactive WebSocket connections"
+            )
 
 
 # Global middleware instance
-_ws_auth_middleware: Optional[WebSocketAuthMiddleware] = None
+_ws_auth_middleware: WebSocketAuthMiddleware | None = None
 
 
-def get_websocket_auth_middleware(config: Optional[WebSocketConfig] = None) -> WebSocketAuthMiddleware:
+def get_websocket_auth_middleware(
+    config: WebSocketConfig | None = None,
+) -> WebSocketAuthMiddleware:
     """Get global WebSocket auth middleware instance."""
     global _ws_auth_middleware
 

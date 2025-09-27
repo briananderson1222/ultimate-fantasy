@@ -10,18 +10,17 @@ Provides comprehensive authentication and authorization features:
 - Security headers
 """
 
-import time
-import hashlib
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set
+import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from functools import wraps
+from typing import Any
 
-from fastapi import Request, Response, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from starlette.middleware.base import BaseHTTPMiddleware
 import jwt
+from fastapi import HTTPException, Request, Response, status
+from fastapi.security import HTTPBearer
+from starlette.middleware.base import BaseHTTPMiddleware
 
 try:
     from infrastructure.cache.redis_pool import get_redis_pool
@@ -32,6 +31,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 logger = get_logger(__name__)
@@ -40,6 +40,7 @@ logger = get_logger(__name__)
 @dataclass
 class RateLimitRule:
     """Rate limiting rule configuration."""
+
     requests_per_minute: int
     requests_per_hour: int
     requests_per_day: int
@@ -53,12 +54,13 @@ class RateLimitRule:
 @dataclass
 class AuthConfig:
     """Authentication configuration."""
+
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     require_https: bool = True
-    allow_anonymous_routes: Set[str] = None
+    allow_anonymous_routes: set[str] = None
     rate_limit_enabled: bool = True
     default_rate_limit: RateLimitRule = None
 
@@ -71,7 +73,7 @@ class AuthConfig:
                 "/openapi.json",
                 "/auth/login",
                 "/auth/register",
-                "/auth/refresh"
+                "/auth/refresh",
             }
 
         if self.default_rate_limit is None:
@@ -79,7 +81,7 @@ class AuthConfig:
                 requests_per_minute=60,
                 requests_per_hour=1000,
                 requests_per_day=10000,
-                burst_limit=10
+                burst_limit=10,
             )
 
 
@@ -88,7 +90,7 @@ class TokenBlacklist:
 
     def __init__(self, redis_pool=None):
         self.redis_pool = redis_pool
-        self._memory_blacklist: Set[str] = set()
+        self._memory_blacklist: set[str] = set()
 
     async def add_token(self, jti: str, exp: datetime):
         """Add token to blacklist."""
@@ -98,7 +100,7 @@ class TokenBlacklist:
                 "auth",
                 f"blacklist:{jti}",
                 True,
-                ttl=int((exp - datetime.utcnow()).total_seconds())
+                ttl=int((exp - datetime.utcnow()).total_seconds()),
             )
         else:
             # Fallback to memory (not recommended for production)
@@ -126,17 +128,15 @@ class RateLimiter:
 
     def __init__(self, redis_pool=None):
         self.redis_pool = redis_pool
-        self._memory_counters: Dict[str, Dict[str, Any]] = {}
+        self._memory_counters: dict[str, dict[str, Any]] = {}
 
     def _get_rate_limit_key(self, identifier: str, window: str) -> str:
         """Generate rate limit key."""
         return f"rate_limit:{identifier}:{window}"
 
     async def is_rate_limited(
-        self,
-        identifier: str,
-        rule: RateLimitRule
-    ) -> tuple[bool, Dict[str, Any]]:
+        self, identifier: str, rule: RateLimitRule
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Check if request should be rate limited.
 
@@ -147,14 +147,14 @@ class RateLimiter:
         windows = {
             "minute": (60, rule.requests_per_minute),
             "hour": (3600, rule.requests_per_hour),
-            "day": (86400, rule.requests_per_day)
+            "day": (86400, rule.requests_per_day),
         }
 
         rate_info = {
             "limit": rule.requests_per_minute,
             "remaining": rule.requests_per_minute,
             "reset": int((now + timedelta(minutes=1)).timestamp()),
-            "retry_after": None
+            "retry_after": None,
         }
 
         for window_name, (window_seconds, limit) in windows.items():
@@ -164,11 +164,15 @@ class RateLimiter:
             if self.redis_pool:
                 current_count = await self._redis_rate_limit_check(key, window_seconds)
             else:
-                current_count = self._memory_rate_limit_check(key, window_start, window_seconds)
+                current_count = self._memory_rate_limit_check(
+                    key, window_start, window_seconds
+                )
 
             if current_count > limit:
                 rate_info["remaining"] = 0
-                rate_info["retry_after"] = window_seconds - (int(now.timestamp()) - window_start)
+                rate_info["retry_after"] = window_seconds - (
+                    int(now.timestamp()) - window_start
+                )
                 return True, rate_info
 
             # Update rate info for minute window (most restrictive for display)
@@ -192,20 +196,21 @@ class RateLimiter:
             logger.error(f"Redis rate limit check failed: {e}")
             return 0  # Fail open
 
-    def _memory_rate_limit_check(self, key: str, window_start: int, window_seconds: int) -> int:
+    def _memory_rate_limit_check(
+        self, key: str, window_start: int, window_seconds: int
+    ) -> int:
         """Memory-based rate limit checking (fallback)."""
         now = time.time()
 
         # Clean up old entries
         self._memory_counters = {
-            k: v for k, v in self._memory_counters.items()
-            if v["expires"] > now
+            k: v for k, v in self._memory_counters.items() if v["expires"] > now
         }
 
         if key not in self._memory_counters:
             self._memory_counters[key] = {
                 "count": 0,
-                "expires": window_start + window_seconds
+                "expires": window_start + window_seconds,
             }
 
         self._memory_counters[key]["count"] += 1
@@ -226,7 +231,7 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
         self.rate_limiter = None
 
         # User-specific rate limits
-        self.user_rate_limits: Dict[str, RateLimitRule] = {}
+        self.user_rate_limits: dict[str, RateLimitRule] = {}
 
         # Initialize async components
         self._initialized = False
@@ -257,10 +262,10 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
         try:
             # Check HTTPS requirement
             if self.config.require_https and request.url.scheme != "https":
-                if not request.url.hostname in ["localhost", "127.0.0.1"]:
+                if request.url.hostname not in ["localhost", "127.0.0.1"]:
                     raise HTTPException(
                         status_code=status.HTTP_426_UPGRADE_REQUIRED,
-                        detail="HTTPS required"
+                        detail="HTTPS required",
                     )
 
             # Skip auth for anonymous routes
@@ -293,7 +298,7 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
             logger.error(f"Auth middleware error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error"
+                detail="Internal server error",
             )
 
     def _is_anonymous_route(self, path: str) -> bool:
@@ -310,7 +315,7 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/auth/",
             "/static/",
-            "/favicon.ico"
+            "/favicon.ico",
         ]
 
         return any(path.startswith(pattern) for pattern in anonymous_patterns)
@@ -324,7 +329,9 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
         rule = self._get_rate_limit_rule(request, identifier)
 
         # Check rate limit
-        is_limited, rate_info = await self.rate_limiter.is_rate_limited(identifier, rule)
+        is_limited, rate_info = await self.rate_limiter.is_rate_limited(
+            identifier, rule
+        )
 
         # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(rate_info["limit"])
@@ -340,8 +347,8 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
                 detail={
                     "error": "Rate limit exceeded",
                     "limit": rate_info["limit"],
-                    "retry_after": rate_info["retry_after"]
-                }
+                    "retry_after": rate_info["retry_after"],
+                },
             )
 
     def _get_rate_limit_identifier(self, request: Request) -> str:
@@ -385,19 +392,19 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
                     requests_per_minute=300,
                     requests_per_hour=5000,
                     requests_per_day=50000,
-                    burst_limit=50
+                    burst_limit=50,
                 )
             elif user_role == "premium":
                 return RateLimitRule(
                     requests_per_minute=120,
                     requests_per_hour=2000,
                     requests_per_day=20000,
-                    burst_limit=20
+                    burst_limit=20,
                 )
 
         return self.config.default_rate_limit
 
-    async def _authenticate_request(self, request: Request) -> Dict[str, Any]:
+    async def _authenticate_request(self, request: Request) -> dict[str, Any]:
         """Authenticate request and return user info."""
         # Get authorization header
         authorization = request.headers.get("Authorization")
@@ -405,7 +412,7 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing authorization header",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         # Extract token
@@ -413,7 +420,7 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authorization header format",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         token = authorization[7:]  # Remove "Bearer " prefix
@@ -421,21 +428,19 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
         # Validate token
         try:
             payload = jwt.decode(
-                token,
-                self.config.jwt_secret,
-                algorithms=[self.config.jwt_algorithm]
+                token, self.config.jwt_secret, algorithms=[self.config.jwt_algorithm]
             )
         except jwt.ExpiredSignatureError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
         except jwt.InvalidTokenError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         # Check token blacklist
@@ -444,7 +449,7 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         # Validate required claims
@@ -454,22 +459,24 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail=f"Missing required claim: {claim}",
-                    headers={"WWW-Authenticate": "Bearer"}
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
 
         return payload
 
     def _add_security_headers(self, response: Response):
         """Add security headers to response."""
-        response.headers.update({
-            "X-Content-Type-Options": "nosniff",
-            "X-Frame-Options": "DENY",
-            "X-XSS-Protection": "1; mode=block",
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Content-Security-Policy": "default-src 'self'",
-            "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
-        })
+        response.headers.update(
+            {
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "X-XSS-Protection": "1; mode=block",
+                "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+                "Content-Security-Policy": "default-src 'self'",
+                "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+            }
+        )
 
     async def revoke_token(self, token: str):
         """Revoke a token by adding it to blacklist."""
@@ -478,7 +485,9 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
                 token,
                 self.config.jwt_secret,
                 algorithms=[self.config.jwt_algorithm],
-                options={"verify_exp": False}  # Don't verify expiration for blacklisting
+                options={
+                    "verify_exp": False
+                },  # Don't verify expiration for blacklisting
             )
 
             jti = payload.get("jti")
@@ -496,10 +505,12 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
         self.user_rate_limits[user_id] = rule
         logger.info(f"Custom rate limit set for user {user_id}")
 
-    async def get_rate_limit_status(self, identifier: str) -> Dict[str, Any]:
+    async def get_rate_limit_status(self, identifier: str) -> dict[str, Any]:
         """Get current rate limit status for identifier."""
         rule = self.config.default_rate_limit
-        is_limited, rate_info = await self.rate_limiter.is_rate_limited(identifier, rule)
+        is_limited, rate_info = await self.rate_limiter.is_rate_limited(
+            identifier, rule
+        )
 
         return {
             "identifier": identifier,
@@ -509,25 +520,26 @@ class EnhancedAuthMiddleware(BaseHTTPMiddleware):
                 "requests_per_minute": rule.requests_per_minute,
                 "requests_per_hour": rule.requests_per_hour,
                 "requests_per_day": rule.requests_per_day,
-                "burst_limit": rule.burst_limit
-            }
+                "burst_limit": rule.burst_limit,
+            },
         }
 
 
-def require_auth(roles: Optional[List[str]] = None):
+def require_auth(roles: list[str] | None = None):
     """
     Decorator to require authentication and optionally specific roles.
 
     Args:
         roles: List of required roles (optional)
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(request: Request, *args, **kwargs):
             if not getattr(request.state, "authenticated", False):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required"
+                    detail="Authentication required",
                 )
 
             if roles:
@@ -535,37 +547,41 @@ def require_auth(roles: Optional[List[str]] = None):
                 if user_role not in roles:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Insufficient permissions"
+                        detail="Insufficient permissions",
                     )
 
             return await func(request, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
-def require_scope(scopes: List[str]):
+def require_scope(scopes: list[str]):
     """
     Decorator to require specific OAuth scopes.
 
     Args:
         scopes: List of required scopes
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(request: Request, *args, **kwargs):
             if not getattr(request.state, "authenticated", False):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required"
+                    detail="Authentication required",
                 )
 
             user_scopes = request.state.user.get("scopes", [])
             if not all(scope in user_scopes for scope in scopes):
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Insufficient scopes"
+                    status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient scopes"
                 )
 
             return await func(request, *args, **kwargs)
+
         return wrapper
+
     return decorator

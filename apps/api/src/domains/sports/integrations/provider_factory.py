@@ -4,14 +4,17 @@ Sports data provider factory.
 Creates and configures sports data providers based on configuration.
 """
 
-import os
 import logging
-from typing import List, Optional
+import os
 
 from domains.shared.enums import DataProvider
-from domains.sports.services.sports_data_service import SportsDataProvider, MockSportsDataProvider
-from .espn_provider import ESPNSportsProvider
+from domains.sports.services.sports_data_service import (
+    MockSportsDataProvider,
+    SportsDataProvider,
+)
+
 from .athletic_provider import AthleticSportsProvider
+from .espn_provider import ESPNSportsProvider
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +44,9 @@ class ProviderFactory:
         elif provider == DataProvider.THE_ATHLETIC:
             api_key = kwargs.get("api_key") or os.getenv("ATHLETIC_API_KEY")
             if not api_key:
-                logger.warning("The Athletic API key not provided, falling back to mock provider")
+                logger.warning(
+                    "The Athletic API key not provided, falling back to mock provider"
+                )
                 return MockSportsDataProvider()
             return AthleticSportsProvider(api_key=api_key)
 
@@ -54,9 +59,9 @@ class ProviderFactory:
     @staticmethod
     def create_providers(
         primary_provider: DataProvider = DataProvider.ESPN,
-        fallback_providers: Optional[List[DataProvider]] = None,
-        **provider_configs
-    ) -> List[SportsDataProvider]:
+        fallback_providers: list[DataProvider] | None = None,
+        **provider_configs,
+    ) -> list[SportsDataProvider]:
         """
         Create a list of providers with primary and fallbacks.
 
@@ -80,7 +85,9 @@ class ProviderFactory:
             providers.append(primary)
             logger.info(f"Created primary provider: {primary_provider.value}")
         except Exception as e:
-            logger.error(f"Failed to create primary provider {primary_provider.value}: {e}")
+            logger.error(
+                f"Failed to create primary provider {primary_provider.value}: {e}"
+            )
 
         # Create fallback providers
         for fallback in fallback_providers:
@@ -93,7 +100,9 @@ class ProviderFactory:
                 providers.append(fallback_provider)
                 logger.info(f"Created fallback provider: {fallback.value}")
             except Exception as e:
-                logger.warning(f"Failed to create fallback provider {fallback.value}: {e}")
+                logger.warning(
+                    f"Failed to create fallback provider {fallback.value}: {e}"
+                )
 
         # Ensure we always have at least the mock provider
         if not providers:
@@ -103,7 +112,7 @@ class ProviderFactory:
         return providers
 
     @staticmethod
-    def get_available_providers() -> List[DataProvider]:
+    def get_available_providers() -> list[DataProvider]:
         """
         Get list of available providers based on environment configuration.
 
@@ -149,7 +158,7 @@ class ProviderFactory:
             return False
 
     @staticmethod
-    async def health_check_providers(providers: List[SportsDataProvider]) -> dict:
+    async def health_check_providers(providers: list[SportsDataProvider]) -> dict:
         """
         Check health status of all providers.
 
@@ -179,10 +188,10 @@ class ProviderFactory:
 
 
 def configure_sports_providers(
-    primary_provider: Optional[str] = None,
-    athletic_api_key: Optional[str] = None,
-    espn_api_key: Optional[str] = None
-) -> List[SportsDataProvider]:
+    primary_provider: str | None = None,
+    athletic_api_key: str | None = None,
+    espn_api_key: str | None = None,
+) -> list[SportsDataProvider]:
     """
     Configure sports data providers based on environment and parameters.
 
@@ -197,12 +206,11 @@ def configure_sports_providers(
     # Determine primary provider
     if primary_provider:
         primary = DataProvider(primary_provider.upper())
+    # Auto-detect based on available configuration
+    elif athletic_api_key or os.getenv("ATHLETIC_API_KEY"):
+        primary = DataProvider.THE_ATHLETIC
     else:
-        # Auto-detect based on available configuration
-        if athletic_api_key or os.getenv("ATHLETIC_API_KEY"):
-            primary = DataProvider.THE_ATHLETIC
-        else:
-            primary = DataProvider.ESPN
+        primary = DataProvider.ESPN
 
     # Configure provider-specific settings
     provider_configs = {}
@@ -219,8 +227,7 @@ def configure_sports_providers(
 
     # Create providers
     providers = ProviderFactory.create_providers(
-        primary_provider=primary,
-        **provider_configs
+        primary_provider=primary, **provider_configs
     )
 
     logger.info(f"Configured {len(providers)} sports data providers")

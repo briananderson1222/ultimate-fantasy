@@ -10,14 +10,15 @@ Provides intelligent HTTP response caching with:
 """
 
 import asyncio
+import gzip
 import hashlib
 import json
 import time
-import gzip
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set, Callable, Union
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -31,6 +32,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 logger = get_logger(__name__)
@@ -38,6 +40,7 @@ logger = get_logger(__name__)
 
 class CacheStrategy(Enum):
     """Cache strategy types."""
+
     NO_CACHE = "no_cache"
     MEMORY_ONLY = "memory_only"
     REDIS_ONLY = "redis_only"
@@ -46,6 +49,7 @@ class CacheStrategy(Enum):
 
 class CacheControl(Enum):
     """Cache control directives."""
+
     NO_CACHE = "no-cache"
     NO_STORE = "no-store"
     PRIVATE = "private"
@@ -56,18 +60,19 @@ class CacheControl(Enum):
 @dataclass
 class CacheRule:
     """Cache rule configuration."""
+
     path_pattern: str
-    methods: Set[str] = field(default_factory=lambda: {"GET"})
+    methods: set[str] = field(default_factory=lambda: {"GET"})
     ttl_seconds: int = 300
     strategy: CacheStrategy = CacheStrategy.MULTI_TIER
-    cache_control: List[CacheControl] = field(default_factory=list)
+    cache_control: list[CacheControl] = field(default_factory=list)
 
     # Conditional caching
-    cache_if: Optional[Callable[[Request], bool]] = None
-    skip_if: Optional[Callable[[Request], bool]] = None
+    cache_if: Callable[[Request], bool] | None = None
+    skip_if: Callable[[Request], bool] | None = None
 
     # Response filtering
-    cache_status_codes: Set[int] = field(default_factory=lambda: {200})
+    cache_status_codes: set[int] = field(default_factory=lambda: {200})
     max_response_size: int = 1024 * 1024  # 1MB
     min_response_size: int = 0
 
@@ -83,11 +88,12 @@ class CacheRule:
 @dataclass
 class CacheEntry:
     """Cache entry with metadata."""
+
     key: str
     content: bytes
     content_type: str
     status_code: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     created_at: datetime
     expires_at: datetime
     access_count: int = 0
@@ -99,6 +105,7 @@ class CacheEntry:
 @dataclass
 class CacheMetrics:
     """Cache performance metrics."""
+
     hits: int = 0
     misses: int = 0
     stores: int = 0
@@ -123,11 +130,11 @@ class MemoryCache:
     def __init__(self, max_size: int = 100, max_memory_mb: int = 100):
         self.max_size = max_size
         self.max_memory_bytes = max_memory_mb * 1024 * 1024
-        self.cache: Dict[str, CacheEntry] = {}
-        self.access_order: List[str] = []
+        self.cache: dict[str, CacheEntry] = {}
+        self.access_order: list[str] = []
         self.current_size = 0
 
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get entry from memory cache."""
         if key not in self.cache:
             return None
@@ -187,8 +194,10 @@ class MemoryCache:
     async def _ensure_capacity(self, new_entry_size: int):
         """Ensure cache has capacity for new entry."""
         # Check size limit
-        while (len(self.cache) >= self.max_size or
-               self.current_size + new_entry_size > self.max_memory_bytes):
+        while (
+            len(self.cache) >= self.max_size
+            or self.current_size + new_entry_size > self.max_memory_bytes
+        ):
 
             if not self.access_order:
                 break
@@ -197,14 +206,14 @@ class MemoryCache:
             lru_key = self.access_order[0]
             await self.delete(lru_key)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get memory cache statistics."""
         return {
             "entries": len(self.cache),
             "size_bytes": self.current_size,
             "max_size": self.max_size,
             "max_memory_bytes": self.max_memory_bytes,
-            "memory_usage_percent": (self.current_size / self.max_memory_bytes) * 100
+            "memory_usage_percent": (self.current_size / self.max_memory_bytes) * 100,
         }
 
 
@@ -219,7 +228,7 @@ class RedisCache:
         """Make Redis key with prefix."""
         return f"{self.key_prefix}:{key}"
 
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get entry from Redis cache."""
         if not self.redis_pool:
             return None
@@ -236,16 +245,22 @@ class RedisCache:
 
             entry = CacheEntry(
                 key=entry_data["key"],
-                content=entry_data["content"].encode() if isinstance(entry_data["content"], str) else entry_data["content"],
+                content=(
+                    entry_data["content"].encode()
+                    if isinstance(entry_data["content"], str)
+                    else entry_data["content"]
+                ),
                 content_type=entry_data["content_type"],
                 status_code=entry_data["status_code"],
                 headers=entry_data["headers"],
                 created_at=datetime.fromisoformat(entry_data["created_at"]),
                 expires_at=datetime.fromisoformat(entry_data["expires_at"]),
                 access_count=entry_data.get("access_count", 0),
-                last_accessed=datetime.fromisoformat(entry_data.get("last_accessed", datetime.utcnow().isoformat())),
+                last_accessed=datetime.fromisoformat(
+                    entry_data.get("last_accessed", datetime.utcnow().isoformat())
+                ),
                 compressed=entry_data.get("compressed", False),
-                size=entry_data.get("size", 0)
+                size=entry_data.get("size", 0),
             )
 
             # Check expiration
@@ -274,7 +289,11 @@ class RedisCache:
             # Serialize entry
             entry_data = {
                 "key": entry.key,
-                "content": entry.content.decode() if isinstance(entry.content, bytes) else entry.content,
+                "content": (
+                    entry.content.decode()
+                    if isinstance(entry.content, bytes)
+                    else entry.content
+                ),
                 "content_type": entry.content_type,
                 "status_code": entry.status_code,
                 "headers": entry.headers,
@@ -283,13 +302,11 @@ class RedisCache:
                 "access_count": entry.access_count,
                 "last_accessed": entry.last_accessed.isoformat(),
                 "compressed": entry.compressed,
-                "size": entry.size
+                "size": entry.size,
             }
 
             await self.redis_pool.redis_client.setex(
-                redis_key,
-                ttl,
-                json.dumps(entry_data)
+                redis_key, ttl, json.dumps(entry_data)
             )
 
         except Exception as e:
@@ -332,11 +349,11 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        cache_rules: List[CacheRule],
+        cache_rules: list[CacheRule],
         memory_cache_size: int = 100,
         memory_cache_mb: int = 100,
         default_ttl: int = 300,
-        enable_redis: bool = True
+        enable_redis: bool = True,
     ):
         super().__init__(app)
         self.cache_rules = {rule.path_pattern: rule for rule in cache_rules}
@@ -345,14 +362,14 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 
         # Initialize caches
         self.memory_cache = MemoryCache(memory_cache_size, memory_cache_mb)
-        self.redis_cache: Optional[RedisCache] = None
+        self.redis_cache: RedisCache | None = None
 
         # Metrics
         self.metrics = CacheMetrics()
 
         # Background tasks
-        self._cleanup_task: Optional[asyncio.Task] = None
-        self._warming_task: Optional[asyncio.Task] = None
+        self._cleanup_task: asyncio.Task | None = None
+        self._warming_task: asyncio.Task | None = None
 
         # Initialized flag
         self._initialized = False
@@ -422,7 +439,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    def _find_cache_rule(self, request: Request) -> Optional[CacheRule]:
+    def _find_cache_rule(self, request: Request) -> CacheRule | None:
         """Find matching cache rule for request."""
         import re
 
@@ -447,10 +464,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 
         # Check cache-control headers
         cache_control = request.headers.get("cache-control", "")
-        if "no-cache" in cache_control or "no-store" in cache_control:
-            return False
-
-        return True
+        return not ("no-cache" in cache_control or "no-store" in cache_control)
 
     def _should_cache_response(self, response: Response, rule: CacheRule) -> bool:
         """Check if response should be cached."""
@@ -467,10 +481,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 
         # Check cache-control headers
         cache_control = response.headers.get("cache-control", "")
-        if "no-cache" in cache_control or "no-store" in cache_control or "private" in cache_control:
-            return False
-
-        return True
+        return not ("no-cache" in cache_control or "no-store" in cache_control or "private" in cache_control)
 
     def _generate_cache_key(self, request: Request) -> str:
         """Generate cache key for request."""
@@ -495,7 +506,9 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
         key_string = "|".join(key_parts)
         return hashlib.sha256(key_string.encode()).hexdigest()
 
-    async def _get_from_cache(self, key: str, strategy: CacheStrategy) -> Optional[CacheEntry]:
+    async def _get_from_cache(
+        self, key: str, strategy: CacheStrategy
+    ) -> CacheEntry | None:
         """Get entry from cache based on strategy."""
         if strategy == CacheStrategy.NO_CACHE:
             return None
@@ -507,7 +520,10 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                 return entry
 
         # Try Redis cache
-        if strategy in [CacheStrategy.REDIS_ONLY, CacheStrategy.MULTI_TIER] and self.redis_cache:
+        if (
+            strategy in [CacheStrategy.REDIS_ONLY, CacheStrategy.MULTI_TIER]
+            and self.redis_cache
+        ):
             entry = await self.redis_cache.get(key)
             if entry and strategy == CacheStrategy.MULTI_TIER:
                 # Store in memory cache for faster access
@@ -517,11 +533,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
         return None
 
     async def _store_in_cache(
-        self,
-        key: str,
-        request: Request,
-        response: Response,
-        rule: CacheRule
+        self, key: str, request: Request, response: Response, rule: CacheRule
     ):
         """Store response in cache."""
         try:
@@ -537,7 +549,10 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 
             # Compress if needed
             compressed = False
-            if rule.compress_response and len(response_body) >= rule.compression_threshold:
+            if (
+                rule.compress_response
+                and len(response_body) >= rule.compression_threshold
+            ):
                 response_body = gzip.compress(response_body)
                 compressed = True
 
@@ -551,14 +566,17 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                 created_at=datetime.utcnow(),
                 expires_at=datetime.utcnow() + timedelta(seconds=rule.ttl_seconds),
                 compressed=compressed,
-                size=len(response_body)
+                size=len(response_body),
             )
 
             # Store based on strategy
             if rule.strategy in [CacheStrategy.MEMORY_ONLY, CacheStrategy.MULTI_TIER]:
                 await self.memory_cache.set(key, entry)
 
-            if rule.strategy in [CacheStrategy.REDIS_ONLY, CacheStrategy.MULTI_TIER] and self.redis_cache:
+            if (
+                rule.strategy in [CacheStrategy.REDIS_ONLY, CacheStrategy.MULTI_TIER]
+                and self.redis_cache
+            ):
                 await self.redis_cache.set(key, entry, rule.ttl_seconds)
 
             # Update metrics
@@ -589,11 +607,13 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             content=content,
             status_code=entry.status_code,
             headers=entry.headers,
-            media_type=entry.content_type
+            media_type=entry.content_type,
         )
 
         # Add cache-specific headers
-        response.headers["Age"] = str(int((datetime.utcnow() - entry.created_at).total_seconds()))
+        response.headers["Age"] = str(
+            int((datetime.utcnow() - entry.created_at).total_seconds())
+        )
         response.headers["X-Cache-Created"] = entry.created_at.isoformat()
         response.headers["X-Cache-Expires"] = entry.expires_at.isoformat()
 
@@ -605,9 +625,8 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             self.metrics.avg_hit_time_ms = hit_time
         else:
             self.metrics.avg_hit_time_ms = (
-                (self.metrics.avg_hit_time_ms * (self.metrics.hits - 1) + hit_time) /
-                self.metrics.hits
-            )
+                self.metrics.avg_hit_time_ms * (self.metrics.hits - 1) + hit_time
+            ) / self.metrics.hits
 
     def _update_avg_miss_time(self, miss_time: float):
         """Update average miss time."""
@@ -615,9 +634,8 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             self.metrics.avg_miss_time_ms = miss_time
         else:
             self.metrics.avg_miss_time_ms = (
-                (self.metrics.avg_miss_time_ms * (self.metrics.misses - 1) + miss_time) /
-                self.metrics.misses
-            )
+                self.metrics.avg_miss_time_ms * (self.metrics.misses - 1) + miss_time
+            ) / self.metrics.misses
 
     def _update_avg_store_time(self, store_time: float):
         """Update average store time."""
@@ -625,9 +643,8 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             self.metrics.avg_store_time_ms = store_time
         else:
             self.metrics.avg_store_time_ms = (
-                (self.metrics.avg_store_time_ms * (self.metrics.stores - 1) + store_time) /
-                self.metrics.stores
-            )
+                self.metrics.avg_store_time_ms * (self.metrics.stores - 1) + store_time
+            ) / self.metrics.stores
 
     async def _cleanup_loop(self):
         """Background cleanup loop."""
@@ -658,7 +675,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 logger.error(f"Cache warming error: {e}")
 
-    async def invalidate_cache(self, pattern: Optional[str] = None):
+    async def invalidate_cache(self, pattern: str | None = None):
         """Invalidate cache entries matching pattern."""
         if pattern:
             # Invalidate specific pattern
@@ -670,7 +687,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             if self.redis_cache:
                 await self.redis_cache.clear()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         hit_rate = 0.0
         if self.metrics.hits + self.metrics.misses > 0:
@@ -689,5 +706,5 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             "avg_miss_time_ms": self.metrics.avg_miss_time_ms,
             "avg_store_time_ms": self.metrics.avg_store_time_ms,
             "memory_cache": memory_stats,
-            "redis_enabled": self.redis_cache is not None
+            "redis_enabled": self.redis_cache is not None,
         }

@@ -2,9 +2,9 @@
 Draft actions API endpoints for starting drafts and making picks.
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -12,19 +12,20 @@ from pydantic import BaseModel, Field
 from api.middleware.auth import get_current_user
 from domains.users.models.user import User
 
-
 router = APIRouter(prefix="/api/v1/drafts", tags=["drafts"])
 
 
 class DraftStartRequest(BaseModel):
     """Request to start a draft."""
-    draft_settings: Optional[Dict[str, Any]] = None
+
+    draft_settings: dict[str, Any] | None = None
     timer_seconds: int = Field(default=120, ge=30, le=600)
     auto_draft_enabled: bool = True
 
 
 class DraftStartResponse(BaseModel):
     """Response when starting a draft."""
+
     draft_id: str
     status: str
     started_at: datetime
@@ -35,12 +36,14 @@ class DraftStartResponse(BaseModel):
 
 class DraftPickRequest(BaseModel):
     """Request to make a draft pick."""
+
     player_id: str
-    position: Optional[str] = None
+    position: str | None = None
 
 
 class DraftPickResponse(BaseModel):
     """Response after making a draft pick."""
+
     pick_id: str
     draft_id: str
     team_id: str
@@ -50,19 +53,20 @@ class DraftPickResponse(BaseModel):
     pick_number: int
     round_number: int
     picked_at: datetime
-    next_pick_team_id: Optional[str] = None
-    time_remaining: Optional[int] = None
+    next_pick_team_id: str | None = None
+    time_remaining: int | None = None
 
 
 class DraftStatus(BaseModel):
     """Current draft status."""
+
     draft_id: str
     status: str
     current_pick: int
     current_round: int
     total_rounds: int
-    current_team_id: Optional[str]
-    time_remaining: Optional[int]
+    current_team_id: str | None
+    time_remaining: int | None
     picks_made: int
     total_picks: int
 
@@ -87,8 +91,7 @@ async def start_draft(
     # Mock validation - would check if user is commissioner and draft is scheduled
     if not draft_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Draft ID is required"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Draft ID is required"
         )
 
     # Mock implementation - would interact with draft service
@@ -98,7 +101,7 @@ async def start_draft(
         started_at=datetime.utcnow(),
         current_pick=1,
         current_round=1,
-        timer_seconds=request.timer_seconds
+        timer_seconds=request.timer_seconds,
     )
 
     return draft_start_response
@@ -126,7 +129,7 @@ async def make_draft_pick(
     if not draft_id or not request.player_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Draft ID and Player ID are required"
+            detail="Draft ID and Player ID are required",
         )
 
     # Mock implementation - would interact with draft service
@@ -141,7 +144,7 @@ async def make_draft_pick(
         round_number=1,
         picked_at=datetime.utcnow(),
         next_pick_team_id=str(uuid.uuid4()),  # Would determine next team
-        time_remaining=120
+        time_remaining=120,
     )
 
     return pick_response
@@ -164,17 +167,17 @@ async def get_draft_status(
         current_team_id=str(uuid.uuid4()),
         time_remaining=95,
         picks_made=4,
-        total_picks=192  # 12 teams * 16 rounds
+        total_picks=192,  # 12 teams * 16 rounds
     )
 
 
-@router.get("/{draft_id}/picks", response_model=List[DraftPickResponse])
+@router.get("/{draft_id}/picks", response_model=list[DraftPickResponse])
 async def get_draft_picks(
     draft_id: str,
-    round_number: Optional[int] = None,
-    team_id: Optional[str] = None,
+    round_number: int | None = None,
+    team_id: str | None = None,
     current_user: User = Depends(get_current_user),
-) -> List[DraftPickResponse]:
+) -> list[DraftPickResponse]:
     """Get all picks made in the draft, optionally filtered."""
 
     # Mock implementation
@@ -190,7 +193,7 @@ async def get_draft_picks(
             round_number=1,
             picked_at=datetime.utcnow(),
             next_pick_team_id=None,
-            time_remaining=None
+            time_remaining=None,
         ),
         DraftPickResponse(
             pick_id=str(uuid.uuid4()),
@@ -203,8 +206,8 @@ async def get_draft_picks(
             round_number=1,
             picked_at=datetime.utcnow(),
             next_pick_team_id=None,
-            time_remaining=None
-        )
+            time_remaining=None,
+        ),
     ]
 
     # Apply filters
@@ -220,7 +223,7 @@ async def get_draft_picks(
 async def pause_draft(
     draft_id: str,
     current_user: User = Depends(get_current_user),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Pause an active draft (commissioner only)."""
 
     # Mock implementation
@@ -231,7 +234,7 @@ async def pause_draft(
 async def resume_draft(
     draft_id: str,
     current_user: User = Depends(get_current_user),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Resume a paused draft (commissioner only)."""
 
     # Mock implementation
@@ -243,11 +246,11 @@ async def enable_autopick(
     draft_id: str,
     enabled: bool = True,
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Enable or disable autopick for current user."""
 
     # Mock implementation
     return {
         "autopick_enabled": enabled,
-        "message": f"Autopick {'enabled' if enabled else 'disabled'} for your team"
+        "message": f"Autopick {'enabled' if enabled else 'disabled'} for your team",
     }

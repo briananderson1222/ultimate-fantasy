@@ -12,8 +12,6 @@ Provides detailed player information with:
 - Advanced analytics and insights
 """
 
-from typing import Dict, List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -27,6 +25,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -37,35 +36,35 @@ router = APIRouter()
 class PlayerStats(BaseModel):
     """Player statistics model."""
 
-    season: Optional[str] = None
-    week: Optional[int] = None
+    season: str | None = None
+    week: int | None = None
     games_played: int = 0
-    stats: Dict[str, float] = Field(default_factory=dict)
+    stats: dict[str, float] = Field(default_factory=dict)
     fantasy_points: float = 0.0
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
 
 class PlayerProjections(BaseModel):
     """Player projections model."""
 
-    week: Optional[int] = None
-    season: Optional[str] = None
-    projected_stats: Dict[str, float] = Field(default_factory=dict)
+    week: int | None = None
+    season: str | None = None
+    projected_stats: dict[str, float] = Field(default_factory=dict)
     projected_fantasy_points: float = 0.0
     confidence: float = 0.0
     ceiling: float = 0.0
     floor: float = 0.0
-    last_updated: Optional[str] = None
+    last_updated: str | None = None
 
 
 class InjuryDetails(BaseModel):
     """Player injury details model."""
 
     status: str = "healthy"
-    description: Optional[str] = None
-    severity: Optional[str] = None
-    return_date: Optional[str] = None
-    last_updated: Optional[str] = None
+    description: str | None = None
+    severity: str | None = None
+    return_date: str | None = None
+    last_updated: str | None = None
 
 
 class PlayerTrends(BaseModel):
@@ -85,20 +84,20 @@ class UsageMetrics(BaseModel):
     ownership_percentage: float = 0.0
     start_percentage: float = 0.0
     roster_percentage: float = 0.0
-    target_share: Optional[float] = None
-    snap_percentage: Optional[float] = None
-    red_zone_usage: Optional[float] = None
+    target_share: float | None = None
+    snap_percentage: float | None = None
+    red_zone_usage: float | None = None
 
 
 class NewsItem(BaseModel):
     """Player news item model."""
 
     headline: str
-    summary: Optional[str] = None
+    summary: str | None = None
     source: str
     published_at: str
     impact: str = "neutral"  # positive, negative, neutral
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class PlayerDetailResponse(BaseModel):
@@ -109,52 +108,56 @@ class PlayerDetailResponse(BaseModel):
     external_id: str
     name: str
     position: str
-    team_id: Optional[str]
+    team_id: str | None
     sport: str
 
     # Physical Attributes
-    jersey_number: Optional[str] = None
-    height: Optional[str] = None
-    weight: Optional[str] = None
-    age: Optional[int] = None
-    experience: Optional[int] = None
-    college: Optional[str] = None
+    jersey_number: str | None = None
+    height: str | None = None
+    weight: str | None = None
+    age: int | None = None
+    experience: int | None = None
+    college: str | None = None
 
     # Status
     injury_status: str = "healthy"
-    injury_details: Optional[InjuryDetails] = None
+    injury_details: InjuryDetails | None = None
     active: bool = True
 
     # Statistics
-    season_stats: Optional[PlayerStats] = None
-    recent_games: List[PlayerStats] = Field(default_factory=list)
+    season_stats: PlayerStats | None = None
+    recent_games: list[PlayerStats] = Field(default_factory=list)
 
     # Projections
-    current_projections: Optional[PlayerProjections] = None
-    season_projections: Optional[PlayerProjections] = None
+    current_projections: PlayerProjections | None = None
+    season_projections: PlayerProjections | None = None
 
     # Analytics
-    performance_trends: Optional[PlayerTrends] = None
-    usage_metrics: Optional[UsageMetrics] = None
+    performance_trends: PlayerTrends | None = None
+    usage_metrics: UsageMetrics | None = None
 
     # Additional Data
-    news: List[NewsItem] = Field(default_factory=list)
-    salary: Optional[int] = None
-    contract_years: Optional[int] = None
+    news: list[NewsItem] = Field(default_factory=list)
+    salary: int | None = None
+    contract_years: int | None = None
 
     # Metadata
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    last_game_date: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    last_game_date: str | None = None
 
 
-@router.get("/players/{player_id}", response_model=StandardResponse[PlayerDetailResponse])
+@router.get(
+    "/players/{player_id}", response_model=StandardResponse[PlayerDetailResponse]
+)
 async def get_player_details(
     player_id: str = Path(..., description="Player ID"),
     include_stats: bool = Query(True, description="Include season statistics"),
     include_projections: bool = Query(True, description="Include projections"),
     include_news: bool = Query(False, description="Include recent news"),
-    recent_games: int = Query(5, description="Number of recent games to include", ge=0, le=10),
+    recent_games: int = Query(
+        5, description="Number of recent games to include", ge=0, le=10
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StandardResponse[PlayerDetailResponse]:
@@ -171,13 +174,13 @@ async def get_player_details(
     """
     try:
         logger.info(
-            f"Player details request",
+            "Player details request",
             extra={
                 "user_id": str(current_user.user_id),
                 "player_id": player_id,
                 "include_stats": include_stats,
                 "include_projections": include_projections,
-            }
+            },
         )
 
         # Get sports data service
@@ -188,13 +191,12 @@ async def get_player_details(
             player_id=player_id,
             include_stats=include_stats,
             include_projections=include_projections,
-            use_cache=True
+            use_cache=True,
         )
 
         if not player_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"Player with ID {player_id} not found"
+                status_code=404, detail=f"Player with ID {player_id} not found"
             )
 
         # Build response
@@ -276,47 +278,49 @@ async def get_player_details(
             response_data.news = news_items
 
         logger.info(
-            f"Player details completed",
+            "Player details completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "player_id": player_id,
                 "player_name": response_data.name,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Player details for {response_data.name}"
+            message=f"Player details for {response_data.name}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Player details failed",
+            "Player details failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "player_id": player_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve player details. Please try again later."
+            detail="Failed to retrieve player details. Please try again later.",
         )
 
 
-@router.get("/players/{player_id}/stats", response_model=StandardResponse[List[PlayerStats]])
+@router.get(
+    "/players/{player_id}/stats", response_model=StandardResponse[list[PlayerStats]]
+)
 async def get_player_statistics(
     player_id: str = Path(..., description="Player ID"),
-    season: Optional[str] = Query(None, description="Season year (e.g., 2024)"),
-    week: Optional[int] = Query(None, description="Specific week number"),
+    season: str | None = Query(None, description="Season year (e.g., 2024)"),
+    week: int | None = Query(None, description="Specific week number"),
     limit: int = Query(10, description="Maximum number of stat records", ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[PlayerStats]]:
+) -> StandardResponse[list[PlayerStats]]:
     """
     Get player statistics for specified timeframe.
 
@@ -329,13 +333,13 @@ async def get_player_statistics(
     """
     try:
         logger.info(
-            f"Player stats request",
+            "Player stats request",
             extra={
                 "user_id": str(current_user.user_id),
                 "player_id": player_id,
                 "season": season,
                 "week": week,
-            }
+            },
         )
 
         # Get sports data service
@@ -345,10 +349,7 @@ async def get_player_statistics(
         if week and season:
             # Get specific week stats
             stats_data = await sports_service.get_player_stats(
-                player_id=player_id,
-                season=season,
-                week=week,
-                use_cache=True
+                player_id=player_id, season=season, week=week, use_cache=True
             )
             stats_list = [stats_data] if stats_data else []
         else:
@@ -372,43 +373,42 @@ async def get_player_statistics(
                 response_stats.append(stats_response)
 
         logger.info(
-            f"Player stats completed",
+            "Player stats completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "player_id": player_id,
                 "stats_count": len(response_stats),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_stats,
-            message=f"Retrieved {len(response_stats)} stat records"
+            message=f"Retrieved {len(response_stats)} stat records",
         )
 
     except Exception as e:
         logger.error(
-            f"Player stats failed",
+            "Player stats failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "player_id": player_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve player statistics. Please try again later."
+            detail="Failed to retrieve player statistics. Please try again later.",
         )
 
 
 # Helper functions
 
+
 async def _get_recent_game_stats(
-    sports_service,
-    player_id: str,
-    count: int
-) -> List[PlayerStats]:
+    sports_service, player_id: str, count: int
+) -> list[PlayerStats]:
     """Get recent game statistics for player."""
     try:
         # This would get the most recent game stats
@@ -420,17 +420,13 @@ async def _get_recent_game_stats(
 
 
 async def _get_current_projections(
-    sports_service,
-    player_id: str
-) -> Optional[PlayerProjections]:
+    sports_service, player_id: str
+) -> PlayerProjections | None:
     """Get current week projections for player."""
     try:
         # Get current week projections
         projections = await sports_service.get_player_projections(
-            player_id=player_id,
-            week=1,  # Current week
-            season="2024",
-            use_cache=True
+            player_id=player_id, week=1, season="2024", use_cache=True  # Current week
         )
 
         if projections:
@@ -438,7 +434,9 @@ async def _get_current_projections(
                 week=projections.get("week"),
                 season=projections.get("season"),
                 projected_stats=projections.get("projected_stats", {}),
-                projected_fantasy_points=projections.get("projected_fantasy_points", 0.0),
+                projected_fantasy_points=projections.get(
+                    "projected_fantasy_points", 0.0
+                ),
                 confidence=projections.get("confidence", 0.0),
                 ceiling=projections.get("projected_stats", {}).get("ceiling", 0.0),
                 floor=projections.get("projected_stats", {}).get("floor", 0.0),
@@ -452,9 +450,8 @@ async def _get_current_projections(
 
 
 async def _get_season_projections(
-    sports_service,
-    player_id: str
-) -> Optional[PlayerProjections]:
+    sports_service, player_id: str
+) -> PlayerProjections | None:
     """Get season projections for player."""
     try:
         # Season projections would be calculated differently
@@ -466,9 +463,8 @@ async def _get_season_projections(
 
 
 async def _calculate_performance_trends(
-    sports_service,
-    player_id: str
-) -> Optional[PlayerTrends]:
+    sports_service, player_id: str
+) -> PlayerTrends | None:
     """Calculate player performance trends."""
     try:
         # This would analyze recent performance vs season average
@@ -487,9 +483,8 @@ async def _calculate_performance_trends(
 
 
 async def _calculate_usage_metrics(
-    sports_service,
-    player_id: str
-) -> Optional[UsageMetrics]:
+    sports_service, player_id: str
+) -> UsageMetrics | None:
     """Calculate player usage metrics."""
     try:
         # This would calculate ownership and usage statistics
@@ -507,10 +502,7 @@ async def _calculate_usage_metrics(
         return None
 
 
-async def _get_player_news(
-    player_id: str,
-    limit: int = 5
-) -> List[NewsItem]:
+async def _get_player_news(player_id: str, limit: int = 5) -> list[NewsItem]:
     """Get recent news for player."""
     try:
         # This would fetch recent news from sports news APIs
@@ -530,11 +522,8 @@ async def _get_player_news(
 
 
 async def _get_player_stats_history(
-    sports_service,
-    player_id: str,
-    season: Optional[str],
-    limit: int
-) -> List[Dict]:
+    sports_service, player_id: str, season: str | None, limit: int
+) -> list[dict]:
     """Get player statistics history."""
     try:
         # This would get historical stats for the player

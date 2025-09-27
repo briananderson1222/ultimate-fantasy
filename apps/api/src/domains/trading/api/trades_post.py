@@ -12,9 +12,9 @@ Provides trade proposal and management functionality including:
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 from uuid import uuid4
 
+from domains.teams.models.team import Team
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, validator
 from sqlalchemy.orm import Session
@@ -24,7 +24,6 @@ from api.models.response import StandardResponse
 from domains.leagues.models.league import League
 from domains.notifications.services.notification_service import get_notification_service
 from domains.sports.services.sports_data_service import get_sports_data_service
-from domains.teams.models.team import Team
 from domains.trading.algorithms.trade_evaluator import get_trade_evaluator
 from domains.trading.models.trade import Trade
 from domains.users.models.user import User
@@ -33,6 +32,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -44,29 +44,32 @@ class TradePlayerRequest(BaseModel):
     """Request model for a player in a trade."""
 
     player_id: str = Field(..., description="External player ID")
-    player_name: Optional[str] = Field(None, description="Player name for validation")
-    position: Optional[str] = Field(None, description="Player position")
+    player_name: str | None = Field(None, description="Player name for validation")
+    position: str | None = Field(None, description="Player position")
 
 
 class TradeProposalRequest(BaseModel):
     """Request model for creating a trade proposal."""
 
     to_team_id: str = Field(..., description="Team ID receiving the trade proposal")
-    offering_players: List[TradePlayerRequest] = Field(
+    offering_players: list[TradePlayerRequest] = Field(
         ..., min_items=1, max_items=6, description="Players being offered (1-6 players)"
     )
-    requesting_players: List[TradePlayerRequest] = Field(
-        ..., min_items=1, max_items=6, description="Players being requested (1-6 players)"
+    requesting_players: list[TradePlayerRequest] = Field(
+        ...,
+        min_items=1,
+        max_items=6,
+        description="Players being requested (1-6 players)",
     )
-    message: Optional[str] = Field(
+    message: str | None = Field(
         None, max_length=500, description="Optional message to the other team"
     )
     expiration_hours: int = Field(
         default=72, ge=1, le=168, description="Hours until trade expires (1-168 hours)"
     )
 
-    @validator('offering_players', 'requesting_players')
-    def validate_unique_players(cls, players):
+    @validator("offering_players", "requesting_players")
+    def validate_unique_players(self, players):
         """Ensure no duplicate players in each list."""
         player_ids = [p.player_id for p in players]
         if len(player_ids) != len(set(player_ids)):
@@ -83,10 +86,10 @@ class TradeProposalResponse(BaseModel):
     to_team_id: str
     to_team_name: str
     status: str
-    offering_players: List[dict]
-    requesting_players: List[dict]
+    offering_players: list[dict]
+    requesting_players: list[dict]
     trade_evaluation: dict
-    message: Optional[str]
+    message: str | None
     expires_at: str
     created_at: str
     evaluation_confidence: float
@@ -122,76 +125,62 @@ async def create_trade_proposal(
     """
     try:
         logger.info(
-            f"Trade proposal request",
+            "Trade proposal request",
             extra={
                 "user_id": str(current_user.user_id),
                 "to_team_id": request.to_team_id,
                 "offering_count": len(request.offering_players),
                 "requesting_count": len(request.requesting_players),
-            }
+            },
         )
 
         # Get user's team
-        from_team = db.query(Team).filter(
-            Team.owner_id == current_user.user_id
-        ).first()
+        from_team = db.query(Team).filter(Team.owner_id == current_user.user_id).first()
 
         if not from_team:
             raise HTTPException(
-                status_code=404,
-                detail="You must be on a team to propose trades"
+                status_code=404, detail="You must be on a team to propose trades"
             )
 
         # Validate target team exists and is in same league
-        to_team = db.query(Team).filter(
-            Team.team_id == request.to_team_id
-        ).first()
+        to_team = db.query(Team).filter(Team.team_id == request.to_team_id).first()
 
         if not to_team:
             raise HTTPException(
-                status_code=404,
-                detail=f"Target team {request.to_team_id} not found"
+                status_code=404, detail=f"Target team {request.to_team_id} not found"
             )
 
         if from_team.league_id != to_team.league_id:
             raise HTTPException(
-                status_code=400,
-                detail="Teams must be in the same league to trade"
+                status_code=400, detail="Teams must be in the same league to trade"
             )
 
         if from_team.team_id == to_team.team_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot trade with yourself"
-            )
+            raise HTTPException(status_code=400, detail="Cannot trade with yourself")
 
         # Get league and validate trading rules
-        league = db.query(League).filter(
-            League.league_id == from_team.league_id
-        ).first()
+        league = (
+            db.query(League).filter(League.league_id == from_team.league_id).first()
+        )
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail="League not found"
-            )
+            raise HTTPException(status_code=404, detail="League not found")
 
         # Check if trading is allowed
         if league.status not in ["active", "drafting"]:
             raise HTTPException(
                 status_code=400,
-                detail=f"Trading not allowed when league is in '{league.status}' status"
+                detail=f"Trading not allowed when league is in '{league.status}' status",
             )
 
         # Check trade deadline
-        trade_deadline = league.settings.get("trade_deadline") if league.settings else None
+        trade_deadline = (
+            league.settings.get("trade_deadline") if league.settings else None
+        )
         if trade_deadline:
             deadline_date = datetime.fromisoformat(trade_deadline)
             if datetime.utcnow() > deadline_date:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Trade deadline has passed"
-                )
+                raise HTTPException(status_code=400, detail="Trade deadline has passed")
 
         # Validate offered players are on proposing team's roster
         sports_service = await get_sports_data_service()
@@ -203,15 +192,14 @@ async def create_trade_proposal(
             if player_req.player_id not in roster_player_ids:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Player {player_req.player_id} is not on your roster"
+                    detail=f"Player {player_req.player_id} is not on your roster",
                 )
 
             # Get player details
             player_data = await sports_service.get_player_details(player_req.player_id)
             if not player_data:
                 raise HTTPException(
-                    status_code=404,
-                    detail=f"Player {player_req.player_id} not found"
+                    status_code=404, detail=f"Player {player_req.player_id} not found"
                 )
 
             # Check if player is tradeable
@@ -219,18 +207,20 @@ async def create_trade_proposal(
             if player_status in ["ir", "suspended"]:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Player {player_data.get('name')} is not eligible for trading ({player_status})"
+                    detail=f"Player {player_data.get('name')} is not eligible for trading ({player_status})",
                 )
 
-            offering_player_details.append({
-                "player_id": player_req.player_id,
-                "name": player_data.get("name"),
-                "position": player_data.get("position"),
-                "team": player_data.get("team"),
-                "sport": player_data.get("sport"),
-                "injury_status": player_data.get("injury_status", "healthy"),
-                "stats": player_data.get("season_stats", {}),
-            })
+            offering_player_details.append(
+                {
+                    "player_id": player_req.player_id,
+                    "name": player_data.get("name"),
+                    "position": player_data.get("position"),
+                    "team": player_data.get("team"),
+                    "sport": player_data.get("sport"),
+                    "injury_status": player_data.get("injury_status", "healthy"),
+                    "stats": player_data.get("season_stats", {}),
+                }
+            )
 
         # Validate requested players are on target team's roster
         requesting_player_details = []
@@ -241,26 +231,27 @@ async def create_trade_proposal(
             if player_req.player_id not in target_roster_ids:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Player {player_req.player_id} is not on {to_team.team_name}'s roster"
+                    detail=f"Player {player_req.player_id} is not on {to_team.team_name}'s roster",
                 )
 
             # Get player details
             player_data = await sports_service.get_player_details(player_req.player_id)
             if not player_data:
                 raise HTTPException(
-                    status_code=404,
-                    detail=f"Player {player_req.player_id} not found"
+                    status_code=404, detail=f"Player {player_req.player_id} not found"
                 )
 
-            requesting_player_details.append({
-                "player_id": player_req.player_id,
-                "name": player_data.get("name"),
-                "position": player_data.get("position"),
-                "team": player_data.get("team"),
-                "sport": player_data.get("sport"),
-                "injury_status": player_data.get("injury_status", "healthy"),
-                "stats": player_data.get("season_stats", {}),
-            })
+            requesting_player_details.append(
+                {
+                    "player_id": player_req.player_id,
+                    "name": player_data.get("name"),
+                    "position": player_data.get("position"),
+                    "team": player_data.get("team"),
+                    "sport": player_data.get("sport"),
+                    "injury_status": player_data.get("injury_status", "healthy"),
+                    "stats": player_data.get("season_stats", {}),
+                }
+            )
 
         # Check for overlapping players (can't trade same player both ways)
         offering_ids = {p["player_id"] for p in offering_player_details}
@@ -268,7 +259,7 @@ async def create_trade_proposal(
         if offering_ids & requesting_ids:
             raise HTTPException(
                 status_code=400,
-                detail="Cannot trade the same player in both directions"
+                detail="Cannot trade the same player in both directions",
             )
 
         # Perform trade evaluation
@@ -378,7 +369,7 @@ async def create_trade_proposal(
         )
 
         logger.info(
-            f"Trade proposal created",
+            "Trade proposal created",
             extra={
                 "trade_id": trade_id,
                 "user_id": str(current_user.user_id),
@@ -386,44 +377,44 @@ async def create_trade_proposal(
                 "to_team": to_team.team_id,
                 "fairness_score": trade_analysis.fairness_score,
                 "expires_at": expires_at.isoformat(),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Trade proposal sent to {to_team.team_name}"
+            message=f"Trade proposal sent to {to_team.team_name}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to create trade proposal",
+            "Failed to create trade proposal",
             extra={
                 "user_id": str(current_user.user_id),
                 "to_team_id": request.to_team_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to create trade proposal. Please try again later."
+            detail="Failed to create trade proposal. Please try again later.",
         )
 
 
-@router.get("/trades", response_model=StandardResponse[List[dict]])
+@router.get("/trades", response_model=StandardResponse[list[dict]])
 async def get_trades(
-    league_id: Optional[str] = None,
-    team_id: Optional[str] = None,
-    status: Optional[str] = None,
+    league_id: str | None = None,
+    team_id: str | None = None,
+    status: str | None = None,
     include_expired: bool = False,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[dict]]:
+) -> StandardResponse[list[dict]]:
     """
     Get trade proposals with filtering options.
 
@@ -445,25 +436,21 @@ async def get_trades(
     """
     try:
         logger.info(
-            f"Trades request",
+            "Trades request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "team_id": team_id,
                 "status": status,
-            }
+            },
         )
 
         # Get user's teams
-        user_teams = db.query(Team).filter(
-            Team.owner_id == current_user.user_id
-        ).all()
+        user_teams = db.query(Team).filter(Team.owner_id == current_user.user_id).all()
 
         if not user_teams:
             return StandardResponse(
-                success=True,
-                data=[],
-                message="No teams found for user"
+                success=True, data=[], message="No teams found for user"
             )
 
         user_team_ids = [team.team_id for team in user_teams]
@@ -481,12 +468,16 @@ async def get_trades(
                 # Regular user sees only their team's trades in the league
                 query = query.filter(
                     Trade.league_id == league_id,
-                    (Trade.from_team_id.in_(user_team_ids) | Trade.to_team_id.in_(user_team_ids))
+                    (
+                        Trade.from_team_id.in_(user_team_ids)
+                        | Trade.to_team_id.in_(user_team_ids)
+                    ),
                 )
         else:
             # Filter to user's teams across all leagues
             query = query.filter(
-                Trade.from_team_id.in_(user_team_ids) | Trade.to_team_id.in_(user_team_ids)
+                Trade.from_team_id.in_(user_team_ids)
+                | Trade.to_team_id.in_(user_team_ids)
             )
 
         # Apply additional filters
@@ -505,7 +496,9 @@ async def get_trades(
 
         # Apply pagination
         limit = min(limit, 100)
-        trades = query.order_by(Trade.created_at.desc()).offset(offset).limit(limit).all()
+        trades = (
+            query.order_by(Trade.created_at.desc()).offset(offset).limit(limit).all()
+        )
 
         # Get sports service for player details
         sports_service = await get_sports_data_service()
@@ -515,31 +508,39 @@ async def get_trades(
         for trade in trades:
             try:
                 # Get team names
-                from_team = db.query(Team).filter(Team.team_id == trade.from_team_id).first()
-                to_team = db.query(Team).filter(Team.team_id == trade.to_team_id).first()
+                from_team = (
+                    db.query(Team).filter(Team.team_id == trade.from_team_id).first()
+                )
+                to_team = (
+                    db.query(Team).filter(Team.team_id == trade.to_team_id).first()
+                )
 
                 # Get player details
                 offering_players = []
                 for player_id in trade.proposed_players:
                     player_data = await sports_service.get_player_details(player_id)
                     if player_data:
-                        offering_players.append({
-                            "player_id": player_id,
-                            "name": player_data.get("name"),
-                            "position": player_data.get("position"),
-                            "team": player_data.get("team"),
-                        })
+                        offering_players.append(
+                            {
+                                "player_id": player_id,
+                                "name": player_data.get("name"),
+                                "position": player_data.get("position"),
+                                "team": player_data.get("team"),
+                            }
+                        )
 
                 requesting_players = []
                 for player_id in trade.requested_players:
                     player_data = await sports_service.get_player_details(player_id)
                     if player_data:
-                        requesting_players.append({
-                            "player_id": player_id,
-                            "name": player_data.get("name"),
-                            "position": player_data.get("position"),
-                            "team": player_data.get("team"),
-                        })
+                        requesting_players.append(
+                            {
+                                "player_id": player_id,
+                                "name": player_data.get("name"),
+                                "position": player_data.get("position"),
+                                "team": player_data.get("team"),
+                            }
+                        )
 
                 trade_data = {
                     "trade_id": trade.trade_id,
@@ -552,10 +553,18 @@ async def get_trades(
                     "requesting_players": requesting_players,
                     "message": trade.message,
                     "evaluation_score": trade.evaluation_score,
-                    "expires_at": trade.expires_at.isoformat() if trade.expires_at else None,
+                    "expires_at": (
+                        trade.expires_at.isoformat() if trade.expires_at else None
+                    ),
                     "created_at": trade.created_at.isoformat(),
-                    "updated_at": trade.updated_at.isoformat() if trade.updated_at else None,
-                    "is_expired": trade.expires_at < datetime.utcnow() if trade.expires_at else False,
+                    "updated_at": (
+                        trade.updated_at.isoformat() if trade.updated_at else None
+                    ),
+                    "is_expired": (
+                        trade.expires_at < datetime.utcnow()
+                        if trade.expires_at
+                        else False
+                    ),
                 }
 
                 trade_responses.append(trade_data)
@@ -565,33 +574,32 @@ async def get_trades(
                 continue
 
         logger.info(
-            f"Trades retrieved",
+            "Trades retrieved",
             extra={
                 "user_id": str(current_user.user_id),
                 "trades_count": len(trade_responses),
                 "league_id": league_id,
                 "team_id": team_id,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=trade_responses,
-            message=f"Retrieved {len(trade_responses)} trades"
+            message=f"Retrieved {len(trade_responses)} trades",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to get trades",
+            "Failed to get trades",
             extra={
                 "user_id": str(current_user.user_id),
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve trades. Please try again later."
+            status_code=500, detail="Failed to retrieve trades. Please try again later."
         )

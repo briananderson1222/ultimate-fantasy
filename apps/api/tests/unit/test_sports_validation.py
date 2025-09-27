@@ -18,7 +18,6 @@ import json
 # Import the sports data validation components
 from domains.sports.services.data_normalizer import DataNormalizer, ValidationError
 from domains.sports.models.player import Player, PlayerPosition, InjuryStatus
-from domains.sports.models.team import Team
 from domains.sports.services.sports_data_service import SportsDataService, SportType
 
 
@@ -40,7 +39,7 @@ class TestPlayerDataValidation:
             "height": "6-3",
             "weight": 225,
             "age": 28,
-            "experience": 5
+            "experience": 5,
         }
 
         result = self.normalizer.validate_player_data(player_data)
@@ -55,7 +54,7 @@ class TestPlayerDataValidation:
         """Test validation with missing required fields."""
         player_data = {
             "name": "John Smith",
-            "position": "QB"
+            "position": "QB",
             # Missing id, team, sport
         }
 
@@ -74,7 +73,7 @@ class TestPlayerDataValidation:
             "name": "John Smith",
             "position": "INVALID_POS",
             "team": "SF",
-            "sport": "nfl"
+            "sport": "nfl",
         }
 
         result = self.normalizer.validate_player_data(player_data)
@@ -89,7 +88,7 @@ class TestPlayerDataValidation:
             "name": "John Smith",
             "position": "QB",
             "team": "SF",
-            "sport": "cricket"
+            "sport": "cricket",
         }
 
         result = self.normalizer.validate_player_data(player_data)
@@ -105,7 +104,7 @@ class TestPlayerDataValidation:
             ("6 ft 3 in", 75),
             ("75", 75),
             ("1.91m", 75),  # Metric conversion
-            ("191cm", 75)
+            ("191cm", 75),
         ]
 
         for height_input, expected_inches in test_cases:
@@ -118,7 +117,7 @@ class TestPlayerDataValidation:
             ("225", 225),
             ("225 lbs", 225),
             ("102kg", 225),  # Metric conversion
-            ("102.1 kg", 225)
+            ("102.1 kg", 225),
         ]
 
         for weight_input, expected_lbs in test_cases:
@@ -127,7 +126,14 @@ class TestPlayerDataValidation:
 
     def test_validate_injury_status(self):
         """Test injury status validation."""
-        valid_statuses = ["healthy", "questionable", "doubtful", "out", "ir", "suspended"]
+        valid_statuses = [
+            "healthy",
+            "questionable",
+            "doubtful",
+            "out",
+            "ir",
+            "suspended",
+        ]
 
         for status in valid_statuses:
             player_data = {
@@ -136,11 +142,14 @@ class TestPlayerDataValidation:
                 "position": "QB",
                 "team": "SF",
                 "sport": "nfl",
-                "injury_status": status
+                "injury_status": status,
             }
 
             result = self.normalizer.validate_player_data(player_data)
-            assert result.is_valid or len([e for e in result.errors if "injury" in e.lower()]) == 0
+            assert (
+                result.is_valid
+                or len([e for e in result.errors if "injury" in e.lower()]) == 0
+            )
 
     def test_validate_player_stats(self):
         """Test player statistics validation."""
@@ -149,7 +158,7 @@ class TestPlayerDataValidation:
             "passing_touchdowns": 25,
             "interceptions": 8,
             "completion_percentage": 67.5,
-            "games_played": 16
+            "games_played": 16,
         }
 
         result = self.normalizer.validate_player_stats(stats_data, "QB")
@@ -163,7 +172,7 @@ class TestPlayerDataValidation:
         stats_data = {
             "passing_yards": -100,  # Invalid
             "passing_touchdowns": 25,
-            "games_played": -1  # Invalid
+            "games_played": -1,  # Invalid
         }
 
         result = self.normalizer.validate_player_stats(stats_data, "QB")
@@ -188,7 +197,7 @@ class TestTeamDataValidation:
             "city": "San Francisco",
             "conference": "NFC",
             "division": "West",
-            "sport": "nfl"
+            "sport": "nfl",
         }
 
         result = self.normalizer.validate_team_data(team_data)
@@ -217,9 +226,9 @@ class TestTeamDataValidation:
             ("LAR", True),
             ("NE", True),
             ("INVALID", False),  # Too long
-            ("S", False),        # Too short
-            ("s f", False),      # Contains space
-            ("12", False)        # Numbers only
+            ("S", False),  # Too short
+            ("s f", False),  # Contains space
+            ("12", False),  # Numbers only
         ]
 
         for abbrev, should_be_valid in test_cases:
@@ -227,12 +236,14 @@ class TestTeamDataValidation:
                 "id": "test",
                 "name": "Test Team",
                 "abbreviation": abbrev,
-                "sport": "nfl"
+                "sport": "nfl",
             }
 
             result = self.normalizer.validate_team_data(team_data)
             if should_be_valid:
-                assert not any("abbreviation" in error.lower() for error in result.errors)
+                assert not any(
+                    "abbreviation" in error.lower() for error in result.errors
+                )
             else:
                 assert any("abbreviation" in error.lower() for error in result.errors)
 
@@ -254,7 +265,7 @@ class TestScheduleDataValidation:
             "week": 1,
             "season": 2024,
             "sport": "nfl",
-            "status": "scheduled"
+            "status": "scheduled",
         }
 
         result = self.normalizer.validate_game_data(game_data)
@@ -273,7 +284,7 @@ class TestScheduleDataValidation:
             "start_time": "invalid-datetime",
             "week": 1,
             "season": 2024,
-            "sport": "nfl"
+            "sport": "nfl",
         }
 
         result = self.normalizer.validate_game_data(game_data)
@@ -290,7 +301,7 @@ class TestScheduleDataValidation:
             "start_time": "2024-01-15T13:00:00Z",
             "week": 1,
             "season": 2024,
-            "sport": "nfl"
+            "sport": "nfl",
         }
 
         result = self.normalizer.validate_game_data(game_data)
@@ -303,9 +314,9 @@ class TestScheduleDataValidation:
         test_cases = [
             (1, True),
             (17, True),
-            (18, True),   # Playoffs
-            (0, False),   # Too low
-            (25, False)   # Too high
+            (18, True),  # Playoffs
+            (0, False),  # Too low
+            (25, False),  # Too high
         ]
 
         for week, should_be_valid in test_cases:
@@ -316,7 +327,7 @@ class TestScheduleDataValidation:
                 "start_time": "2024-01-15T13:00:00Z",
                 "week": week,
                 "season": 2024,
-                "sport": "nfl"
+                "sport": "nfl",
             }
 
             result = self.normalizer.validate_game_data(game_data)
@@ -341,13 +352,15 @@ class TestStatisticalDataValidation:
             "yards": 312,
             "touchdowns": 2,
             "interceptions": 1,
-            "rating": 98.5
+            "rating": 98.5,
         }
 
         result = self.normalizer.validate_passing_stats(passing_stats)
 
         assert result.is_valid
-        assert result.normalized_data["completion_percentage"] == pytest.approx(68.57, rel=1e-2)
+        assert result.normalized_data["completion_percentage"] == pytest.approx(
+            68.57, rel=1e-2
+        )
         assert result.errors == []
 
     def test_validate_passing_stats_invalid_completion_ratio(self):
@@ -357,7 +370,7 @@ class TestStatisticalDataValidation:
             "completions": 25,  # More completions than attempts
             "yards": 312,
             "touchdowns": 2,
-            "interceptions": 1
+            "interceptions": 1,
         }
 
         result = self.normalizer.validate_passing_stats(passing_stats)
@@ -372,13 +385,15 @@ class TestStatisticalDataValidation:
             "yards": 145,
             "touchdowns": 1,
             "fumbles": 0,
-            "long": 24
+            "long": 24,
         }
 
         result = self.normalizer.validate_rushing_stats(rushing_stats)
 
         assert result.is_valid
-        assert result.normalized_data["yards_per_attempt"] == pytest.approx(6.59, rel=1e-2)
+        assert result.normalized_data["yards_per_attempt"] == pytest.approx(
+            6.59, rel=1e-2
+        )
 
     def test_validate_receiving_stats(self):
         """Test validation of receiving statistics."""
@@ -388,14 +403,18 @@ class TestStatisticalDataValidation:
             "yards": 156,
             "touchdowns": 2,
             "drops": 1,
-            "long": 45
+            "long": 45,
         }
 
         result = self.normalizer.validate_receiving_stats(receiving_stats)
 
         assert result.is_valid
-        assert result.normalized_data["catch_percentage"] == pytest.approx(66.67, rel=1e-2)
-        assert result.normalized_data["yards_per_reception"] == pytest.approx(19.5, rel=1e-2)
+        assert result.normalized_data["catch_percentage"] == pytest.approx(
+            66.67, rel=1e-2
+        )
+        assert result.normalized_data["yards_per_reception"] == pytest.approx(
+            19.5, rel=1e-2
+        )
 
 
 class TestErrorHandlingAndEdgeCases:
@@ -431,7 +450,7 @@ class TestErrorHandlingAndEdgeCases:
             "name": ["John", "Smith"],  # Should be string
             "position": None,  # Should be string
             "team": "SF",
-            "sport": "nfl"
+            "sport": "nfl",
         }
 
         result = self.normalizer.validate_player_data(player_data)
@@ -444,7 +463,7 @@ class TestErrorHandlingAndEdgeCases:
         stats_data = {
             "passing_yards": 99999,  # Extremely high
             "completion_percentage": 150,  # Over 100%
-            "games_played": 100  # Too many games
+            "games_played": 100,  # Too many games
         }
 
         result = self.normalizer.validate_player_stats(stats_data, "QB")
@@ -459,7 +478,7 @@ class TestErrorHandlingAndEdgeCases:
             "name": "José Rodríguez-Martínez",
             "position": "QB",
             "team": "SF",
-            "sport": "nfl"
+            "sport": "nfl",
         }
 
         result = self.normalizer.validate_player_data(player_data)
@@ -477,7 +496,7 @@ class TestErrorHandlingAndEdgeCases:
             "team": "SF",
             "sport": "nfl",
             "injury_status": "out",
-            "games_played": 16  # Inconsistent with being out
+            "games_played": 16,  # Inconsistent with being out
         }
 
         result = self.normalizer.validate_player_data(player_data)
@@ -502,7 +521,7 @@ class TestSportsDataServiceValidation:
             "position": "QB",
             "team": "SF",
             "limit": 20,
-            "offset": 0
+            "offset": 0,
         }
 
         # Should not raise exception
@@ -515,7 +534,7 @@ class TestSportsDataServiceValidation:
             "sport": "invalid_sport",
             "position": "INVALID_POS",
             "limit": -1,  # Negative limit
-            "offset": -5   # Negative offset
+            "offset": -5,  # Negative offset
         }
 
         with pytest.raises(ValidationError):
@@ -527,15 +546,13 @@ class TestSportsDataServiceValidation:
         # Test maximum limit enforcement
         with pytest.raises(ValidationError):
             await self.service.search_players(
-                sport=SportType.NFL,
-                limit=1000  # Exceeds maximum
+                sport=SportType.NFL, limit=1000  # Exceeds maximum
             )
 
         # Test reasonable offset
         with pytest.raises(ValidationError):
             await self.service.search_players(
-                sport=SportType.NFL,
-                offset=100000  # Unreasonably high
+                sport=SportType.NFL, offset=100000  # Unreasonably high
             )
 
 
@@ -552,7 +569,7 @@ def sample_player_data():
         "weight": 225,
         "age": 28,
         "experience": 5,
-        "injury_status": "healthy"
+        "injury_status": "healthy",
     }
 
 
@@ -566,7 +583,7 @@ def sample_team_data():
         "city": "San Francisco",
         "conference": "NFC",
         "division": "West",
-        "sport": "nfl"
+        "sport": "nfl",
     }
 
 
@@ -581,7 +598,7 @@ def sample_game_data():
         "week": 1,
         "season": 2024,
         "sport": "nfl",
-        "status": "scheduled"
+        "status": "scheduled",
     }
 
 
@@ -600,15 +617,17 @@ class TestValidationPerformance:
         # Generate 1000 player records
         players = []
         for i in range(1000):
-            players.append({
-                "id": f"player_{i}",
-                "name": f"Player {i}",
-                "position": "QB",
-                "team": "SF",
-                "sport": "nfl",
-                "height": "6-3",
-                "weight": 225
-            })
+            players.append(
+                {
+                    "id": f"player_{i}",
+                    "name": f"Player {i}",
+                    "position": "QB",
+                    "team": "SF",
+                    "sport": "nfl",
+                    "height": "6-3",
+                    "weight": 225,
+                }
+            )
 
         start_time = time.time()
 
@@ -631,18 +650,16 @@ class TestValidationPerformance:
 
         complex_stats = {
             "passing": {
-                "attempts": 35, "completions": 24, "yards": 312,
-                "touchdowns": 2, "interceptions": 1, "rating": 98.5
+                "attempts": 35,
+                "completions": 24,
+                "yards": 312,
+                "touchdowns": 2,
+                "interceptions": 1,
+                "rating": 98.5,
             },
-            "rushing": {
-                "attempts": 5, "yards": 23, "touchdowns": 0
-            },
-            "receiving": {
-                "targets": 0, "receptions": 0, "yards": 0
-            },
-            "defense": {
-                "tackles": 0, "sacks": 0, "interceptions": 0
-            }
+            "rushing": {"attempts": 5, "yards": 23, "touchdowns": 0},
+            "receiving": {"targets": 0, "receptions": 0, "yards": 0},
+            "defense": {"tackles": 0, "sacks": 0, "interceptions": 0},
         }
 
         start_time = time.time()

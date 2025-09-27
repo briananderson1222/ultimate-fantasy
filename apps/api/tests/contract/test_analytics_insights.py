@@ -21,7 +21,9 @@ class TestAnalyticsInsightsContract:
 
         This test will FAIL until the endpoint is implemented.
         """
-        response = authenticated_client.get("/api/v1/analytics/insights?league_id=league_123")
+        response = authenticated_client.get(
+            "/api/v1/analytics/insights?league_id=league_123"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -60,7 +62,9 @@ class TestAnalyticsInsightsContract:
 
         This test will FAIL until analytics engine is implemented.
         """
-        response = authenticated_client.get("/api/v1/analytics/insights?league_id=league_123")
+        response = authenticated_client.get(
+            "/api/v1/analytics/insights?league_id=league_123"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -82,7 +86,9 @@ class TestAnalyticsInsightsContract:
 
         This test will FAIL until impact analysis is implemented.
         """
-        response = authenticated_client.get("/api/v1/analytics/insights?league_id=league_123")
+        response = authenticated_client.get(
+            "/api/v1/analytics/insights?league_id=league_123"
+        )
 
         assert response.status_code == 200
         data = response.json()

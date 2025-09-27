@@ -10,28 +10,32 @@ Provides comprehensive AI-powered recommendations for fantasy sports:
 """
 
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any, Union
 from enum import Enum
+from typing import Any
 
+from domains.users.models.user_team import UserTeam
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
 
-from api.deps import get_db, get_current_user
+from api.deps import get_current_user, get_db
 from api.models.response import StandardResponse
-from domains.users.models.user import User
 from domains.leagues.models.league import League
 from domains.lineups.models.lineup import Lineup
-from domains.users.models.user_team import UserTeam
+from domains.users.models.user import User
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 from domains.ai.algorithms.lineup_optimizer import LineupOptimizer, OptimizationStrategy
-from domains.ai.algorithms.waiver_recommender import WaiverRecommendationEngine, WaiverStrategy
+from domains.ai.algorithms.waiver_recommender import (
+    WaiverRecommendationEngine,
+    WaiverStrategy,
+)
 from domains.ai.models.performance_predictor import PlayerPerformancePredictor
 from domains.trading.algorithms.trade_evaluator import TradeEvaluator
 
@@ -42,6 +46,7 @@ router = APIRouter()
 
 class RecommendationType(str, Enum):
     """Types of recommendations available."""
+
     LINEUP = "lineup"
     WAIVER = "waiver"
     TRADE = "trade"
@@ -51,6 +56,7 @@ class RecommendationType(str, Enum):
 
 class TimeFrame(str, Enum):
     """Time frames for recommendations."""
+
     THIS_WEEK = "this_week"
     NEXT_WEEK = "next_week"
     REST_OF_SEASON = "rest_of_season"
@@ -59,6 +65,7 @@ class TimeFrame(str, Enum):
 
 class RecommendationPriority(str, Enum):
     """Priority levels for recommendations."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -67,6 +74,7 @@ class RecommendationPriority(str, Enum):
 
 class LineupRecommendation(BaseModel):
     """Lineup optimization recommendation."""
+
     type: str = "lineup"
     priority: RecommendationPriority
     title: str
@@ -76,13 +84,14 @@ class LineupRecommendation(BaseModel):
     improvement: float
     confidence: float
     strategy: OptimizationStrategy
-    lineup_changes: List[Dict[str, Any]]
-    reasoning: List[str]
+    lineup_changes: list[dict[str, Any]]
+    reasoning: list[str]
     risk_level: str
 
 
 class WaiverRecommendation(BaseModel):
     """Waiver wire recommendation."""
+
     type: str = "waiver"
     priority: RecommendationPriority
     title: str
@@ -90,46 +99,49 @@ class WaiverRecommendation(BaseModel):
     player_id: str
     player_name: str
     position: str
-    suggested_bid: Optional[int]
+    suggested_bid: int | None
     ownership_percentage: float
     projected_points: float
     breakout_probability: float
-    reasoning: List[str]
-    drop_candidates: List[Dict[str, Any]]
+    reasoning: list[str]
+    drop_candidates: list[dict[str, Any]]
     strategy: WaiverStrategy
 
 
 class TradeRecommendation(BaseModel):
     """Trade opportunity recommendation."""
+
     type: str = "trade"
     priority: RecommendationPriority
     title: str
     description: str
     target_team_id: str
     target_team_name: str
-    give_players: List[Dict[str, Any]]
-    receive_players: List[Dict[str, Any]]
+    give_players: list[dict[str, Any]]
+    receive_players: list[dict[str, Any]]
     fairness_score: float
     value_gain: float
-    reasoning: List[str]
+    reasoning: list[str]
     success_probability: float
 
 
 class RosterRecommendation(BaseModel):
     """General roster management recommendation."""
+
     type: str = "roster"
     priority: RecommendationPriority
     title: str
     description: str
     action_type: str  # "add", "drop", "trade", "start", "bench"
-    affected_players: List[Dict[str, Any]]
-    reasoning: List[str]
+    affected_players: list[dict[str, Any]]
+    reasoning: list[str]
     expected_impact: float
     time_sensitive: bool
 
 
 class RecommendationsResponse(BaseModel):
     """Complete recommendations response."""
+
     user_id: str
     league_id: str
     team_name: str
@@ -137,10 +149,10 @@ class RecommendationsResponse(BaseModel):
     time_frame: TimeFrame
 
     # Categorized recommendations
-    lineup_recommendations: List[LineupRecommendation]
-    waiver_recommendations: List[WaiverRecommendation]
-    trade_recommendations: List[TradeRecommendation]
-    roster_recommendations: List[RosterRecommendation]
+    lineup_recommendations: list[LineupRecommendation]
+    waiver_recommendations: list[WaiverRecommendation]
+    trade_recommendations: list[TradeRecommendation]
+    roster_recommendations: list[RosterRecommendation]
 
     # Summary metrics
     total_recommendations: int
@@ -153,29 +165,29 @@ class RecommendationsResponse(BaseModel):
     data_freshness: str
 
 
-@router.get("/recommendations", response_model=StandardResponse[RecommendationsResponse])
+@router.get(
+    "/recommendations", response_model=StandardResponse[RecommendationsResponse]
+)
 async def get_recommendations(
     league_id: str,
-    recommendation_types: Optional[List[RecommendationType]] = Query(
+    recommendation_types: list[RecommendationType] | None = Query(
         default=[RecommendationType.ALL],
-        description="Types of recommendations to include"
+        description="Types of recommendations to include",
     ),
     time_frame: TimeFrame = Query(
-        default=TimeFrame.THIS_WEEK,
-        description="Time frame for recommendations"
+        default=TimeFrame.THIS_WEEK, description="Time frame for recommendations"
     ),
     include_low_priority: bool = Query(
-        default=False,
-        description="Include low priority recommendations"
+        default=False, description="Include low priority recommendations"
     ),
     max_recommendations: int = Query(
         default=20,
         ge=1,
         le=50,
-        description="Maximum number of recommendations to return"
+        description="Maximum number of recommendations to return",
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get comprehensive AI-powered fantasy recommendations.
@@ -203,15 +215,18 @@ async def get_recommendations(
     """
     try:
         # Validate league membership
-        user_team = db.query(UserTeam).filter(
-            UserTeam.user_id == current_user.user_id,
-            UserTeam.league_id == league_id
-        ).first()
+        user_team = (
+            db.query(UserTeam)
+            .filter(
+                UserTeam.user_id == current_user.user_id,
+                UserTeam.league_id == league_id,
+            )
+            .first()
+        )
 
         if not user_team:
             raise HTTPException(
-                status_code=404,
-                detail="User not found in specified league"
+                status_code=404, detail="User not found in specified league"
             )
 
         league = db.query(League).filter(League.league_id == league_id).first()
@@ -231,7 +246,7 @@ async def get_recommendations(
                 RecommendationType.LINEUP,
                 RecommendationType.WAIVER,
                 RecommendationType.TRADE,
-                RecommendationType.ROSTER
+                RecommendationType.ROSTER,
             ]
 
         # Generate recommendations by category
@@ -262,27 +277,46 @@ async def get_recommendations(
 
         # Filter by priority if requested
         if not include_low_priority:
-            lineup_recs = [r for r in lineup_recs if r.priority != RecommendationPriority.LOW]
-            waiver_recs = [r for r in waiver_recs if r.priority != RecommendationPriority.LOW]
-            trade_recs = [r for r in trade_recs if r.priority != RecommendationPriority.LOW]
-            roster_recs = [r for r in roster_recs if r.priority != RecommendationPriority.LOW]
+            lineup_recs = [
+                r for r in lineup_recs if r.priority != RecommendationPriority.LOW
+            ]
+            waiver_recs = [
+                r for r in waiver_recs if r.priority != RecommendationPriority.LOW
+            ]
+            trade_recs = [
+                r for r in trade_recs if r.priority != RecommendationPriority.LOW
+            ]
+            roster_recs = [
+                r for r in roster_recs if r.priority != RecommendationPriority.LOW
+            ]
 
         # Apply recommendation limit across all categories
         all_recs = lineup_recs + waiver_recs + trade_recs + roster_recs
-        all_recs.sort(key=lambda x: {
-            RecommendationPriority.CRITICAL: 4,
-            RecommendationPriority.HIGH: 3,
-            RecommendationPriority.MEDIUM: 2,
-            RecommendationPriority.LOW: 1
-        }[x.priority], reverse=True)
+        all_recs.sort(
+            key=lambda x: {
+                RecommendationPriority.CRITICAL: 4,
+                RecommendationPriority.HIGH: 3,
+                RecommendationPriority.MEDIUM: 2,
+                RecommendationPriority.LOW: 1,
+            }[x.priority],
+            reverse=True,
+        )
 
         if len(all_recs) > max_recommendations:
             # Proportionally limit each category
             total_recs = len(all_recs)
-            lineup_limit = max(1, int(len(lineup_recs) * max_recommendations / total_recs))
-            waiver_limit = max(1, int(len(waiver_recs) * max_recommendations / total_recs))
-            trade_limit = max(1, int(len(trade_recs) * max_recommendations / total_recs))
-            roster_limit = max_recommendations - lineup_limit - waiver_limit - trade_limit
+            lineup_limit = max(
+                1, int(len(lineup_recs) * max_recommendations / total_recs)
+            )
+            waiver_limit = max(
+                1, int(len(waiver_recs) * max_recommendations / total_recs)
+            )
+            trade_limit = max(
+                1, int(len(trade_recs) * max_recommendations / total_recs)
+            )
+            roster_limit = (
+                max_recommendations - lineup_limit - waiver_limit - trade_limit
+            )
 
             lineup_recs = lineup_recs[:lineup_limit]
             waiver_recs = waiver_recs[:waiver_limit]
@@ -290,9 +324,15 @@ async def get_recommendations(
             roster_recs = roster_recs[:roster_limit]
 
         # Calculate summary metrics
-        total_count = len(lineup_recs) + len(waiver_recs) + len(trade_recs) + len(roster_recs)
-        critical_count = sum(1 for r in all_recs if r.priority == RecommendationPriority.CRITICAL)
-        high_count = sum(1 for r in all_recs if r.priority == RecommendationPriority.HIGH)
+        total_count = (
+            len(lineup_recs) + len(waiver_recs) + len(trade_recs) + len(roster_recs)
+        )
+        critical_count = sum(
+            1 for r in all_recs if r.priority == RecommendationPriority.CRITICAL
+        )
+        high_count = sum(
+            1 for r in all_recs if r.priority == RecommendationPriority.HIGH
+        )
 
         # Calculate projected improvement
         projected_improvement = 0.0
@@ -316,7 +356,7 @@ async def get_recommendations(
             high_priority_count=high_count,
             projected_improvement=round(projected_improvement, 2),
             next_update=datetime.utcnow() + timedelta(hours=6),
-            data_freshness="current"
+            data_freshness="current",
         )
 
         logger.info(
@@ -327,13 +367,13 @@ async def get_recommendations(
                 "total_recommendations": total_count,
                 "critical_count": critical_count,
                 "time_frame": time_frame.value,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message="Recommendations generated successfully"
+            message="Recommendations generated successfully",
         )
 
     except HTTPException:
@@ -341,24 +381,23 @@ async def get_recommendations(
     except Exception as e:
         logger.error(f"Failed to generate recommendations: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to generate recommendations"
+            status_code=500, detail="Failed to generate recommendations"
         )
 
 
 async def _generate_lineup_recommendations(
-    optimizer: LineupOptimizer,
-    user_team: UserTeam,
-    time_frame: TimeFrame,
-    db: Session
-) -> List[LineupRecommendation]:
+    optimizer: LineupOptimizer, user_team: UserTeam, time_frame: TimeFrame, db: Session
+) -> list[LineupRecommendation]:
     """Generate lineup optimization recommendations."""
     try:
         # Get current lineup
-        current_lineup = db.query(Lineup).filter(
-            Lineup.user_team_id == user_team.user_team_id,
-            Lineup.is_active == True
-        ).first()
+        current_lineup = (
+            db.query(Lineup)
+            .filter(
+                Lineup.user_team_id == user_team.user_team_id, Lineup.is_active
+            )
+            .first()
+        )
 
         if not current_lineup:
             return []
@@ -372,37 +411,48 @@ async def _generate_lineup_recommendations(
                 result = await optimizer.optimize_lineup(
                     user_team_id=str(user_team.user_team_id),
                     strategy=strategy,
-                    constraints={}
+                    constraints={},
                 )
 
                 if result and result.improvement_over_current > 1.0:
-                    priority = RecommendationPriority.HIGH if result.improvement_over_current > 5.0 else RecommendationPriority.MEDIUM
+                    priority = (
+                        RecommendationPriority.HIGH
+                        if result.improvement_over_current > 5.0
+                        else RecommendationPriority.MEDIUM
+                    )
 
-                    recommendations.append(LineupRecommendation(
-                        priority=priority,
-                        title=f"Optimize Lineup ({strategy.value})",
-                        description=f"Switch to {strategy.value} strategy for +{result.improvement_over_current:.1f} projected points",
-                        projected_points=result.projected_points,
-                        current_points=result.projected_points - result.improvement_over_current,
-                        improvement=result.improvement_over_current,
-                        confidence=result.confidence_score,
-                        strategy=strategy,
-                        lineup_changes=[
-                            {
-                                "action": "start",
-                                "player_id": p.player_id,
-                                "player_name": p.player_name,
-                                "position": p.position,
-                                "projected_points": p.projected_points
-                            }
-                            for p in result.optimal_players
-                        ],
-                        reasoning=result.reasoning,
-                        risk_level="medium" if result.confidence_score > 0.7 else "high"
-                    ))
+                    recommendations.append(
+                        LineupRecommendation(
+                            priority=priority,
+                            title=f"Optimize Lineup ({strategy.value})",
+                            description=f"Switch to {strategy.value} strategy for +{result.improvement_over_current:.1f} projected points",
+                            projected_points=result.projected_points,
+                            current_points=result.projected_points
+                            - result.improvement_over_current,
+                            improvement=result.improvement_over_current,
+                            confidence=result.confidence_score,
+                            strategy=strategy,
+                            lineup_changes=[
+                                {
+                                    "action": "start",
+                                    "player_id": p.player_id,
+                                    "player_name": p.player_name,
+                                    "position": p.position,
+                                    "projected_points": p.projected_points,
+                                }
+                                for p in result.optimal_players
+                            ],
+                            reasoning=result.reasoning,
+                            risk_level=(
+                                "medium" if result.confidence_score > 0.7 else "high"
+                            ),
+                        )
+                    )
 
             except Exception as e:
-                logger.warning(f"Failed to optimize lineup for strategy {strategy}: {e}")
+                logger.warning(
+                    f"Failed to optimize lineup for strategy {strategy}: {e}"
+                )
                 continue
 
         return recommendations[:2]  # Limit to top 2 lineup recommendations
@@ -416,16 +466,16 @@ async def _generate_waiver_recommendations(
     engine: WaiverRecommendationEngine,
     user_team: UserTeam,
     time_frame: TimeFrame,
-    db: Session
-) -> List[WaiverRecommendation]:
+    db: Session,
+) -> list[WaiverRecommendation]:
     """Generate waiver wire recommendations."""
     try:
         # Generate waiver targets
         targets = await engine.get_waiver_targets(
             user_team_id=str(user_team.user_team_id),
-            budget=user_team.faab_budget if hasattr(user_team, 'faab_budget') else 100,
+            budget=user_team.faab_budget if hasattr(user_team, "faab_budget") else 100,
             strategy=WaiverStrategy.BALANCED,
-            max_targets=10
+            max_targets=10,
         )
 
         recommendations = []
@@ -439,29 +489,31 @@ async def _generate_waiver_recommendations(
             else:
                 priority = RecommendationPriority.MEDIUM
 
-            recommendations.append(WaiverRecommendation(
-                priority=priority,
-                title=f"Target {target.player_name}",
-                description=f"High-value {target.position} with {target.breakout_probability*100:.0f}% breakout probability",
-                player_id=target.player_id,
-                player_name=target.player_name,
-                position=target.position,
-                suggested_bid=target.suggested_bid,
-                ownership_percentage=target.ownership_percentage,
-                projected_points=target.projected_points,
-                breakout_probability=target.breakout_probability,
-                reasoning=target.reasoning,
-                drop_candidates=[
-                    {
-                        "player_id": candidate.player_id,
-                        "player_name": candidate.player_name,
-                        "position": candidate.position,
-                        "drop_priority": candidate.drop_priority
-                    }
-                    for candidate in target.drop_candidates
-                ],
-                strategy=WaiverStrategy.BALANCED
-            ))
+            recommendations.append(
+                WaiverRecommendation(
+                    priority=priority,
+                    title=f"Target {target.player_name}",
+                    description=f"High-value {target.position} with {target.breakout_probability*100:.0f}% breakout probability",
+                    player_id=target.player_id,
+                    player_name=target.player_name,
+                    position=target.position,
+                    suggested_bid=target.suggested_bid,
+                    ownership_percentage=target.ownership_percentage,
+                    projected_points=target.projected_points,
+                    breakout_probability=target.breakout_probability,
+                    reasoning=target.reasoning,
+                    drop_candidates=[
+                        {
+                            "player_id": candidate.player_id,
+                            "player_name": candidate.player_name,
+                            "position": candidate.position,
+                            "drop_priority": candidate.drop_priority,
+                        }
+                        for candidate in target.drop_candidates
+                    ],
+                    strategy=WaiverStrategy.BALANCED,
+                )
+            )
 
         return recommendations
 
@@ -475,8 +527,8 @@ async def _generate_trade_recommendations(
     user_team: UserTeam,
     league: League,
     time_frame: TimeFrame,
-    db: Session
-) -> List[TradeRecommendation]:
+    db: Session,
+) -> list[TradeRecommendation]:
     """Generate trade opportunity recommendations."""
     try:
         # This would integrate with trade opportunity detection
@@ -502,8 +554,8 @@ async def _generate_roster_recommendations(
     predictor: PlayerPerformancePredictor,
     user_team: UserTeam,
     time_frame: TimeFrame,
-    db: Session
-) -> List[RosterRecommendation]:
+    db: Session,
+) -> list[RosterRecommendation]:
     """Generate general roster management recommendations."""
     try:
         recommendations = []
@@ -523,38 +575,46 @@ async def _generate_roster_recommendations(
 
 # Helper endpoints for specific recommendation types
 
-@router.get("/recommendations/lineup", response_model=StandardResponse[List[LineupRecommendation]])
+
+@router.get(
+    "/recommendations/lineup",
+    response_model=StandardResponse[list[LineupRecommendation]],
+)
 async def get_lineup_recommendations(
     league_id: str,
-    strategy: Optional[OptimizationStrategy] = Query(default=OptimizationStrategy.BALANCED),
+    strategy: OptimizationStrategy | None = Query(
+        default=OptimizationStrategy.BALANCED
+    ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get lineup-specific recommendations."""
     # Implementation similar to main endpoint but focused on lineups
-    pass
 
 
-@router.get("/recommendations/waiver", response_model=StandardResponse[List[WaiverRecommendation]])
+@router.get(
+    "/recommendations/waiver",
+    response_model=StandardResponse[list[WaiverRecommendation]],
+)
 async def get_waiver_recommendations(
     league_id: str,
-    strategy: Optional[WaiverStrategy] = Query(default=WaiverStrategy.BALANCED),
+    strategy: WaiverStrategy | None = Query(default=WaiverStrategy.BALANCED),
     max_targets: int = Query(default=10, ge=1, le=20),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get waiver wire specific recommendations."""
     # Implementation similar to main endpoint but focused on waivers
-    pass
 
 
-@router.get("/recommendations/trade", response_model=StandardResponse[List[TradeRecommendation]])
+@router.get(
+    "/recommendations/trade", response_model=StandardResponse[list[TradeRecommendation]]
+)
 async def get_trade_recommendations(
     league_id: str,
-    target_team_id: Optional[str] = Query(default=None),
+    target_team_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get trade opportunity recommendations."""
     # Implementation similar to main endpoint but focused on trades
-    pass

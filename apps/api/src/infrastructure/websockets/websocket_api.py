@@ -14,28 +14,41 @@ Provides unified WebSocket entry point including:
 import asyncio
 import json
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.websockets import WebSocketState
 from sqlalchemy.orm import Session
 
-from api.deps import get_db, get_current_user_websocket
+from api.deps import get_current_user_websocket, get_db
 from api.models.response import StandardResponse
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
-from infrastructure.websockets.connection_manager import (
-    get_connection_manager, MessageType, initialize_connection_manager
+from domains.drafts.websockets.draft_handler import (
+    get_draft_handler,
+)
+from domains.scoring.websockets.score_handler import (
+    get_score_handler,
 )
 from infrastructure.events.redis_pubsub import get_event_system, initialize_event_system
-from domains.drafts.websockets.draft_handler import get_draft_handler, initialize_draft_handler
-from domains.scoring.websockets.score_handler import get_score_handler, initialize_score_handler
-from domains.users.models.user import User
+from infrastructure.websockets.connection_manager import (
+    MessageType,
+    get_connection_manager,
+    initialize_connection_manager,
+)
 
 logger = get_logger(__name__)
 
@@ -44,16 +57,15 @@ router = APIRouter()
 
 class WebSocketAPIError(Exception):
     """WebSocket API errors."""
-    pass
 
 
 @router.websocket("/real-time/connect")
 async def websocket_endpoint(
     websocket: WebSocket,
     db: Session = Depends(get_db),
-    draft_id: Optional[str] = Query(None, description="Draft ID to join"),
-    league_id: Optional[str] = Query(None, description="League ID for scores"),
-    auth_token: Optional[str] = Query(None, description="Authentication token"),
+    draft_id: str | None = Query(None, description="Draft ID to join"),
+    league_id: str | None = Query(None, description="League ID for scores"),
+    auth_token: str | None = Query(None, description="Authentication token"),
 ):
     """
     Real-time WebSocket connection endpoint.
@@ -124,18 +136,18 @@ async def websocket_endpoint(
                 "authenticated": current_user is not None,
                 "user_agent": websocket.headers.get("user-agent"),
                 "ip_address": websocket.client.host if websocket.client else None,
-            }
+            },
         )
 
         logger.info(
-            f"WebSocket connection established",
+            "WebSocket connection established",
             extra={
                 "connection_id": connection_id,
                 "user_id": user_id,
                 "draft_id": draft_id,
                 "league_id": league_id,
                 "authenticated": current_user is not None,
-            }
+            },
         )
 
         # Initialize handlers
@@ -147,17 +159,13 @@ async def websocket_endpoint(
 
         if draft_id and current_user:
             draft_result = await draft_handler.join_draft_room(
-                connection_id=connection_id,
-                league_id=draft_id,
-                user_id=user_id
+                connection_id=connection_id, league_id=draft_id, user_id=user_id
             )
             room_join_results["draft"] = draft_result
 
         if league_id and current_user:
             score_result = await score_handler.subscribe_to_league_scores(
-                connection_id=connection_id,
-                user_id=user_id,
-                league_id=league_id
+                connection_id=connection_id, user_id=user_id, league_id=league_id
             )
             room_join_results["scores"] = score_result
 
@@ -176,8 +184,8 @@ async def websocket_endpoint(
                     "drafts": draft_id is not None,
                     "scores": league_id is not None,
                     "notifications": current_user is not None,
-                }
-            }
+                },
+            },
         )
 
         # Message handling loop
@@ -185,19 +193,20 @@ async def websocket_endpoint(
             try:
                 # Wait for message with timeout
                 message = await asyncio.wait_for(
-                    websocket.receive_text(),
-                    timeout=300.0  # 5 minute timeout
+                    websocket.receive_text(), timeout=300.0  # 5 minute timeout
                 )
 
                 # Handle the message
                 await connection_manager.handle_message(connection_id, message)
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.info(f"WebSocket connection {connection_id} timed out")
                 break
 
             except WebSocketDisconnect:
-                logger.info(f"WebSocket connection {connection_id} disconnected by client")
+                logger.info(
+                    f"WebSocket connection {connection_id} disconnected by client"
+                )
                 break
 
             except Exception as e:
@@ -211,11 +220,11 @@ async def websocket_endpoint(
                         data={
                             "message": "Error processing message",
                             "error_type": "message_processing_error",
-                        }
+                        },
                     )
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected during setup")
+        logger.info("WebSocket disconnected during setup")
 
     except Exception as e:
         logger.error(f"WebSocket connection error: {e}")
@@ -223,14 +232,18 @@ async def websocket_endpoint(
         # Send error if connection is still available
         try:
             if websocket.client_state == WebSocketState.CONNECTED:
-                await websocket.send_text(json.dumps({
-                    "type": "error",
-                    "data": {
-                        "message": "Connection error occurred",
-                        "error_type": "connection_error",
-                    },
-                    "timestamp": datetime.utcnow().isoformat(),
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "data": {
+                                "message": "Connection error occurred",
+                                "error_type": "connection_error",
+                            },
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    )
+                )
         except:
             pass
 
@@ -244,7 +257,7 @@ async def websocket_endpoint(
                     await draft_handler.leave_draft_room(
                         connection_id=connection_id,
                         room_id=f"draft_{draft_id}",
-                        user_id=user_id
+                        user_id=user_id,
                     )
 
                 if league_id and user_id:
@@ -252,7 +265,7 @@ async def websocket_endpoint(
                     await score_handler.unsubscribe_from_league_scores(
                         connection_id=connection_id,
                         user_id=user_id,
-                        league_id=league_id
+                        league_id=league_id,
                     )
 
                 # Disconnect from connection manager
@@ -263,15 +276,15 @@ async def websocket_endpoint(
                 logger.error(f"Error during WebSocket cleanup: {e}")
 
         logger.info(
-            f"WebSocket connection closed",
+            "WebSocket connection closed",
             extra={
                 "connection_id": connection_id,
                 "user_id": user_id,
-            }
+            },
         )
 
 
-@router.get("/real-time/status", response_model=StandardResponse[Dict[str, Any]])
+@router.get("/real-time/status", response_model=StandardResponse[dict[str, Any]])
 async def get_realtime_status():
     """
     Get real-time service status and statistics.
@@ -298,8 +311,8 @@ async def get_realtime_status():
         event_stats = event_system.get_stats()
 
         # Get handler-specific stats
-        draft_handler = get_draft_handler(None)  # Will need to handle this better
-        score_handler = get_score_handler(None)
+        get_draft_handler(None)  # Will need to handle this better
+        get_score_handler(None)
 
         status_data = {
             "service_status": "healthy",
@@ -327,27 +340,26 @@ async def get_realtime_status():
                 "event_system_healthy": True,
                 "redis_connected": True,  # Would check actual Redis connection
                 "average_response_time_ms": 25,  # Would calculate from metrics
-            }
+            },
         }
 
         return StandardResponse(
             success=True,
             data=status_data,
-            message="Real-time service status retrieved successfully"
+            message="Real-time service status retrieved successfully",
         )
 
     except Exception as e:
         logger.error(f"Failed to get real-time status: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve real-time service status"
+            status_code=500, detail="Failed to retrieve real-time service status"
         )
 
 
-@router.post("/real-time/broadcast", response_model=StandardResponse[Dict[str, Any]])
+@router.post("/real-time/broadcast", response_model=StandardResponse[dict[str, Any]])
 async def broadcast_system_message(
-    message_data: Dict[str, Any],
-    room_id: Optional[str] = None,
+    message_data: dict[str, Any],
+    room_id: str | None = None,
     message_type: str = "system_message",
     # current_user: User = Depends(get_current_user),  # Would require admin role
 ):
@@ -398,15 +410,15 @@ async def broadcast_system_message(
             sent_count = await connection_manager.broadcast_to_room(
                 room_id=room_id,
                 message_type=MessageType.SYSTEM_MESSAGE,
-                data=broadcast_data
+                data=broadcast_data,
             )
         else:
             # Broadcast to all connections
-            for connection_id in connection_manager.connections.keys():
+            for connection_id in connection_manager.connections:
                 success = await connection_manager.send_message(
                     connection_id=connection_id,
                     message_type=MessageType.SYSTEM_MESSAGE,
-                    data=broadcast_data
+                    data=broadcast_data,
                 )
                 if success:
                     sent_count += 1
@@ -420,36 +432,34 @@ async def broadcast_system_message(
         }
 
         logger.info(
-            f"System broadcast sent",
+            "System broadcast sent",
             extra={
                 "messages_sent": sent_count,
                 "room_id": room_id,
                 "message_type": message_type,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=result_data,
-            message=f"Broadcast sent to {sent_count} connections"
+            message=f"Broadcast sent to {sent_count} connections",
         )
 
     except Exception as e:
         logger.error(f"Failed to send system broadcast: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to send system broadcast"
-        )
+        raise HTTPException(status_code=500, detail="Failed to send system broadcast")
 
 
 # Helper functions
+
 
 async def _ensure_services_initialized():
     """Ensure all real-time services are initialized."""
     try:
         # Initialize connection manager
         connection_manager = get_connection_manager()
-        if not hasattr(connection_manager, '_initialized'):
+        if not hasattr(connection_manager, "_initialized"):
             await initialize_connection_manager()
             connection_manager._initialized = True
 
@@ -476,10 +486,12 @@ async def initialize_websocket_api():
 async def shutdown_websocket_api():
     """Shutdown the WebSocket API and cleanup resources."""
     try:
-        from infrastructure.websockets.connection_manager import shutdown_connection_manager
-        from infrastructure.events.redis_pubsub import shutdown_event_system
         from domains.drafts.websockets.draft_handler import shutdown_draft_handler
         from domains.scoring.websockets.score_handler import shutdown_score_handler
+        from infrastructure.events.redis_pubsub import shutdown_event_system
+        from infrastructure.websockets.connection_manager import (
+            shutdown_connection_manager,
+        )
 
         await shutdown_draft_handler()
         await shutdown_score_handler()

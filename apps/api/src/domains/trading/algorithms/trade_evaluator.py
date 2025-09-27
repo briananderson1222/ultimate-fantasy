@@ -11,28 +11,28 @@ Provides comprehensive trade analysis and fairness evaluation including:
 - Risk assessment for injured or underperforming players
 """
 
-import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
-    get_logger = logging.getLogger  # type: ignore[assignment]
+
+    get_logger = logging.getLogger
 
 logger = get_logger(__name__)
 
 
 class TradeEvaluationError(Exception):
     """Trade evaluation algorithm errors."""
-    pass
 
 
 class FairnessLevel(Enum):
     """Trade fairness assessment levels."""
+
     VERY_FAIR = "very_fair"
     FAIR = "fair"
     SLIGHTLY_UNFAIR = "slightly_unfair"
@@ -61,8 +61,8 @@ class TradeAnalysis:
     trade_id: str
     team_a_id: str
     team_b_id: str
-    team_a_players: List[str]
-    team_b_players: List[str]
+    team_a_players: list[str]
+    team_b_players: list[str]
 
     # Value assessments
     team_a_total_value: float
@@ -71,8 +71,8 @@ class TradeAnalysis:
     value_difference_percentage: float
 
     # Player details
-    team_a_player_values: List[PlayerValue]
-    team_b_player_values: List[PlayerValue]
+    team_a_player_values: list[PlayerValue]
+    team_b_player_values: list[PlayerValue]
 
     # Trade scoring
     fairness_score: float
@@ -81,15 +81,15 @@ class TradeAnalysis:
     trade_grade_team_b: str
 
     # Analysis details
-    position_impact: Dict[str, Dict[str, float]]
+    position_impact: dict[str, dict[str, float]]
     roster_improvement_team_a: float
     roster_improvement_team_b: float
-    risk_assessment: Dict[str, any]
+    risk_assessment: dict[str, Any]
 
     # Recommendations
     recommendation: str
-    reasoning: List[str]
-    concerns: List[str]
+    reasoning: list[str]
+    concerns: list[str]
 
     # Metadata
     evaluated_at: datetime
@@ -99,7 +99,7 @@ class TradeAnalysis:
 class TradeEvaluator:
     """Advanced trade evaluation algorithm."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Position scarcity weights (higher = more scarce)
         self.position_scarcity = {
             "QB": 1.2,
@@ -122,7 +122,6 @@ class TradeEvaluator:
             "SG": 1.1,
             "SF": 1.1,
             "PF": 1.2,
-            "C": 1.3,
         }
 
         # Value tier thresholds (percentiles)
@@ -148,12 +147,12 @@ class TradeEvaluator:
         trade_id: str,
         team_a_id: str,
         team_b_id: str,
-        team_a_players: List[str],
-        team_b_players: List[str],
-        league_scoring_rules: Dict[str, any],
-        current_rosters: Dict[str, List[Dict[str, any]]],
-        player_stats: Dict[str, Dict[str, any]],
-        league_context: Optional[Dict[str, any]] = None,
+        team_a_players: list[str],
+        team_b_players: list[str],
+        league_scoring_rules: dict[str, Any],
+        current_rosters: dict[str, list[dict[str, Any]]],
+        player_stats: dict[str, dict[str, Any]],
+        league_context: dict[str, Any] | None = None,
     ) -> TradeAnalysis:
         """
         Evaluate a proposed trade between two teams.
@@ -174,14 +173,14 @@ class TradeEvaluator:
         """
         try:
             logger.info(
-                f"Evaluating trade",
+                "Evaluating trade",
                 extra={
                     "trade_id": trade_id,
                     "team_a": team_a_id,
                     "team_b": team_b_id,
                     "team_a_players": len(team_a_players),
                     "team_b_players": len(team_b_players),
-                }
+                },
             )
 
             # Validate inputs
@@ -203,7 +202,9 @@ class TradeEvaluator:
             # Calculate value difference
             value_difference = abs(team_a_total - team_b_total)
             avg_value = (team_a_total + team_b_total) / 2
-            value_diff_percentage = (value_difference / avg_value * 100) if avg_value > 0 else 0
+            value_diff_percentage = (
+                (value_difference / avg_value * 100) if avg_value > 0 else 0
+            )
 
             # Determine fairness level
             fairness_level = self._determine_fairness_level(value_diff_percentage)
@@ -224,7 +225,9 @@ class TradeEvaluator:
 
             # Generate trade grades
             grade_a = self._calculate_trade_grade(roster_impact_a, fairness_score, True)
-            grade_b = self._calculate_trade_grade(roster_impact_b, fairness_score, False)
+            grade_b = self._calculate_trade_grade(
+                roster_impact_b, fairness_score, False
+            )
 
             # Risk assessment
             risk_assessment = self._assess_trade_risks(
@@ -270,13 +273,13 @@ class TradeEvaluator:
             )
 
             logger.info(
-                f"Trade evaluation completed",
+                "Trade evaluation completed",
                 extra={
                     "trade_id": trade_id,
                     "fairness_level": fairness_level.value,
                     "fairness_score": fairness_score,
                     "confidence": confidence,
-                }
+                },
             )
 
             return analysis
@@ -287,10 +290,10 @@ class TradeEvaluator:
 
     async def _calculate_player_values(
         self,
-        player_ids: List[str],
-        scoring_rules: Dict[str, any],
-        player_stats: Dict[str, Dict[str, any]],
-    ) -> List[PlayerValue]:
+        player_ids: list[str],
+        scoring_rules: dict[str, Any],
+        player_stats: dict[str, dict[str, Any]],
+    ) -> list[PlayerValue]:
         """Calculate comprehensive value for each player."""
         player_values = []
 
@@ -319,8 +322,10 @@ class TradeEvaluator:
 
                 # Calculate final value
                 final_value = (
-                    base_value * scarcity_multiplier *
-                    (1 - injury_penalty) * (1 + performance_modifier)
+                    base_value
+                    * scarcity_multiplier
+                    * (1 - injury_penalty)
+                    * (1 + performance_modifier)
                 )
 
                 # Determine value tier
@@ -347,8 +352,8 @@ class TradeEvaluator:
 
     def _calculate_base_value(
         self,
-        stats: Dict[str, any],
-        scoring_rules: Dict[str, any],
+        stats: dict[str, Any],
+        scoring_rules: dict[str, Any],
     ) -> float:
         """Calculate base fantasy value for a player."""
         try:
@@ -357,7 +362,11 @@ class TradeEvaluator:
             if not projections:
                 # Fall back to season stats with projection factor
                 season_stats = stats.get("season_stats", {})
-                projections = {k: v * 0.85 for k, v in season_stats.items() if isinstance(v, (int, float))}
+                projections = {
+                    k: v * 0.85
+                    for k, v in season_stats.items()
+                    if isinstance(v, (int, float))
+                }
 
             # Calculate fantasy points based on scoring rules
             fantasy_points = 0.0
@@ -375,7 +384,7 @@ class TradeEvaluator:
             logger.warning(f"Failed to calculate base value: {e}")
             return 0.0
 
-    def _calculate_injury_penalty(self, stats: Dict[str, any]) -> float:
+    def _calculate_injury_penalty(self, stats: dict[str, Any]) -> float:
         """Calculate injury risk penalty (0-1 scale)."""
         injury_status = stats.get("injury_status", "healthy").lower()
 
@@ -390,7 +399,7 @@ class TradeEvaluator:
 
         return injury_penalties.get(injury_status, 0.0)
 
-    def _calculate_performance_modifier(self, stats: Dict[str, any]) -> float:
+    def _calculate_performance_modifier(self, stats: dict[str, Any]) -> float:
         """Calculate recent performance modifier (-0.3 to +0.3)."""
         try:
             recent_games = stats.get("recent_games", [])
@@ -398,8 +407,12 @@ class TradeEvaluator:
                 return 0.0
 
             # Compare recent average to season average
-            recent_avg = sum(g.get("fantasy_points", 0) for g in recent_games[-5:]) / min(5, len(recent_games))
-            season_avg = stats.get("season_stats", {}).get("avg_fantasy_points", recent_avg)
+            recent_avg = sum(
+                g.get("fantasy_points", 0) for g in recent_games[-5:]
+            ) / min(5, len(recent_games))
+            season_avg = stats.get("season_stats", {}).get(
+                "avg_fantasy_points", recent_avg
+            )
 
             if season_avg == 0:
                 return 0.0
@@ -411,7 +424,7 @@ class TradeEvaluator:
             logger.warning(f"Failed to calculate performance modifier: {e}")
             return 0.0
 
-    def _calculate_projection_confidence(self, stats: Dict[str, any]) -> float:
+    def _calculate_projection_confidence(self, stats: dict[str, Any]) -> float:
         """Calculate confidence in projections (0-1 scale)."""
         factors = []
 
@@ -435,7 +448,9 @@ class TradeEvaluator:
 
         return sum(factors) / len(factors) if factors else 0.7
 
-    def _determine_value_tier(self, value: float, all_player_stats: Dict[str, Dict[str, any]]) -> str:
+    def _determine_value_tier(
+        self, value: float, all_player_stats: dict[str, dict[str, Any]]
+    ) -> str:
         """Determine player value tier based on league context."""
         # This would ideally use league-wide value distribution
         # For now, use simple thresholds
@@ -460,10 +475,10 @@ class TradeEvaluator:
     async def _calculate_roster_impact(
         self,
         team_id: str,
-        players_out: List[str],
-        players_in: List[str],
-        current_rosters: Dict[str, List[Dict[str, any]]],
-        player_stats: Dict[str, Dict[str, any]],
+        players_out: list[str],
+        players_in: list[str],
+        current_rosters: dict[str, list[dict[str, Any]]],
+        player_stats: dict[str, dict[str, Any]],
     ) -> float:
         """Calculate roster improvement percentage for a team."""
         try:
@@ -477,7 +492,9 @@ class TradeEvaluator:
                 player_id = player.get("player_id")
                 if player_id in player_stats:
                     stats = player_stats[player_id]
-                    value = self._calculate_base_value(stats, {})  # Simplified for roster calc
+                    value = self._calculate_base_value(
+                        stats, {}
+                    )  # Simplified for roster calc
                     current_value += value
 
             # Calculate post-trade roster value
@@ -510,12 +527,12 @@ class TradeEvaluator:
 
     def _analyze_position_impact(
         self,
-        all_player_values: List[PlayerValue],
-        team_a_players: List[str],
-        team_b_players: List[str],
-    ) -> Dict[str, Dict[str, float]]:
+        all_player_values: list[PlayerValue],
+        team_a_players: list[str],
+        team_b_players: list[str],
+    ) -> dict[str, dict[str, float]]:
         """Analyze the positional impact of the trade."""
-        position_impact = {
+        position_impact: dict[str, dict[str, float]] = {
             "team_a": {},
             "team_b": {},
         }
@@ -556,9 +573,9 @@ class TradeEvaluator:
 
     def _assess_trade_risks(
         self,
-        all_player_values: List[PlayerValue],
-        player_stats: Dict[str, Dict[str, any]],
-    ) -> Dict[str, any]:
+        all_player_values: list[PlayerValue],
+        player_stats: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
         """Assess various risks associated with the trade."""
         risks = {
             "injury_risk": 0.0,
@@ -575,29 +592,35 @@ class TradeEvaluator:
             # Injury risk
             if player_value.injury_risk_penalty > 0.2:
                 risks["injury_risk"] += player_value.injury_risk_penalty
-                risks["high_risk_players"].append({
-                    "player_id": player_id,
-                    "risk_type": "injury",
-                    "risk_level": player_value.injury_risk_penalty,
-                })
+                risks["high_risk_players"].append(
+                    {
+                        "player_id": player_id,
+                        "risk_type": "injury",
+                        "risk_level": player_value.injury_risk_penalty,
+                    }
+                )
 
             # Age risk
             age = stats.get("age", 28)
             if age > 32 or age < 23:
                 age_risk = abs(age - 28) * 0.1
                 risks["age_risk"] += age_risk
-                risks["high_risk_players"].append({
-                    "player_id": player_id,
-                    "risk_type": "age",
-                    "risk_level": age_risk,
-                })
+                risks["high_risk_players"].append(
+                    {
+                        "player_id": player_id,
+                        "risk_type": "age",
+                        "risk_level": age_risk,
+                    }
+                )
 
             # Low confidence projections
             if player_value.projection_confidence < 0.6:
-                risks["low_confidence_players"].append({
-                    "player_id": player_id,
-                    "confidence": player_value.projection_confidence,
-                })
+                risks["low_confidence_players"].append(
+                    {
+                        "player_id": player_id,
+                        "confidence": player_value.projection_confidence,
+                    }
+                )
 
         return risks
 
@@ -627,8 +650,8 @@ class TradeEvaluator:
         fairness_level: FairnessLevel,
         roster_impact_a: float,
         roster_impact_b: float,
-        risk_assessment: Dict[str, any],
-    ) -> Tuple[str, List[str], List[str]]:
+        risk_assessment: dict[str, Any],
+    ) -> tuple[str, list[str], list[str]]:
         """Generate trade recommendations and analysis."""
         reasoning = []
         concerns = []
@@ -636,13 +659,17 @@ class TradeEvaluator:
         # Fairness assessment
         if fairness_level in [FairnessLevel.VERY_FAIR, FairnessLevel.FAIR]:
             recommendation = "APPROVE"
-            reasoning.append(f"Trade is {fairness_level.value.replace('_', ' ')} in terms of player value exchange")
+            reasoning.append(
+                f"Trade is {fairness_level.value.replace('_', ' ')} in terms of player value exchange"
+            )
         elif fairness_level == FairnessLevel.SLIGHTLY_UNFAIR:
             recommendation = "REVIEW"
             reasoning.append("Trade has minor value imbalance but may be acceptable")
         else:
             recommendation = "REJECT"
-            concerns.append(f"Trade is {fairness_level.value.replace('_', ' ')} - significant value imbalance")
+            concerns.append(
+                f"Trade is {fairness_level.value.replace('_', ' ')} - significant value imbalance"
+            )
 
         # Roster impact analysis
         if abs(roster_impact_a) > 20 or abs(roster_impact_b) > 20:
@@ -671,8 +698,8 @@ class TradeEvaluator:
 
     def _calculate_confidence_level(
         self,
-        all_player_values: List[PlayerValue],
-        player_stats: Dict[str, Dict[str, any]],
+        all_player_values: list[PlayerValue],
+        player_stats: dict[str, dict[str, Any]],
     ) -> float:
         """Calculate overall confidence in the trade evaluation."""
         if not all_player_values:
@@ -698,7 +725,7 @@ FairnessRating = FairnessLevel
 TradeRecommendation = TradeAnalysis
 
 # Global evaluator instance
-_trade_evaluator: Optional[TradeEvaluator] = None
+_trade_evaluator: TradeEvaluator | None = None
 
 
 def get_trade_evaluator() -> TradeEvaluator:
@@ -709,7 +736,7 @@ def get_trade_evaluator() -> TradeEvaluator:
     return _trade_evaluator
 
 
-def reset_trade_evaluator():
+def reset_trade_evaluator() -> None:
     """Reset the global evaluator (useful for testing)."""
     global _trade_evaluator
     _trade_evaluator = None

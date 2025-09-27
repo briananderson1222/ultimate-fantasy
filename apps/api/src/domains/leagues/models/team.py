@@ -44,9 +44,7 @@ class Team(Base):
     waiver_priority: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     faab_budget: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
 
-    roster: Mapped[list[str] | None] = mapped_column(
-        JSON, nullable=True, default=list
-    )
+    roster: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=list)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

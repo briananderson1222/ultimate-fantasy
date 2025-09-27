@@ -173,7 +173,11 @@ class UserService(UserServiceInterface):
         user = self.get_user_sync(user_id, db)
         payload = {
             "user_id": str(user.user_id),
-            "username": getattr(user, 'username', user.email.split('@')[0] if user.email else f'user_{user_id}'),
+            "username": getattr(
+                user,
+                "username",
+                user.email.split("@")[0] if user.email else f"user_{user_id}",
+            ),
             "email": user.email,
             "is_premium": user.is_premium_active(),
             "iat": datetime.utcnow(),
@@ -400,9 +404,7 @@ class UserService(UserServiceInterface):
         user.deactivate_account()
         session.commit()
 
-    def resend_verification_email(
-        self, user_id: str, db: Session | None = None
-    ) -> str:
+    def resend_verification_email(self, user_id: str, db: Session | None = None) -> str:
         user = self.get_user_sync(user_id, db)
         token = secrets.token_urlsafe(32)
         user.email_verification_token = token
@@ -459,7 +461,11 @@ class UserService(UserServiceInterface):
         if session is None:
             raise RuntimeError("Database session not available")
 
-        user_pref = session.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+        user_pref = (
+            session.query(UserPreference)
+            .filter(UserPreference.user_id == user_id)
+            .first()
+        )
         if not user_pref:
             # Create default preferences if they don't exist
             user_pref = UserPreference(user_id=user_id)
@@ -534,7 +540,9 @@ class UserService(UserServiceInterface):
             return False
         return hashlib.sha256((password + salt).encode()).hexdigest() == password_hash
 
-    def ensure_user_from_claims(self, claims: dict[str, Any], db: Session | None = None) -> User:
+    def ensure_user_from_claims(
+        self, claims: dict[str, Any], db: Session | None = None
+    ) -> User:
         """Ensure user exists based on JWT claims, create if necessary."""
         session = db or self.session
         if session is None:

@@ -33,7 +33,9 @@ class TestSportsPlayersGetContract:
         assert "total" in data
         assert isinstance(data["players"], list)
 
-    def test_get_players_with_search_query_returns_filtered_results(self, authenticated_client):
+    def test_get_players_with_search_query_returns_filtered_results(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/players?search=query returns filtered results.
 
@@ -55,7 +57,9 @@ class TestSportsPlayersGetContract:
             assert "position" in player
             assert "team" in player
 
-    def test_get_players_with_position_filter_returns_filtered_results(self, authenticated_client):
+    def test_get_players_with_position_filter_returns_filtered_results(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/players?position=QB returns QBs only.
 
@@ -72,7 +76,9 @@ class TestSportsPlayersGetContract:
         for player in data["players"]:
             assert player["position"] == "QB"
 
-    def test_get_players_with_team_filter_returns_filtered_results(self, authenticated_client):
+    def test_get_players_with_team_filter_returns_filtered_results(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/players?team=KC returns Chiefs players only.
 
@@ -89,7 +95,9 @@ class TestSportsPlayersGetContract:
         for player in data["players"]:
             assert player["team"] == "KC"
 
-    def test_get_players_with_pagination_returns_correct_structure(self, authenticated_client):
+    def test_get_players_with_pagination_returns_correct_structure(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/players?page=1&limit=10 returns paginated results.
 
@@ -128,7 +136,9 @@ class TestSportsPlayersGetContract:
         assert "error" in data
         assert "message" in data
 
-    def test_get_players_with_invalid_pagination_returns_400(self, authenticated_client):
+    def test_get_players_with_invalid_pagination_returns_400(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/players?page=0 returns 400.
 
@@ -176,7 +186,9 @@ class TestSportsPlayersGetContract:
 
         This test will FAIL until stats inclusion is implemented.
         """
-        response = authenticated_client.get("/api/v1/sports/players?include_stats=true&limit=1")
+        response = authenticated_client.get(
+            "/api/v1/sports/players?include_stats=true&limit=1"
+        )
 
         assert response.status_code == 200
         data = response.json()

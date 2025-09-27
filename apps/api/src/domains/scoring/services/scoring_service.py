@@ -78,7 +78,6 @@ class ScoringServiceError(Exception):
     """Base exception for scoring service errors"""
 
 
-
 class ScoringService(ScoringServiceInterface):
     def __init__(
         self, session: Session, sports_data_service: Any | None = None

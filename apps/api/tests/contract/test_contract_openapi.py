@@ -25,13 +25,13 @@ def load_openapi_spec() -> dict:
 def expected_paths_methods() -> set[tuple[str, str]]:
     # method names are lowercase as per OpenAPI spec
     return {
-        ("/leagues", "post"),
-        ("/leagues/{leagueId}/settings", "patch"),
-        ("/leagues/{leagueId}/join", "post"),
-        ("/lineups", "put"),
-        ("/leagues/{leagueId}/scoreboard", "get"),
-        ("/waivers/bids", "post"),
-        ("/leagues/{leagueId}/public", "get"),
+        ("/api/leagues", "post"),
+        ("/api/leagues/{leagueId}/settings", "patch"),
+        ("/api/leagues/{leagueId}/join", "post"),
+        ("/api/lineups", "put"),
+        ("/api/leagues/{leagueId}/scoreboard", "get"),
+        ("/api/waivers/bids", "post"),
+        ("/api/leagues/{leagueId}/public", "get"),
     }
 
 

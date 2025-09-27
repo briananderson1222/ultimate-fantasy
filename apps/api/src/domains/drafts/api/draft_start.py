@@ -11,8 +11,8 @@ Provides draft initialization and management functionality including:
 """
 
 from datetime import datetime
-from typing import Optional
 
+from domains.teams.models.team import Team
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -22,13 +22,13 @@ from api.models.response import StandardResponse
 from domains.drafts.algorithms.snake_draft import get_snake_draft_algorithm
 from domains.drafts.services.draft_timer import get_draft_timer_service
 from domains.leagues.models.league import League
-from domains.teams.models.team import Team
 from domains.users.models.user import User
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -40,24 +40,16 @@ class DraftStartRequest(BaseModel):
     """Request model for starting a draft."""
 
     pick_time_seconds: int = Field(
-        default=90,
-        ge=30,
-        le=300,
-        description="Time limit per pick in seconds (30-300)"
+        default=90, ge=30, le=300, description="Time limit per pick in seconds (30-300)"
     )
     randomize_order: bool = Field(
-        default=True,
-        description="Whether to randomize the initial draft order"
+        default=True, description="Whether to randomize the initial draft order"
     )
     total_rounds: int = Field(
-        default=15,
-        ge=1,
-        le=25,
-        description="Total number of draft rounds (1-25)"
+        default=15, ge=1, le=25, description="Total number of draft rounds (1-25)"
     )
-    seed: Optional[int] = Field(
-        default=None,
-        description="Random seed for reproducible draft order"
+    seed: int | None = Field(
+        default=None, description="Random seed for reproducible draft order"
     )
 
 
@@ -107,49 +99,41 @@ async def start_draft(
     """
     try:
         logger.info(
-            f"Draft start request",
+            "Draft start request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "pick_time_seconds": request.pick_time_seconds,
                 "total_rounds": request.total_rounds,
-            }
+            },
         )
 
         # Get and validate league
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         # Check permissions - user must be commissioner
         if league.commissioner_id != current_user.user_id:
             raise HTTPException(
-                status_code=403,
-                detail="Only the league commissioner can start a draft"
+                status_code=403, detail="Only the league commissioner can start a draft"
             )
 
         # Validate league state
         if league.status != "setup":
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot start draft for league in '{league.status}' status. League must be in 'setup' status."
+                detail=f"Cannot start draft for league in '{league.status}' status. League must be in 'setup' status.",
             )
 
         # Get league teams
-        teams = db.query(Team).filter(
-            Team.league_id == league_id
-        ).all()
+        teams = db.query(Team).filter(Team.league_id == league_id).all()
 
         if len(teams) < 2:
             raise HTTPException(
                 status_code=400,
-                detail="League must have at least 2 teams to start a draft"
+                detail="League must have at least 2 teams to start a draft",
             )
 
         # Validate all teams have active owners
@@ -157,7 +141,7 @@ async def start_draft(
             if not team.owner_id:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Team '{team.team_name}' does not have an active owner"
+                    detail=f"Team '{team.team_name}' does not have an active owner",
                 )
 
         # Check for existing active draft
@@ -165,8 +149,7 @@ async def start_draft(
         existing_timer = draft_timer_service.get_draft_timer(league_id)
         if existing_timer:
             raise HTTPException(
-                status_code=409,
-                detail="Draft is already in progress for this league"
+                status_code=409, detail="Draft is already in progress for this league"
             )
 
         # Generate draft order using snake algorithm
@@ -202,26 +185,34 @@ async def start_draft(
         # Build participant information
         participants = []
         for team in teams:
-            participants.append({
-                "team_id": team.team_id,
-                "team_name": team.team_name,
-                "owner_id": str(team.owner_id),
-                "draft_position": next(
-                    (i + 1 for i, t_id in enumerate(draft_order.teams) if t_id == team.team_id),
-                    None
-                ),
-            })
+            participants.append(
+                {
+                    "team_id": team.team_id,
+                    "team_name": team.team_name,
+                    "owner_id": str(team.owner_id),
+                    "draft_position": next(
+                        (
+                            i + 1
+                            for i, t_id in enumerate(draft_order.teams)
+                            if t_id == team.team_id
+                        ),
+                        None,
+                    ),
+                }
+            )
 
         # Serialize draft order
         draft_order_response = []
         for pick in draft_order.picks:
-            draft_order_response.append({
-                "overall_pick": pick.overall_pick,
-                "round_number": pick.round_number,
-                "pick_in_round": pick.pick_in_round,
-                "team_id": pick.team_id,
-                "is_keeper": pick.is_keeper,
-            })
+            draft_order_response.append(
+                {
+                    "overall_pick": pick.overall_pick,
+                    "round_number": pick.round_number,
+                    "pick_in_round": pick.pick_in_round,
+                    "team_id": pick.team_id,
+                    "is_keeper": pick.is_keeper,
+                }
+            )
 
         # Create response
         response_data = DraftStartResponse(
@@ -236,7 +227,11 @@ async def start_draft(
                 "pick_time_seconds": request.pick_time_seconds,
                 "total_rounds": request.total_rounds,
                 "randomize_order": request.randomize_order,
-                "randomized_at": draft_order.randomized_at.isoformat() if draft_order.randomized_at else None,
+                "randomized_at": (
+                    draft_order.randomized_at.isoformat()
+                    if draft_order.randomized_at
+                    else None
+                ),
                 "seed": draft_order.seed,
             },
             websocket_url=f"/api/v1/real-time/connect?draft_id={league_id}",
@@ -244,37 +239,36 @@ async def start_draft(
         )
 
         logger.info(
-            f"Draft started successfully",
+            "Draft started successfully",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "draft_id": league_id,
                 "teams_count": len(teams),
                 "total_picks": len(draft_order.picks),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Draft started for league {league.league_name} with {len(teams)} teams"
+            message=f"Draft started for league {league.league_name} with {len(teams)} teams",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to start draft",
+            "Failed to start draft",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to start draft. Please try again later."
+            status_code=500, detail="Failed to start draft. Please try again later."
         )
 
 
@@ -300,34 +294,30 @@ async def get_draft_status(
     """
     try:
         logger.info(
-            f"Draft status request",
+            "Draft status request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
-            }
+            },
         )
 
         # Validate league exists and user has access
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         # Check if user is member of the league
-        user_team = db.query(Team).filter(
-            Team.league_id == league_id,
-            Team.owner_id == current_user.user_id
-        ).first()
+        user_team = (
+            db.query(Team)
+            .filter(Team.league_id == league_id, Team.owner_id == current_user.user_id)
+            .first()
+        )
 
         if not user_team and league.commissioner_id != current_user.user_id:
             raise HTTPException(
                 status_code=403,
-                detail="You must be a league member to view draft status"
+                detail="You must be a league member to view draft status",
             )
 
         # Get draft timer
@@ -352,42 +342,48 @@ async def get_draft_status(
                 "is_paused": timer_status["is_paused"],
                 "completed_picks": timer_status["completed_picks"],
                 "total_picks": timer_status["total_picks"],
-                "progress_percentage": round(
-                    (timer_status["completed_picks"] / timer_status["total_picks"]) * 100, 1
-                ) if timer_status["total_picks"] > 0 else 0,
+                "progress_percentage": (
+                    round(
+                        (timer_status["completed_picks"] / timer_status["total_picks"])
+                        * 100,
+                        1,
+                    )
+                    if timer_status["total_picks"] > 0
+                    else 0
+                ),
                 "websocket_url": f"/api/v1/real-time/connect?draft_id={league_id}",
             }
 
         logger.info(
-            f"Draft status retrieved",
+            "Draft status retrieved",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "draft_status": status_data["status"],
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=status_data,
-            message="Draft status retrieved successfully"
+            message="Draft status retrieved successfully",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to get draft status",
+            "Failed to get draft status",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve draft status. Please try again later."
+            detail="Failed to retrieve draft status. Please try again later.",
         )
 
 
@@ -412,28 +408,22 @@ async def pause_draft(
     """
     try:
         logger.info(
-            f"Draft pause request",
+            "Draft pause request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
-            }
+            },
         )
 
         # Validate league and permissions
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         if league.commissioner_id != current_user.user_id:
             raise HTTPException(
-                status_code=403,
-                detail="Only the league commissioner can pause a draft"
+                status_code=403, detail="Only the league commissioner can pause a draft"
             )
 
         # Get draft timer
@@ -442,8 +432,7 @@ async def pause_draft(
 
         if not draft_timer:
             raise HTTPException(
-                status_code=404,
-                detail="No active draft found for this league"
+                status_code=404, detail="No active draft found for this league"
             )
 
         # Pause the draft
@@ -451,43 +440,39 @@ async def pause_draft(
 
         if not success:
             raise HTTPException(
-                status_code=400,
-                detail="Cannot pause draft in its current state"
+                status_code=400, detail="Cannot pause draft in its current state"
             )
 
         # Get updated status
         timer_status = draft_timer.get_timer_status()
 
         logger.info(
-            f"Draft paused successfully",
+            "Draft paused successfully",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "time_remaining": timer_status["time_remaining"],
-            }
+            },
         )
 
         return StandardResponse(
-            success=True,
-            data=timer_status,
-            message="Draft paused successfully"
+            success=True, data=timer_status, message="Draft paused successfully"
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to pause draft",
+            "Failed to pause draft",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to pause draft. Please try again later."
+            status_code=500, detail="Failed to pause draft. Please try again later."
         )
 
 
@@ -512,28 +497,23 @@ async def resume_draft(
     """
     try:
         logger.info(
-            f"Draft resume request",
+            "Draft resume request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
-            }
+            },
         )
 
         # Validate league and permissions
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         if league.commissioner_id != current_user.user_id:
             raise HTTPException(
                 status_code=403,
-                detail="Only the league commissioner can resume a draft"
+                detail="Only the league commissioner can resume a draft",
             )
 
         # Get draft timer
@@ -542,8 +522,7 @@ async def resume_draft(
 
         if not draft_timer:
             raise HTTPException(
-                status_code=404,
-                detail="No active draft found for this league"
+                status_code=404, detail="No active draft found for this league"
             )
 
         # Resume the draft
@@ -551,41 +530,37 @@ async def resume_draft(
 
         if not success:
             raise HTTPException(
-                status_code=400,
-                detail="Cannot resume draft in its current state"
+                status_code=400, detail="Cannot resume draft in its current state"
             )
 
         # Get updated status
         timer_status = draft_timer.get_timer_status()
 
         logger.info(
-            f"Draft resumed successfully",
+            "Draft resumed successfully",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "time_remaining": timer_status["time_remaining"],
-            }
+            },
         )
 
         return StandardResponse(
-            success=True,
-            data=timer_status,
-            message="Draft resumed successfully"
+            success=True, data=timer_status, message="Draft resumed successfully"
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to resume draft",
+            "Failed to resume draft",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to resume draft. Please try again later."
+            status_code=500, detail="Failed to resume draft. Please try again later."
         )

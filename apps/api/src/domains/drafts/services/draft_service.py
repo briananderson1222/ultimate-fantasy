@@ -675,9 +675,7 @@ class DraftService:
             return 1
         return ((pick_number - 1) // team_count) + 1
 
-    def _calculate_total_rounds(
-        self, league: League | None, teams: list[Team]
-    ) -> int:
+    def _calculate_total_rounds(self, league: League | None, teams: list[Team]) -> int:
         roster_settings = (league.roster_settings if league else {}) or {}
         starting_positions = roster_settings.get("starting_positions", [])
         bench_spots = roster_settings.get("bench_spots", 5)

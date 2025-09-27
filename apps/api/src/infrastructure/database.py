@@ -7,7 +7,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime
 from typing import Any
 
@@ -150,10 +150,8 @@ class DatabaseManager:
             # Cancel health monitoring
             if self.health_check_task:
                 self.health_check_task.cancel()
-                try:
+                with suppress(asyncio.CancelledError):
                     await self.health_check_task
-                except asyncio.CancelledError:
-                    pass
 
             # Close all sessions
             if self.scoped_session_factory:

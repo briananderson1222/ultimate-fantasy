@@ -13,32 +13,31 @@ Provides comprehensive data normalization including:
 
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 from uuid import uuid4
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
-    get_logger = logging.getLogger  # type: ignore[assignment]
+
+    get_logger = logging.getLogger
 
 logger = get_logger(__name__)
 
 
 class DataNormalizationError(Exception):
     """Data normalization errors."""
-    pass
 
 
 class ValidationError(DataNormalizationError):
     """Data validation errors."""
-    pass
 
 
 class SportsDataNormalizer:
     """Normalize and standardize sports data from multiple providers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Position mappings for different sports
         self.position_mappings = {
             "nfl": {
@@ -188,12 +187,27 @@ class SportsDataNormalizer:
         self.stat_mappings = {
             "nfl": {
                 "passing_yards": ["passingYards", "passYds", "pass_yds", "py"],
-                "passing_touchdowns": ["passingTouchdowns", "passTds", "pass_tds", "ptd"],
+                "passing_touchdowns": [
+                    "passingTouchdowns",
+                    "passTds",
+                    "pass_tds",
+                    "ptd",
+                ],
                 "interceptions": ["interceptions", "ints", "int"],
                 "rushing_yards": ["rushingYards", "rushYds", "rush_yds", "ry"],
-                "rushing_touchdowns": ["rushingTouchdowns", "rushTds", "rush_tds", "rtd"],
+                "rushing_touchdowns": [
+                    "rushingTouchdowns",
+                    "rushTds",
+                    "rush_tds",
+                    "rtd",
+                ],
                 "receiving_yards": ["receivingYards", "recYds", "rec_yds", "rey"],
-                "receiving_touchdowns": ["receivingTouchdowns", "recTds", "rec_tds", "retd"],
+                "receiving_touchdowns": [
+                    "receivingTouchdowns",
+                    "recTds",
+                    "rec_tds",
+                    "retd",
+                ],
                 "receptions": ["receptions", "rec", "catches"],
                 "targets": ["targets", "tgt"],
                 "fumbles": ["fumbles", "fum"],
@@ -241,10 +255,10 @@ class SportsDataNormalizer:
 
     def normalize_player_data(
         self,
-        raw_data: Dict[str, Any],
+        raw_data: dict[str, Any],
         provider: str,
         sport: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Normalize player data from any provider to standard format.
 
@@ -262,17 +276,28 @@ class SportsDataNormalizer:
                 "player_id": self._generate_or_extract_id(raw_data, "player_id"),
                 "external_id": str(raw_data.get("external_id", raw_data.get("id", ""))),
                 "name": self._normalize_name(raw_data.get("name", "")),
-                "position": self._normalize_position(raw_data.get("position", ""), sport),
+                "position": self._normalize_position(
+                    raw_data.get("position", ""), sport
+                ),
                 "team_id": self._normalize_team_id(raw_data.get("team_id", ""), sport),
                 "sport": sport.lower(),
-                "injury_status": self._normalize_injury_status(raw_data.get("injury_status", "healthy")),
+                "injury_status": self._normalize_injury_status(
+                    raw_data.get("injury_status", "healthy")
+                ),
                 "injury_description": raw_data.get("injury_description"),
             }
 
             # Add optional fields if available
             optional_fields = [
-                "jersey_number", "height", "weight", "age", "experience",
-                "birth_date", "college", "salary", "contract_years"
+                "jersey_number",
+                "height",
+                "weight",
+                "age",
+                "experience",
+                "birth_date",
+                "college",
+                "salary",
+                "contract_years",
             ]
 
             for field in optional_fields:
@@ -280,19 +305,19 @@ class SportsDataNormalizer:
                     player_data[field] = raw_data[field]
 
             # Normalize season stats if present
-            if "season_stats" in raw_data and raw_data["season_stats"]:
+            if raw_data.get("season_stats"):
                 player_data["season_stats"] = self._normalize_stats(
                     raw_data["season_stats"], sport
                 )
 
             # Normalize game stats if present
-            if "game_stats" in raw_data and raw_data["game_stats"]:
+            if raw_data.get("game_stats"):
                 player_data["game_stats"] = self._normalize_stats(
                     raw_data["game_stats"], sport
                 )
 
             # Normalize projections if present
-            if "projections" in raw_data and raw_data["projections"]:
+            if raw_data.get("projections"):
                 player_data["projections"] = self._normalize_projections(
                     raw_data["projections"], sport
                 )
@@ -312,10 +337,10 @@ class SportsDataNormalizer:
 
     def normalize_team_data(
         self,
-        raw_data: Dict[str, Any],
+        raw_data: dict[str, Any],
         provider: str,
         sport: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Normalize team data from any provider to standard format.
 
@@ -332,7 +357,9 @@ class SportsDataNormalizer:
                 "team_id": self._normalize_team_id(raw_data.get("team_id", ""), sport),
                 "name": raw_data.get("name", ""),
                 "city": raw_data.get("city", ""),
-                "abbreviation": self._normalize_team_id(raw_data.get("abbreviation", ""), sport),
+                "abbreviation": self._normalize_team_id(
+                    raw_data.get("abbreviation", ""), sport
+                ),
                 "sport": sport.lower(),
                 "conference": raw_data.get("conference"),
                 "division": raw_data.get("division"),
@@ -358,10 +385,10 @@ class SportsDataNormalizer:
 
     def normalize_game_data(
         self,
-        raw_data: Dict[str, Any],
+        raw_data: dict[str, Any],
         provider: str,
         sport: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Normalize game/match data from any provider to standard format.
 
@@ -378,10 +405,16 @@ class SportsDataNormalizer:
                 "game_id": self._generate_or_extract_id(raw_data, "game_id"),
                 "external_id": str(raw_data.get("external_id", raw_data.get("id", ""))),
                 "sport": sport.lower(),
-                "home_team": self._normalize_team_id(raw_data.get("home_team", ""), sport),
-                "away_team": self._normalize_team_id(raw_data.get("away_team", ""), sport),
+                "home_team": self._normalize_team_id(
+                    raw_data.get("home_team", ""), sport
+                ),
+                "away_team": self._normalize_team_id(
+                    raw_data.get("away_team", ""), sport
+                ),
                 "scheduled_at": self._normalize_datetime(raw_data.get("scheduled_at")),
-                "status": self._normalize_game_status(raw_data.get("status", "scheduled")),
+                "status": self._normalize_game_status(
+                    raw_data.get("status", "scheduled")
+                ),
                 "week": raw_data.get("week"),
                 "season": raw_data.get("season"),
             }
@@ -394,8 +427,14 @@ class SportsDataNormalizer:
 
             # Add game state information
             optional_fields = [
-                "period", "time_remaining", "is_final", "attendance",
-                "weather", "temperature", "wind", "surface"
+                "period",
+                "time_remaining",
+                "is_final",
+                "attendance",
+                "weather",
+                "temperature",
+                "wind",
+                "surface",
             ]
 
             for field in optional_fields:
@@ -417,13 +456,13 @@ class SportsDataNormalizer:
 
     def normalize_stats_data(
         self,
-        raw_stats: Dict[str, Any],
+        raw_stats: dict[str, Any],
         player_id: str,
         sport: str,
-        game_id: Optional[str] = None,
-        week: Optional[int] = None,
-        season: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        game_id: str | None = None,
+        week: int | None = None,
+        season: str | None = None,
+    ) -> dict[str, Any]:
         """
         Normalize player statistics data.
 
@@ -465,10 +504,10 @@ class SportsDataNormalizer:
 
     def batch_normalize_players(
         self,
-        raw_players: List[Dict[str, Any]],
+        raw_players: list[dict[str, Any]],
         provider: str,
         sport: str,
-    ) -> Tuple[List[Dict[str, Any]], List[str]]:
+    ) -> tuple[list[dict[str, Any]], list[str]]:
         """
         Normalize multiple players efficiently.
 
@@ -501,11 +540,11 @@ class SportsDataNormalizer:
 
     # Private helper methods
 
-    def _generate_or_extract_id(self, data: Dict[str, Any], field: str) -> str:
+    def _generate_or_extract_id(self, data: dict[str, Any], field: str) -> str:
         """Generate or extract ID from data."""
-        if field in data and data[field]:
+        if data.get(field):
             return str(data[field])
-        elif "id" in data and data["id"]:
+        elif data.get("id"):
             return str(data["id"])
         else:
             return str(uuid4())
@@ -516,12 +555,12 @@ class SportsDataNormalizer:
             return ""
 
         # Remove extra whitespace and standardize format
-        name = re.sub(r'\s+', ' ', name.strip())
+        name = re.sub(r"\s+", " ", name.strip())
 
         # Handle common name formats
-        if ',' in name:
+        if "," in name:
             # "Last, First" -> "First Last"
-            parts = name.split(',', 1)
+            parts = name.split(",", 1)
             if len(parts) == 2:
                 name = f"{parts[1].strip()} {parts[0].strip()}"
 
@@ -570,7 +609,7 @@ class SportsDataNormalizer:
         status_lower = status.lower().strip()
         return self.game_status_mappings.get(status_lower, "scheduled")
 
-    def _normalize_datetime(self, dt_str: Union[str, datetime, None]) -> Optional[str]:
+    def _normalize_datetime(self, dt_str: str | datetime | None) -> str | None:
         """Normalize datetime string to ISO format."""
         if not dt_str:
             return None
@@ -582,14 +621,14 @@ class SportsDataNormalizer:
             # Try to parse various datetime formats
             if isinstance(dt_str, str):
                 # Handle common formats
-                parsed_dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                parsed_dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
                 return parsed_dt.isoformat()
         except Exception:
             logger.warning(f"Could not parse datetime: {dt_str}")
 
         return str(dt_str)  # Return as-is if parsing fails
 
-    def _normalize_stats(self, stats: Dict[str, Any], sport: str) -> Dict[str, Any]:
+    def _normalize_stats(self, stats: dict[str, Any], sport: str) -> dict[str, Any]:
         """Normalize statistics to standard format."""
         if not stats:
             return {}
@@ -614,7 +653,9 @@ class SportsDataNormalizer:
 
         return normalized_stats
 
-    def _normalize_projections(self, projections: Dict[str, Any], sport: str) -> Dict[str, Any]:
+    def _normalize_projections(
+        self, projections: dict[str, Any], sport: str
+    ) -> dict[str, Any]:
         """Normalize projection data."""
         if not projections:
             return {}
@@ -624,11 +665,13 @@ class SportsDataNormalizer:
 
         # Ensure fantasy_points is included
         if "fantasy_points" not in normalized and "fantasy_points" in projections:
-            normalized["fantasy_points"] = self._safe_numeric(projections["fantasy_points"])
+            normalized["fantasy_points"] = self._safe_numeric(
+                projections["fantasy_points"]
+            )
 
         return normalized
 
-    def _calculate_fantasy_points(self, stats: Dict[str, Any], sport: str) -> float:
+    def _calculate_fantasy_points(self, stats: dict[str, Any], sport: str) -> float:
         """Calculate fantasy points from stats using standard scoring."""
         if not stats:
             return 0.0
@@ -677,7 +720,7 @@ class SportsDataNormalizer:
 
         return round(points, 2)
 
-    def _safe_numeric(self, value: Any) -> Union[int, float]:
+    def _safe_numeric(self, value: Any) -> int | float:
         """Safely convert value to numeric."""
         if value is None:
             return 0
@@ -687,7 +730,7 @@ class SportsDataNormalizer:
             if isinstance(value, (int, float)):
                 return value
             elif isinstance(value, str):
-                if '.' in value:
+                if "." in value:
                     return float(value)
                 else:
                     return int(value)
@@ -705,7 +748,7 @@ class SportsDataNormalizer:
 
     # Validation methods
 
-    def _validate_player_data(self, player_data: Dict[str, Any], sport: str) -> None:
+    def _validate_player_data(self, player_data: dict[str, Any], sport: str) -> None:
         """Validate normalized player data."""
         required_fields = ["player_id", "name", "sport"]
 
@@ -719,11 +762,15 @@ class SportsDataNormalizer:
 
         # Validate position if present
         if player_data.get("position"):
-            valid_positions = set(self.position_mappings.get(sport.lower(), {}).values())
+            valid_positions = set(
+                self.position_mappings.get(sport.lower(), {}).values()
+            )
             if player_data["position"] not in valid_positions:
-                logger.warning(f"Unknown position '{player_data['position']}' for sport {sport}")
+                logger.warning(
+                    f"Unknown position '{player_data['position']}' for sport {sport}"
+                )
 
-    def _validate_team_data(self, team_data: Dict[str, Any], sport: str) -> None:
+    def _validate_team_data(self, team_data: dict[str, Any], sport: str) -> None:
         """Validate normalized team data."""
         required_fields = ["team_id", "name", "sport"]
 
@@ -731,7 +778,7 @@ class SportsDataNormalizer:
             if not team_data.get(field):
                 raise ValidationError(f"Required field '{field}' is missing or empty")
 
-    def _validate_game_data(self, game_data: Dict[str, Any], sport: str) -> None:
+    def _validate_game_data(self, game_data: dict[str, Any], sport: str) -> None:
         """Validate normalized game data."""
         required_fields = ["game_id", "sport", "home_team", "away_team"]
 
@@ -748,7 +795,7 @@ class SportsDataNormalizer:
 DataNormalizer = SportsDataNormalizer
 
 # Global normalizer instance
-_normalizer: Optional[SportsDataNormalizer] = None
+_normalizer: SportsDataNormalizer | None = None
 
 
 def get_data_normalizer() -> SportsDataNormalizer:
@@ -759,7 +806,7 @@ def get_data_normalizer() -> SportsDataNormalizer:
     return _normalizer
 
 
-def reset_data_normalizer():
+def reset_data_normalizer() -> None:
     """Reset the global normalizer (useful for testing)."""
     global _normalizer
     _normalizer = None

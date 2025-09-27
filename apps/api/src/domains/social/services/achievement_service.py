@@ -9,17 +9,15 @@ Provides comprehensive achievement and gamification features including:
 - Social sharing and celebration features
 """
 
-import asyncio
-import json
+import contextlib
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from uuid import uuid4
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc, func, update
 
 try:
     from infrastructure.cache.redis_pool import get_redis_pool
@@ -30,28 +28,34 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 try:
     from models.achievement import Achievement, UserAchievement
-    from models.user import User
     from models.league import League
+    from models.user import User
 except ImportError:
     # Mock classes for when models aren't available
     class Achievement:
         pass
+
     class UserAchievement:
         pass
+
     class User:
         pass
+
     class League:
         pass
+
 
 logger = get_logger(__name__)
 
 
 class AchievementType(Enum):
     """Achievement category types."""
+
     DRAFT = "draft"
     TRADING = "trading"
     LINEUP = "lineup"
@@ -64,6 +68,7 @@ class AchievementType(Enum):
 
 class AchievementRarity(Enum):
     """Achievement rarity levels."""
+
     COMMON = "common"
     UNCOMMON = "uncommon"
     RARE = "rare"
@@ -73,27 +78,29 @@ class AchievementRarity(Enum):
 
 class ProgressType(Enum):
     """Progress tracking types."""
-    COUNTER = "counter"         # Count occurrences
-    PERCENTAGE = "percentage"   # Track percentage completion
-    STREAK = "streak"          # Track consecutive events
-    THRESHOLD = "threshold"    # Reach specific value
-    BOOLEAN = "boolean"        # One-time achievement
+
+    COUNTER = "counter"  # Count occurrences
+    PERCENTAGE = "percentage"  # Track percentage completion
+    STREAK = "streak"  # Track consecutive events
+    THRESHOLD = "threshold"  # Reach specific value
+    BOOLEAN = "boolean"  # One-time achievement
 
 
 @dataclass
 class AchievementDefinition:
     """Achievement definition and requirements."""
+
     achievement_id: str
     name: str
     description: str
     category: AchievementType
     rarity: AchievementRarity
     progress_type: ProgressType
-    target_value: Optional[int] = None
-    conditions: Dict[str, Any] = field(default_factory=dict)
-    rewards: Dict[str, Any] = field(default_factory=dict)
-    prerequisites: List[str] = field(default_factory=list)
-    icon_url: Optional[str] = None
+    target_value: int | None = None
+    conditions: dict[str, Any] = field(default_factory=dict)
+    rewards: dict[str, Any] = field(default_factory=dict)
+    prerequisites: list[str] = field(default_factory=list)
+    icon_url: str | None = None
     is_hidden: bool = False
     is_repeatable: bool = False
     season_specific: bool = False
@@ -103,31 +110,34 @@ class AchievementDefinition:
 @dataclass
 class UserProgress:
     """User progress on an achievement."""
+
     user_id: str
     achievement_id: str
     current_value: int = 0
     target_value: int = 1
     progress_percentage: float = 0.0
     is_completed: bool = False
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     last_updated: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class AchievementReward:
     """Achievement reward details."""
+
     reward_id: str
     achievement_id: str
     reward_type: str  # points, badge, title, unlock
     value: Any
     display_name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 @dataclass
 class LeaderboardEntry:
     """Leaderboard entry."""
+
     user_id: str
     username: str
     score: int
@@ -135,7 +145,7 @@ class LeaderboardEntry:
     achievements_count: int
     rare_achievements: int
     total_points: int
-    avatar_url: Optional[str] = None
+    avatar_url: str | None = None
 
 
 class AchievementService:
@@ -155,13 +165,13 @@ class AchievementService:
         self.redis_pool = redis_pool
 
         # Achievement definitions
-        self.achievements: Dict[str, AchievementDefinition] = {}
+        self.achievements: dict[str, AchievementDefinition] = {}
 
         # Progress tracking
-        self.user_progress: Dict[str, Dict[str, UserProgress]] = {}
+        self.user_progress: dict[str, dict[str, UserProgress]] = {}
 
         # Event listeners for achievement triggers
-        self.event_listeners: Dict[str, List[Callable]] = {}
+        self.event_listeners: dict[str, list[Callable]] = {}
 
         self._initialized = False
 
@@ -183,10 +193,7 @@ class AchievementService:
         logger.info("Achievement service initialized")
 
     async def track_event(
-        self,
-        event_name: str,
-        user_id: str,
-        event_data: Dict[str, Any]
+        self, event_name: str, user_id: str, event_data: dict[str, Any]
     ):
         """
         Track an event that may trigger achievement progress.
@@ -215,9 +222,9 @@ class AchievementService:
     async def get_user_achievements(
         self,
         user_id: str,
-        category: Optional[AchievementType] = None,
-        completed_only: bool = False
-    ) -> List[Dict[str, Any]]:
+        category: AchievementType | None = None,
+        completed_only: bool = False,
+    ) -> list[dict[str, Any]]:
         """
         Get user's achievements and progress.
 
@@ -262,9 +269,13 @@ class AchievementService:
                     "current_value": progress.current_value,
                     "target_value": progress.target_value,
                     "percentage": progress.progress_percentage,
-                    "completed_at": progress.completed_at.isoformat() if progress.completed_at else None
+                    "completed_at": (
+                        progress.completed_at.isoformat()
+                        if progress.completed_at
+                        else None
+                    ),
                 },
-                "rewards": definition.rewards
+                "rewards": definition.rewards,
             }
 
             achievements.append(achievement_data)
@@ -273,10 +284,10 @@ class AchievementService:
 
     async def get_achievement_leaderboard(
         self,
-        category: Optional[AchievementType] = None,
+        category: AchievementType | None = None,
         limit: int = 50,
-        league_id: Optional[str] = None
-    ) -> List[LeaderboardEntry]:
+        league_id: str | None = None,
+    ) -> list[LeaderboardEntry]:
         """
         Get achievement leaderboard.
 
@@ -297,10 +308,7 @@ class AchievementService:
             return await self._get_db_leaderboard(category, limit, league_id)
 
     async def unlock_achievement(
-        self,
-        user_id: str,
-        achievement_id: str,
-        force: bool = False
+        self, user_id: str, achievement_id: str, force: bool = False
     ) -> bool:
         """
         Manually unlock an achievement for a user.
@@ -344,7 +352,7 @@ class AchievementService:
         logger.info(f"Achievement {achievement_id} unlocked for user {user_id}")
         return True
 
-    async def get_user_stats(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_stats(self, user_id: str) -> dict[str, Any]:
         """
         Get comprehensive user achievement statistics.
 
@@ -369,7 +377,11 @@ class AchievementService:
                 total_points += definition.points_value
                 rarity_counts[definition.rarity.value] += 1
 
-        completion_rate = (completed_count / total_achievements) * 100 if total_achievements > 0 else 0
+        completion_rate = (
+            (completed_count / total_achievements) * 100
+            if total_achievements > 0
+            else 0
+        )
 
         return {
             "user_id": user_id,
@@ -378,13 +390,10 @@ class AchievementService:
             "completion_rate": completion_rate,
             "total_points": total_points,
             "rarity_breakdown": rarity_counts,
-            "rank": await self._get_user_rank(user_id)
+            "rank": await self._get_user_rank(user_id),
         }
 
-    async def create_achievement(
-        self,
-        definition: AchievementDefinition
-    ) -> bool:
+    async def create_achievement(self, definition: AchievementDefinition) -> bool:
         """
         Create a new achievement definition.
 
@@ -412,7 +421,9 @@ class AchievementService:
         logger.info(f"Achievement {definition.achievement_id} created")
         return True
 
-    async def _get_achievements_for_event(self, event_name: str) -> List[AchievementDefinition]:
+    async def _get_achievements_for_event(
+        self, event_name: str
+    ) -> list[AchievementDefinition]:
         """Get achievements that can be triggered by an event."""
         relevant_achievements = []
 
@@ -424,7 +435,9 @@ class AchievementService:
 
         return relevant_achievements
 
-    async def _is_user_eligible(self, user_id: str, achievement: AchievementDefinition) -> bool:
+    async def _is_user_eligible(
+        self, user_id: str, achievement: AchievementDefinition
+    ) -> bool:
         """Check if user is eligible for an achievement."""
         # Check prerequisites
         for prereq_id in achievement.prerequisites:
@@ -449,7 +462,7 @@ class AchievementService:
         user_id: str,
         achievement: AchievementDefinition,
         event_name: str,
-        event_data: Dict[str, Any]
+        event_data: dict[str, Any],
     ):
         """Update progress for a specific achievement."""
         progress = await self._get_user_progress(user_id, achievement.achievement_id)
@@ -475,7 +488,9 @@ class AchievementService:
             else:
                 progress.current_value = 1  # Reset streak
         elif achievement.progress_type == ProgressType.THRESHOLD:
-            progress.current_value = max(progress.current_value, event_data.get("value", 0))
+            progress.current_value = max(
+                progress.current_value, event_data.get("value", 0)
+            )
         elif achievement.progress_type == ProgressType.BOOLEAN:
             progress.current_value = 1
 
@@ -486,16 +501,20 @@ class AchievementService:
             )
 
         # Check if completed
-        if not progress.is_completed:
-            if achievement.target_value and progress.current_value >= achievement.target_value:
-                progress.is_completed = True
-                progress.completed_at = datetime.utcnow()
+        if not progress.is_completed and (
+            achievement.target_value
+            and progress.current_value >= achievement.target_value
+        ):
+            progress.is_completed = True
+            progress.completed_at = datetime.utcnow()
 
-                # Distribute rewards
-                await self._distribute_rewards(user_id, achievement.achievement_id)
+            # Distribute rewards
+            await self._distribute_rewards(user_id, achievement.achievement_id)
 
-                # Send notification
-                await self._send_achievement_notification(user_id, achievement.achievement_id)
+            # Send notification
+            await self._send_achievement_notification(
+                user_id, achievement.achievement_id
+            )
 
         progress.last_updated = datetime.utcnow()
 
@@ -506,8 +525,8 @@ class AchievementService:
         self,
         achievement: AchievementDefinition,
         event_name: str,
-        event_data: Dict[str, Any],
-        current_progress: UserProgress
+        event_data: dict[str, Any],
+        current_progress: UserProgress,
     ) -> int:
         """Calculate how much progress should be added for an event."""
         # Get event rules from achievement conditions
@@ -531,10 +550,15 @@ class AchievementService:
 
         return int(delta * multiplier)
 
-    async def _get_user_progress(self, user_id: str, achievement_id: str) -> UserProgress:
+    async def _get_user_progress(
+        self, user_id: str, achievement_id: str
+    ) -> UserProgress:
         """Get user progress for an achievement."""
         # Check cache first
-        if user_id in self.user_progress and achievement_id in self.user_progress[user_id]:
+        if (
+            user_id in self.user_progress
+            and achievement_id in self.user_progress[user_id]
+        ):
             return self.user_progress[user_id][achievement_id]
 
         # Load from database
@@ -546,7 +570,7 @@ class AchievementService:
             progress = UserProgress(
                 user_id=user_id,
                 achievement_id=achievement_id,
-                target_value=achievement.target_value or 1
+                target_value=achievement.target_value or 1,
             )
 
         # Cache progress
@@ -573,8 +597,10 @@ class AchievementService:
                 "current_value": progress.current_value,
                 "progress_percentage": progress.progress_percentage,
                 "is_completed": progress.is_completed,
-                "completed_at": progress.completed_at.isoformat() if progress.completed_at else None,
-                "last_updated": progress.last_updated.isoformat()
+                "completed_at": (
+                    progress.completed_at.isoformat() if progress.completed_at else None
+                ),
+                "last_updated": progress.last_updated.isoformat(),
             }
             await self.redis_pool.redis_client.hset(progress_key, mapping=progress_data)
             await self.redis_pool.redis_client.expire(progress_key, 86400)  # 24 hours
@@ -588,7 +614,9 @@ class AchievementService:
         for reward_type, reward_value in achievement.rewards.items():
             await self._apply_reward(user_id, reward_type, reward_value, achievement_id)
 
-    async def _apply_reward(self, user_id: str, reward_type: str, reward_value: Any, achievement_id: str):
+    async def _apply_reward(
+        self, user_id: str, reward_type: str, reward_value: Any, achievement_id: str
+    ):
         """Apply a specific reward to a user."""
         if reward_type == "points":
             # Add points to user's total
@@ -612,17 +640,10 @@ class AchievementService:
             return
 
         # This would integrate with the notification service
-        notification_data = {
-            "type": "achievement_unlocked",
-            "user_id": user_id,
-            "achievement_id": achievement_id,
-            "achievement_name": achievement.name,
-            "achievement_description": achievement.description,
-            "rarity": achievement.rarity.value,
-            "points_awarded": achievement.points_value
-        }
 
-        logger.info(f"Achievement notification sent for {achievement_id} to user {user_id}")
+        logger.info(
+            f"Achievement notification sent for {achievement_id} to user {user_id}"
+        )
 
     async def _update_leaderboards(self, user_id: str):
         """Update leaderboards with user's latest achievements."""
@@ -634,16 +655,14 @@ class AchievementService:
 
         # Update global leaderboard
         await self.redis_pool.redis_client.zadd(
-            "achievements:leaderboard:global",
-            {user_id: user_stats["total_points"]}
+            "achievements:leaderboard:global", {user_id: user_stats["total_points"]}
         )
 
         # Update category leaderboards
         for category in AchievementType:
             category_points = await self._calculate_category_points(user_id, category)
             await self.redis_pool.redis_client.zadd(
-                f"achievements:leaderboard:{category.value}",
-                {user_id: category_points}
+                f"achievements:leaderboard:{category.value}", {user_id: category_points}
             )
 
     async def _load_achievement_definitions(self):
@@ -660,12 +679,10 @@ class AchievementService:
                 target_value=1,
                 conditions={
                     "trigger_events": ["draft_pick"],
-                    "event_rules": {
-                        "draft_pick": {"delta": 1}
-                    }
+                    "event_rules": {"draft_pick": {"delta": 1}},
                 },
                 rewards={"points": 10},
-                points_value=10
+                points_value=10,
             ),
             "draft_master": AchievementDefinition(
                 achievement_id="draft_master",
@@ -677,12 +694,10 @@ class AchievementService:
                 target_value=10,
                 conditions={
                     "trigger_events": ["draft_completed"],
-                    "event_rules": {
-                        "draft_completed": {"delta": 1}
-                    }
+                    "event_rules": {"draft_completed": {"delta": 1}},
                 },
                 rewards={"points": 100, "badge": "draft_master"},
-                points_value=100
+                points_value=100,
             ),
             "trade_shark": AchievementDefinition(
                 achievement_id="trade_shark",
@@ -694,12 +709,10 @@ class AchievementService:
                 target_value=25,
                 conditions={
                     "trigger_events": ["trade_completed"],
-                    "event_rules": {
-                        "trade_completed": {"delta": 1}
-                    }
+                    "event_rules": {"trade_completed": {"delta": 1}},
                 },
                 rewards={"points": 250, "title": "Trade Shark"},
-                points_value=250
+                points_value=250,
             ),
             "perfect_week": AchievementDefinition(
                 achievement_id="perfect_week",
@@ -714,13 +727,13 @@ class AchievementService:
                     "event_rules": {
                         "weekly_scoring_complete": {
                             "delta": 1,
-                            "conditions": {"rank": 1}
+                            "conditions": {"rank": 1},
                         }
-                    }
+                    },
                 },
                 rewards={"points": 50},
                 points_value=50,
-                is_repeatable=True
+                is_repeatable=True,
             ),
             "social_butterfly": AchievementDefinition(
                 achievement_id="social_butterfly",
@@ -732,12 +745,10 @@ class AchievementService:
                 target_value=100,
                 conditions={
                     "trigger_events": ["chat_message_sent"],
-                    "event_rules": {
-                        "chat_message_sent": {"delta": 1}
-                    }
+                    "event_rules": {"chat_message_sent": {"delta": 1}},
                 },
                 rewards={"points": 25},
-                points_value=25
+                points_value=25,
             ),
             "champion": AchievementDefinition(
                 achievement_id="champion",
@@ -749,14 +760,12 @@ class AchievementService:
                 target_value=1,
                 conditions={
                     "trigger_events": ["league_won"],
-                    "event_rules": {
-                        "league_won": {"delta": 1}
-                    }
+                    "event_rules": {"league_won": {"delta": 1}},
                 },
                 rewards={"points": 500, "badge": "champion", "title": "Champion"},
                 points_value=500,
-                is_repeatable=True
-            )
+                is_repeatable=True,
+            ),
         }
 
         logger.info(f"Loaded {len(self.achievements)} achievement definitions")
@@ -764,7 +773,6 @@ class AchievementService:
     async def _setup_event_listeners(self):
         """Setup event listeners for achievement tracking."""
         # This would register with the event system
-        pass
 
     async def _load_user_progress_cache(self):
         """Load frequently accessed user progress from Redis."""
@@ -772,24 +780,23 @@ class AchievementService:
             return
 
         # Load top users' progress for better performance
-        pass
 
-    def _validate_achievement_definition(self, definition: AchievementDefinition) -> bool:
+    def _validate_achievement_definition(
+        self, definition: AchievementDefinition
+    ) -> bool:
         """Validate achievement definition."""
         if not definition.achievement_id or not definition.name:
             return False
 
-        if definition.target_value is not None and definition.target_value <= 0:
-            return False
-
-        return True
+        return not (definition.target_value is not None and definition.target_value <= 0)
 
     async def _store_achievement_definition(self, definition: AchievementDefinition):
         """Store achievement definition in database."""
         # This would save to the Achievement table
-        pass
 
-    async def _load_user_progress_from_db(self, user_id: str, achievement_id: str) -> Optional[UserProgress]:
+    async def _load_user_progress_from_db(
+        self, user_id: str, achievement_id: str
+    ) -> UserProgress | None:
         """Load user progress from database."""
         # This would query the UserAchievement table
         return None
@@ -797,16 +804,14 @@ class AchievementService:
     async def _save_user_progress_to_db(self, progress: UserProgress):
         """Save user progress to database."""
         # This would save to the UserAchievement table
-        pass
 
     async def _get_redis_leaderboard(
-        self,
-        category: Optional[AchievementType],
-        limit: int,
-        league_id: Optional[str]
-    ) -> List[LeaderboardEntry]:
+        self, category: AchievementType | None, limit: int, league_id: str | None
+    ) -> list[LeaderboardEntry]:
         """Get leaderboard from Redis."""
-        leaderboard_key = f"achievements:leaderboard:{category.value if category else 'global'}"
+        leaderboard_key = (
+            f"achievements:leaderboard:{category.value if category else 'global'}"
+        )
 
         # Get top users
         top_users = await self.redis_pool.redis_client.zrevrange(
@@ -829,18 +834,15 @@ class AchievementService:
                 achievements_count=user_stats["completed_achievements"],
                 rare_achievements=user_stats["rarity_breakdown"].get("rare", 0),
                 total_points=user_stats["total_points"],
-                avatar_url=user_info.get("avatar_url")
+                avatar_url=user_info.get("avatar_url"),
             )
             entries.append(entry)
 
         return entries
 
     async def _get_db_leaderboard(
-        self,
-        category: Optional[AchievementType],
-        limit: int,
-        league_id: Optional[str]
-    ) -> List[LeaderboardEntry]:
+        self, category: AchievementType | None, limit: int, league_id: str | None
+    ) -> list[LeaderboardEntry]:
         """Get leaderboard from database."""
         # This would query the database for top users
         return []
@@ -850,10 +852,14 @@ class AchievementService:
         if not self.redis_pool:
             return 0
 
-        rank = await self.redis_pool.redis_client.zrevrank("achievements:leaderboard:global", user_id)
+        rank = await self.redis_pool.redis_client.zrevrank(
+            "achievements:leaderboard:global", user_id
+        )
         return (rank + 1) if rank is not None else 0
 
-    async def _calculate_category_points(self, user_id: str, category: AchievementType) -> int:
+    async def _calculate_category_points(
+        self, user_id: str, category: AchievementType
+    ) -> int:
         """Calculate user's points in a specific category."""
         total_points = 0
 
@@ -865,7 +871,7 @@ class AchievementService:
 
         return total_points
 
-    async def _get_user_info(self, user_id: str) -> Dict[str, Any]:
+    async def _get_user_info(self, user_id: str) -> dict[str, Any]:
         """Get user information."""
         # This would query the User table
         return {"username": f"User{user_id[-4:]}", "avatar_url": None}
@@ -873,26 +879,34 @@ class AchievementService:
     async def _add_user_points(self, user_id: str, points: int):
         """Add points to user's total."""
         if self.redis_pool:
-            await self.redis_pool.redis_client.zincrby("achievements:user_points", points, user_id)
+            await self.redis_pool.redis_client.zincrby(
+                "achievements:user_points", points, user_id
+            )
 
     async def _grant_badge(self, user_id: str, badge_id: str):
         """Grant badge to user."""
         if self.redis_pool:
-            await self.redis_pool.redis_client.sadd(f"achievements:badges:{user_id}", badge_id)
+            await self.redis_pool.redis_client.sadd(
+                f"achievements:badges:{user_id}", badge_id
+            )
 
     async def _grant_title(self, user_id: str, title: str):
         """Grant title to user."""
         if self.redis_pool:
-            await self.redis_pool.redis_client.set(f"achievements:title:{user_id}", title)
+            await self.redis_pool.redis_client.set(
+                f"achievements:title:{user_id}", title
+            )
 
     async def _unlock_feature(self, user_id: str, feature: str):
         """Unlock feature for user."""
         if self.redis_pool:
-            await self.redis_pool.redis_client.sadd(f"achievements:unlocks:{user_id}", feature)
+            await self.redis_pool.redis_client.sadd(
+                f"achievements:unlocks:{user_id}", feature
+            )
 
 
 # Global service instance
-_achievement_service: Optional[AchievementService] = None
+_achievement_service: AchievementService | None = None
 
 
 async def get_achievement_service(db_session: AsyncSession) -> AchievementService:
@@ -902,10 +916,8 @@ async def get_achievement_service(db_session: AsyncSession) -> AchievementServic
     if _achievement_service is None:
         redis_pool = None
         if get_redis_pool:
-            try:
+            with contextlib.suppress(Exception):
                 redis_pool = await get_redis_pool()
-            except Exception:
-                pass
 
         _achievement_service = AchievementService(db_session, redis_pool)
         await _achievement_service.initialize()

@@ -6,13 +6,15 @@ consistent formats for the application.
 """
 
 import logging
-from datetime import datetime, date
-from typing import Any, Dict, List, Optional
+from datetime import date, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def normalize_player_data(provider_data: Dict[str, Any], provider: str) -> Dict[str, Any]:
+def normalize_player_data(
+    provider_data: dict[str, Any], provider: str
+) -> dict[str, Any]:
     """
     Normalize player data from any provider to standard format.
 
@@ -36,7 +38,7 @@ def normalize_player_data(provider_data: Dict[str, Any], provider: str) -> Dict[
         "weight": None,
         "age": None,
         "experience": None,
-        "jersey_number": None
+        "jersey_number": None,
     }
 
     if provider.lower() == "espn":
@@ -46,18 +48,26 @@ def normalize_player_data(provider_data: Dict[str, Any], provider: str) -> Dict[
     else:
         # Generic normalization
         normalized = base_fields.copy()
-        normalized.update({
-            "player_id": str(provider_data.get("id", provider_data.get("player_id", ""))),
-            "external_id": str(provider_data.get("external_id", provider_data.get("id", ""))),
-            "name": provider_data.get("name", provider_data.get("display_name", "")),
-            "position": provider_data.get("position", ""),
-            "team": provider_data.get("team", ""),
-            "sport": provider_data.get("sport", ""),
-        })
+        normalized.update(
+            {
+                "player_id": str(
+                    provider_data.get("id", provider_data.get("player_id", ""))
+                ),
+                "external_id": str(
+                    provider_data.get("external_id", provider_data.get("id", ""))
+                ),
+                "name": provider_data.get(
+                    "name", provider_data.get("display_name", "")
+                ),
+                "position": provider_data.get("position", ""),
+                "team": provider_data.get("team", ""),
+                "sport": provider_data.get("sport", ""),
+            }
+        )
         return normalized
 
 
-def _normalize_espn_player(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_espn_player(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize ESPN player data."""
     return {
         "player_id": str(data.get("id", "")),
@@ -77,11 +87,11 @@ def _normalize_espn_player(data: Dict[str, Any]) -> Dict[str, Any]:
         "bio": data.get("displayName", ""),
         "college": data.get("college", {}).get("name"),
         "birthplace": data.get("birthPlace"),
-        "debut_year": data.get("debutYear")
+        "debut_year": data.get("debutYear"),
     }
 
 
-def _normalize_athletic_player(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_athletic_player(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize The Athletic player data."""
     return {
         "player_id": str(data.get("id", "")),
@@ -104,11 +114,13 @@ def _normalize_athletic_player(data: Dict[str, Any]) -> Dict[str, Any]:
         "draft_round": data.get("draft_round"),
         "draft_pick": data.get("draft_pick"),
         "fantasy_rating": data.get("fantasy_rating"),
-        "analyst_notes": data.get("analyst_notes")
+        "analyst_notes": data.get("analyst_notes"),
     }
 
 
-def normalize_game_data(provider_data: Dict[str, Any], provider: str = "generic") -> Dict[str, Any]:
+def normalize_game_data(
+    provider_data: dict[str, Any], provider: str = "generic"
+) -> dict[str, Any]:
     """
     Normalize game/schedule data from any provider to standard format.
 
@@ -118,8 +130,8 @@ def normalize_game_data(provider_data: Dict[str, Any], provider: str = "generic"
 
     Returns:
         Normalized game data dictionary
-    """
-    base_fields = {
+     """
+    base_fields: dict[str, Any] = {
         "game_id": "",
         "home_team": "",
         "away_team": "",
@@ -130,7 +142,7 @@ def normalize_game_data(provider_data: Dict[str, Any], provider: str = "generic"
         "season": None,
         "sport": "",
         "venue": None,
-        "scores": {}
+        "scores": {},
     }
 
     if provider.lower() == "espn":
@@ -139,14 +151,18 @@ def normalize_game_data(provider_data: Dict[str, Any], provider: str = "generic"
         return _normalize_athletic_game(provider_data)
     else:
         # Generic normalization
-        normalized = base_fields.copy()
-        normalized.update({
-            "game_id": str(provider_data.get("id", provider_data.get("game_id", ""))),
-            "home_team": provider_data.get("home_team", ""),
-            "away_team": provider_data.get("away_team", ""),
-            "status": provider_data.get("status", "scheduled"),
-            "sport": provider_data.get("sport", "")
-        })
+        normalized: dict[str, Any] = base_fields.copy()
+        normalized.update(
+            {
+                "game_id": str(
+                    provider_data.get("id", provider_data.get("game_id", ""))
+                ),
+                "home_team": provider_data.get("home_team", ""),
+                "away_team": provider_data.get("away_team", ""),
+                "status": provider_data.get("status", "scheduled"),
+                "sport": provider_data.get("sport", ""),
+            }
+        )
 
         # Handle date parsing
         if "game_date" in provider_data:
@@ -155,13 +171,13 @@ def normalize_game_data(provider_data: Dict[str, Any], provider: str = "generic"
         return normalized
 
 
-def _normalize_espn_game(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_espn_game(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize ESPN game data."""
     competition = data.get("competitions", [{}])[0]
     competitors = competition.get("competitors", [])
 
-    home_team = next((c for c in competitors if c.get("homeAway") == "home"), {})
-    away_team = next((c for c in competitors if c.get("homeAway") == "away"), {})
+    home_team: dict[str, Any] = next((c for c in competitors if c.get("homeAway") == "home"), {})
+    away_team: dict[str, Any] = next((c for c in competitors if c.get("homeAway") == "away"), {})
 
     return {
         "game_id": str(data.get("id", "")),
@@ -176,16 +192,16 @@ def _normalize_espn_game(data: Dict[str, Any]) -> Dict[str, Any]:
         "venue": competition.get("venue", {}).get("fullName"),
         "scores": {
             "home": home_team.get("score", 0),
-            "away": away_team.get("score", 0)
+            "away": away_team.get("score", 0),
         },
         "attendance": competition.get("attendance"),
         "neutral_site": competition.get("neutralSite", False),
         "playoff": data.get("season", {}).get("type") != 2,  # 2 = regular season
-        "tv_coverage": competition.get("broadcasts", [{}])[0].get("names", [])
+        "tv_coverage": competition.get("broadcasts", [{}])[0].get("names", []),
     }
 
 
-def _normalize_athletic_game(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_athletic_game(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize The Athletic game data."""
     return {
         "game_id": str(data.get("id", "")),
@@ -200,18 +216,20 @@ def _normalize_athletic_game(data: Dict[str, Any]) -> Dict[str, Any]:
         "venue": data.get("venue", {}).get("name"),
         "scores": {
             "home": data.get("home_score", 0),
-            "away": data.get("away_score", 0)
+            "away": data.get("away_score", 0),
         },
         "betting_line": data.get("betting_line"),
         "over_under": data.get("over_under"),
         "weather": data.get("weather"),
         "attendance": data.get("attendance"),
         "tv_coverage": data.get("tv_coverage"),
-        "referee": data.get("officials", {}).get("referee")
+        "referee": data.get("officials", {}).get("referee"),
     }
 
 
-def normalize_stats_data(provider_data: Dict[str, Any], position: str = "", provider: str = "generic") -> Dict[str, Any]:
+def normalize_stats_data(
+    provider_data: dict[str, Any], position: str = "", provider: str = "generic"
+) -> dict[str, Any]:
     """
     Normalize player statistics data from any provider.
 
@@ -229,11 +247,14 @@ def normalize_stats_data(provider_data: Dict[str, Any], position: str = "", prov
         return _normalize_athletic_stats(provider_data, position)
     else:
         # Generic normalization - return as-is with type conversion
-        normalized = {}
+        normalized: dict[str, Any] = {}
         for key, value in provider_data.items():
             if isinstance(value, (int, float)):
                 normalized[key] = value
-            elif isinstance(value, str) and value.replace(".", "").replace("-", "").isdigit():
+            elif (
+                isinstance(value, str)
+                and value.replace(".", "").replace("-", "").isdigit()
+            ):
                 try:
                     normalized[key] = float(value) if "." in value else int(value)
                 except ValueError:
@@ -244,7 +265,7 @@ def normalize_stats_data(provider_data: Dict[str, Any], position: str = "", prov
         return normalized
 
 
-def _normalize_espn_stats(data: Dict[str, Any], position: str) -> Dict[str, Any]:
+def _normalize_espn_stats(data: dict[str, Any], position: str) -> dict[str, Any]:
     """Normalize ESPN statistics data."""
     normalized = {}
 
@@ -252,7 +273,7 @@ def _normalize_espn_stats(data: Dict[str, Any], position: str) -> Dict[str, Any]
     categories = data.get("splits", {}).get("categories", [])
 
     for category in categories:
-        category_name = category.get("name", "").lower()
+        category.get("name", "").lower()
         stats = category.get("stats", [])
 
         for stat in stats:
@@ -279,7 +300,7 @@ def _normalize_espn_stats(data: Dict[str, Any], position: str) -> Dict[str, Any]
     return normalized
 
 
-def _normalize_athletic_stats(data: Dict[str, Any], position: str) -> Dict[str, Any]:
+def _normalize_athletic_stats(data: dict[str, Any], position: str) -> dict[str, Any]:
     """Normalize The Athletic statistics data."""
     normalized = {}
 
@@ -298,7 +319,7 @@ def _normalize_athletic_stats(data: Dict[str, Any], position: str) -> Dict[str, 
     return normalized
 
 
-def _parse_date(date_str: Optional[str]) -> Optional[date]:
+def _parse_date(date_str: str | None) -> date | None:
     """Parse date string from various formats."""
     if not date_str:
         return None
@@ -319,17 +340,17 @@ def _parse_date(date_str: Optional[str]) -> Optional[date]:
         return None
 
 
-def _calculate_passer_rating(stats: Dict[str, Any]) -> float:
+def _calculate_passer_rating(stats: dict[str, Any]) -> float:
     """Calculate NFL passer rating."""
     try:
-        attempts = stats.get("passing_attempts", 0)
+        attempts = float(stats.get("passing_attempts", 0))
         if attempts == 0:
             return 0.0
 
-        completions = stats.get("passing_completions", 0)
-        yards = stats.get("passing_yards", 0)
-        touchdowns = stats.get("passing_touchdowns", 0)
-        interceptions = stats.get("interceptions", 0)
+        completions = float(stats.get("passing_completions", 0))
+        yards = float(stats.get("passing_yards", 0))
+        touchdowns = float(stats.get("passing_touchdowns", 0))
+        interceptions = float(stats.get("interceptions", 0))
 
         # NFL passer rating formula
         comp_pct = (completions / attempts - 0.3) * 5
@@ -350,13 +371,13 @@ def _calculate_passer_rating(stats: Dict[str, Any]) -> float:
         return 0.0
 
 
-def _calculate_yards_per_touch(stats: Dict[str, Any]) -> float:
+def _calculate_yards_per_touch(stats: dict[str, Any]) -> float:
     """Calculate yards per touch for skill position players."""
     try:
-        rushing_yards = stats.get("rushing_yards", 0)
-        receiving_yards = stats.get("receiving_yards", 0)
-        rushing_attempts = stats.get("rushing_attempts", 0)
-        receptions = stats.get("receptions", 0)
+        rushing_yards = float(stats.get("rushing_yards", 0))
+        receiving_yards = float(stats.get("receiving_yards", 0))
+        rushing_attempts = float(stats.get("rushing_attempts", 0))
+        receptions = float(stats.get("receptions", 0))
 
         total_yards = rushing_yards + receiving_yards
         total_touches = rushing_attempts + receptions
@@ -396,31 +417,18 @@ def normalize_team_abbreviation(team: str, sport: str = "NFL") -> str:
 
     # Common variations mapping
     mappings = {
-        "NFL": {
-            "NWE": "NE",
-            "NOR": "NO",
-            "TAM": "TB",
-            "LVR": "LV",
-            "SFO": "SF"
-        },
-        "NBA": {
-            "BRK": "BKN",
-            "PHO": "PHX",
-            "NOP": "NO"
-        },
-        "MLB": {
-            "ANA": "LAA",
-            "CWS": "CHW",
-            "FLA": "MIA",
-            "MON": "WSH"
-        }
+        "NFL": {"NWE": "NE", "NOR": "NO", "TAM": "TB", "LVR": "LV", "SFO": "SF"},
+        "NBA": {"BRK": "BKN", "PHO": "PHX", "NOP": "NO"},
+        "MLB": {"ANA": "LAA", "CWS": "CHW", "FLA": "MIA", "MON": "WSH"},
     }
 
     sport_mappings = mappings.get(sport.upper(), {})
     return sport_mappings.get(team, team)
 
 
-def calculate_fantasy_points(stats: Dict[str, Any], position: str, scoring_system: str = "ppr") -> float:
+def calculate_fantasy_points(
+    stats: dict[str, Any], position: str, scoring_system: str = "ppr"
+) -> float:
     """
     Calculate fantasy points based on stats, position, and scoring system.
 

@@ -13,12 +13,13 @@ Provides comprehensive event distribution including:
 """
 
 import asyncio
+import contextlib
 import json
-import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Union
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from enum import Enum
-from dataclasses import dataclass, asdict
+from typing import Any
 from uuid import uuid4
 
 import redis.asyncio as redis
@@ -28,6 +29,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -35,11 +37,11 @@ logger = get_logger(__name__)
 
 class EventSystemError(Exception):
     """Redis pub/sub event system errors."""
-    pass
 
 
 class EventType(Enum):
     """Types of events that can be published."""
+
     # Draft events
     DRAFT_STARTED = "draft.started"
     DRAFT_PICK_MADE = "draft.pick_made"
@@ -82,10 +84,10 @@ class Event:
     event_id: str
     event_type: EventType
     source: str
-    data: Dict[str, Any]
-    metadata: Dict[str, Any]
+    data: dict[str, Any]
+    metadata: dict[str, Any]
     timestamp: datetime
-    ttl_seconds: Optional[int] = None
+    ttl_seconds: int | None = None
     retry_count: int = 0
     max_retries: int = 3
 
@@ -94,10 +96,10 @@ class Event:
 class EventFilter:
     """Filter for event subscriptions."""
 
-    event_types: Optional[List[EventType]] = None
-    source_patterns: Optional[List[str]] = None
-    data_filters: Optional[Dict[str, Any]] = None
-    exclude_sources: Optional[List[str]] = None
+    event_types: list[EventType] | None = None
+    source_patterns: list[str] | None = None
+    data_filters: dict[str, Any] | None = None
+    exclude_sources: list[str] | None = None
 
 
 @dataclass
@@ -108,7 +110,7 @@ class SubscriptionInfo:
     handler: Callable
     filter: EventFilter
     created_at: datetime
-    last_processed: Optional[datetime]
+    last_processed: datetime | None
     total_processed: int
     error_count: int
 
@@ -116,26 +118,28 @@ class SubscriptionInfo:
 class RedisEventSystem:
     """Redis-based pub/sub event system."""
 
-    def __init__(self,
-                 redis_url: str = "redis://localhost:6379/0",
-                 channel_prefix: str = "fantasy_events",
-                 dead_letter_ttl: int = 86400):  # 24 hours
+    def __init__(
+        self,
+        redis_url: str = "redis://localhost:6379/0",
+        channel_prefix: str = "fantasy_events",
+        dead_letter_ttl: int = 86400,
+    ):  # 24 hours
 
         self.redis_url = redis_url
         self.channel_prefix = channel_prefix
         self.dead_letter_ttl = dead_letter_ttl
 
         # Redis connections
-        self.redis_client: Optional[Redis] = None
-        self.redis_subscriber: Optional[Redis] = None
+        self.redis_client: Redis | None = None
+        self.redis_subscriber: Redis | None = None
 
         # Subscriptions
-        self.subscriptions: Dict[str, SubscriptionInfo] = {}
-        self.subscription_tasks: Dict[str, asyncio.Task] = {}
+        self.subscriptions: dict[str, SubscriptionInfo] = {}
+        self.subscription_tasks: dict[str, asyncio.Task] = {}
 
         # State
         self.is_running = False
-        self.subscriber_task: Optional[asyncio.Task] = None
+        self.subscriber_task: asyncio.Task | None = None
 
         # Statistics
         self.stats = {
@@ -176,20 +180,16 @@ class RedisEventSystem:
             # Cancel subscriber task
             if self.subscriber_task:
                 self.subscriber_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await self.subscriber_task
-                except asyncio.CancelledError:
-                    pass
 
             # Cancel subscription tasks
             for task in self.subscription_tasks.values():
                 task.cancel()
 
             for task in self.subscription_tasks.values():
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
             # Close Redis connections
             if self.redis_client:
@@ -202,12 +202,14 @@ class RedisEventSystem:
         except Exception as e:
             logger.error(f"Error stopping Redis event system: {e}")
 
-    async def publish_event(self,
-                           event_type: EventType,
-                           data: Dict[str, Any],
-                           source: str = "api",
-                           metadata: Optional[Dict[str, Any]] = None,
-                           ttl_seconds: Optional[int] = None) -> str:
+    async def publish_event(
+        self,
+        event_type: EventType,
+        data: dict[str, Any],
+        source: str = "api",
+        metadata: dict[str, Any] | None = None,
+        ttl_seconds: int | None = None,
+    ) -> str:
         """
         Publish an event to the system.
 
@@ -257,12 +259,12 @@ class RedisEventSystem:
             self.stats["events_published"] += 1
 
             logger.debug(
-                f"Event published",
+                "Event published",
                 extra={
                     "event_id": event.event_id,
                     "event_type": event_type.value,
                     "source": source,
-                }
+                },
             )
 
             return event.event_id
@@ -271,10 +273,12 @@ class RedisEventSystem:
             logger.error(f"Failed to publish event: {e}")
             raise EventSystemError(f"Failed to publish event: {e}")
 
-    async def subscribe(self,
-                       handler: Callable,
-                       event_filter: Optional[EventFilter] = None,
-                       subscription_id: Optional[str] = None) -> str:
+    async def subscribe(
+        self,
+        handler: Callable,
+        event_filter: EventFilter | None = None,
+        subscription_id: str | None = None,
+    ) -> str:
         """
         Subscribe to events with optional filtering.
 
@@ -332,10 +336,8 @@ class RedisEventSystem:
             if subscription_id in self.subscription_tasks:
                 task = self.subscription_tasks[subscription_id]
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
                 del self.subscription_tasks[subscription_id]
 
             # Remove subscription
@@ -349,11 +351,13 @@ class RedisEventSystem:
             logger.error(f"Failed to remove subscription {subscription_id}: {e}")
             return False
 
-    async def get_event_history(self,
-                               event_type: Optional[EventType] = None,
-                               source: Optional[str] = None,
-                               since: Optional[datetime] = None,
-                               limit: int = 100) -> List[Event]:
+    async def get_event_history(
+        self,
+        event_type: EventType | None = None,
+        source: str | None = None,
+        since: datetime | None = None,
+        limit: int = 100,
+    ) -> list[Event]:
         """
         Get historical events (only available for events with TTL).
 
@@ -404,9 +408,9 @@ class RedisEventSystem:
             logger.error(f"Failed to get event history: {e}")
             return []
 
-    async def replay_events(self,
-                           subscription_id: str,
-                           since: Optional[datetime] = None) -> int:
+    async def replay_events(
+        self, subscription_id: str, since: datetime | None = None
+    ) -> int:
         """
         Replay historical events to a subscription.
 
@@ -486,20 +490,24 @@ class RedisEventSystem:
                 try:
                     if self._should_process_event(event, subscription.filter):
                         # Process in background task
-                        task = asyncio.create_task(
+                        asyncio.create_task(
                             self._handle_event_for_subscription(event, subscription)
                         )
                         # Don't wait for completion to avoid blocking other subscriptions
 
                 except Exception as e:
-                    logger.error(f"Error processing event for subscription {subscription_id}: {e}")
+                    logger.error(
+                        f"Error processing event for subscription {subscription_id}: {e}"
+                    )
 
             self.stats["events_processed"] += 1
 
         except Exception as e:
             logger.error(f"Error processing event {event.event_id}: {e}")
 
-    async def _handle_event_for_subscription(self, event: Event, subscription: SubscriptionInfo):
+    async def _handle_event_for_subscription(
+        self, event: Event, subscription: SubscriptionInfo
+    ):
         """Handle an event for a specific subscription."""
         try:
             await subscription.handler(event)
@@ -509,7 +517,9 @@ class RedisEventSystem:
             subscription.total_processed += 1
 
         except Exception as e:
-            logger.error(f"Event handler error for subscription {subscription.subscription_id}: {e}")
+            logger.error(
+                f"Event handler error for subscription {subscription.subscription_id}: {e}"
+            )
             subscription.error_count += 1
             self.stats["events_failed"] += 1
 
@@ -518,7 +528,7 @@ class RedisEventSystem:
                 await self._send_to_dead_letter_queue(event, str(e))
             else:
                 # Retry with exponential backoff
-                retry_delay = 2 ** event.retry_count
+                retry_delay = 2**event.retry_count
                 event.retry_count += 1
 
                 await asyncio.sleep(retry_delay)
@@ -528,8 +538,10 @@ class RedisEventSystem:
         """Check if an event matches a subscription filter."""
         try:
             # Check event types
-            if (event_filter.event_types and
-                event.event_type not in event_filter.event_types):
+            if (
+                event_filter.event_types
+                and event.event_type not in event_filter.event_types
+            ):
                 return False
 
             # Check source patterns
@@ -543,8 +555,10 @@ class RedisEventSystem:
                     return False
 
             # Check excluded sources
-            if (event_filter.exclude_sources and
-                event.source in event_filter.exclude_sources):
+            if (
+                event_filter.exclude_sources
+                and event.source in event_filter.exclude_sources
+            ):
                 return False
 
             # Check data filters
@@ -570,11 +584,11 @@ class RedisEventSystem:
             logger.error(f"Failed to serialize event: {e}")
             raise EventSystemError(f"Failed to serialize event: {e}")
 
-    def _deserialize_event(self, event_data: Union[str, bytes]) -> Event:
+    def _deserialize_event(self, event_data: str | bytes) -> Event:
         """Deserialize an event from JSON."""
         try:
             if isinstance(event_data, bytes):
-                event_data = event_data.decode('utf-8')
+                event_data = event_data.decode("utf-8")
 
             event_dict = json.loads(event_data)
 
@@ -604,25 +618,23 @@ class RedisEventSystem:
             }
 
             await self.redis_client.setex(
-                dlq_key,
-                self.dead_letter_ttl,
-                json.dumps(dlq_data)
+                dlq_key, self.dead_letter_ttl, json.dumps(dlq_data)
             )
 
             self.stats["dead_letter_events"] += 1
 
             logger.warning(
-                f"Event sent to dead letter queue",
+                "Event sent to dead letter queue",
                 extra={
                     "event_id": event.event_id,
                     "error": error_message,
-                }
+                },
             )
 
         except Exception as e:
             logger.error(f"Failed to send event to dead letter queue: {e}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get event system statistics."""
         return {
             **self.stats,
@@ -630,15 +642,17 @@ class RedisEventSystem:
                 sub_id: {
                     "total_processed": sub.total_processed,
                     "error_count": sub.error_count,
-                    "last_processed": sub.last_processed.isoformat() if sub.last_processed else None,
+                    "last_processed": (
+                        sub.last_processed.isoformat() if sub.last_processed else None
+                    ),
                 }
                 for sub_id, sub in self.subscriptions.items()
-            }
+            },
         }
 
 
 # Global event system instance
-_event_system: Optional[RedisEventSystem] = None
+_event_system: RedisEventSystem | None = None
 
 
 def get_event_system() -> RedisEventSystem:
@@ -649,7 +663,7 @@ def get_event_system() -> RedisEventSystem:
     return _event_system
 
 
-async def initialize_event_system(redis_url: Optional[str] = None):
+async def initialize_event_system(redis_url: str | None = None):
     """Initialize and start the event system."""
     global _event_system
     if redis_url:

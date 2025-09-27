@@ -63,8 +63,8 @@ class TestTradesPostContract:
         assert response.status_code == 400
         data = response.json()
 
-        assert "error" in data
-        assert "team" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "team" in data["detail"]["message"].lower()
 
     def test_propose_trade_with_same_team_returns_400(self, authenticated_client):
         """
@@ -84,8 +84,8 @@ class TestTradesPostContract:
         assert response.status_code == 400
         data = response.json()
 
-        assert "error" in data
-        assert "same team" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "same team" in data["detail"]["message"].lower()
 
     def test_propose_trade_includes_fairness_evaluation(self, authenticated_client):
         """

@@ -583,7 +583,7 @@ class LineupService(LineupServiceInterface):
         )
 
         lineup_positions = current_analysis["position_distribution"].keys()
-        best_combination = list(lineup.players or [])
+        list(lineup.players or [])
         best_projected = current_projected
         suggestions: list[dict[str, str]] = []
 

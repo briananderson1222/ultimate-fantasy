@@ -85,9 +85,7 @@ async def scoring_detailed_health_check(
         # Check for recent score updates
         from infrastructure.database.sql_utils import HEALTH_QUERIES
 
-        recent_scores = db.execute(
-            text(HEALTH_QUERIES["recent_scores"]())
-        ).scalar()
+        recent_scores = db.execute(text(HEALTH_QUERIES["recent_scores"]())).scalar()
 
         detailed_status["checks"]["recent_score_updates"] = {
             "status": "healthy",

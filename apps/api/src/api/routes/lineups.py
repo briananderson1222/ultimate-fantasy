@@ -35,9 +35,7 @@ class SetLineupRequest(BaseModel):
     team_id: _uuid.UUID
     game_day: date
     players: list[LineupPlayerPayload]
-    expected_version: int | None = Field(
-        None, description="Optimistic locking version"
-    )
+    expected_version: int | None = Field(None, description="Optimistic locking version")
 
 
 class ValidateLineupRequest(BaseModel):

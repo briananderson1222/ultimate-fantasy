@@ -140,8 +140,8 @@ class ConnectionManager:
         self._heartbeat_task = asyncio.create_task(self._send_heartbeats())
 
         # Subscribe to Redis if available
-        if self.redis_client:
-            asyncio.create_task(self._redis_subscriber())
+         if self.redis_client:
+             _task = asyncio.create_task(self._redis_subscriber())
 
     async def stop(self):
         """Stop the connection manager and clean up"""
@@ -388,11 +388,10 @@ class ConnectionManager:
                 continue
 
             # Filter by connection types if specified
-            if connection_types:
-                if not any(
-                    ct in connection.connection_types for ct in connection_types
-                ):
-                    continue
+            if connection_types and not any(
+                ct in connection.connection_types for ct in connection_types
+            ):
+                continue
 
             if await self.send_to_connection(connection_id, message):
                 sent_count += 1
@@ -526,9 +525,7 @@ class ConnectionManager:
             # Verify user can join league
             with get_db_session() as db:
                 league_service = LeagueService(db)
-                if not league_service.is_user_in_league(
-                    league_id, connection.user_id
-                ):
+                if not league_service.is_user_in_league(league_id, connection.user_id):
                     await self.send_to_connection(
                         connection_id,
                         Message(

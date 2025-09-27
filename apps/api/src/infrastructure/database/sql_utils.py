@@ -34,7 +34,7 @@ def get_interval_sql(interval: str) -> str:
                 parts = interval.split()
                 if len(parts) >= 2:
                     number = parts[0]
-                    unit = parts[1].rstrip('s')  # Remove plural 's'
+                    unit = parts[1].rstrip("s")  # Remove plural 's'
                     return f"datetime('now', '-{number} {unit}')"
         return "datetime('now', '-1 day')"  # fallback
     else:
@@ -52,7 +52,7 @@ def get_now_sql() -> str:
         return "NOW()"
 
 
-def get_extract_sql(field: str, from_expr: str = None) -> str:
+def get_extract_sql(field: str, from_expr: str | None = None) -> str:
     """Get database-specific EXTRACT function."""
     db_type = get_database_type()
 
@@ -90,8 +90,8 @@ def get_datetime_comparison_sql(column: str, operator: str, interval: str) -> st
 def build_health_query(
     table: str,
     count_field: str = "*",
-    where_conditions: list = None,
-    time_conditions: list = None
+    where_conditions: list | None = None,
+    time_conditions: list | None = None,
 ) -> str:
     """Build a health check query that works across database types."""
     where_conditions = where_conditions or []
@@ -111,7 +111,9 @@ def build_health_query(
         interval = time_condition.get("interval")
 
         if column and interval:
-            all_conditions.append(get_datetime_comparison_sql(column, operator, interval))
+            all_conditions.append(
+                get_datetime_comparison_sql(column, operator, interval)
+            )
 
     if all_conditions:
         query += " WHERE " + " AND ".join(all_conditions)
@@ -123,48 +125,57 @@ def build_health_query(
 HEALTH_QUERIES = {
     "recent_leagues": lambda: build_health_query(
         "leagues",
-        time_conditions=[{"column": "updated_at", "operator": ">", "interval": "24 hours"}]
+        time_conditions=[
+            {"column": "updated_at", "operator": ">", "interval": "24 hours"}
+        ],
     ),
     "recent_users": lambda: build_health_query(
         "users",
-        time_conditions=[{"column": "last_login_at", "operator": ">", "interval": "24 hours"}]
+        time_conditions=[
+            {"column": "last_login_at", "operator": ">", "interval": "24 hours"}
+        ],
     ),
     "recent_waivers": lambda: build_health_query(
         "waiver_claims",
-        time_conditions=[{"column": "created_at", "operator": ">", "interval": "24 hours"}]
+        time_conditions=[
+            {"column": "created_at", "operator": ">", "interval": "24 hours"}
+        ],
     ),
     "recent_lineups": lambda: build_health_query(
         "lineups",
-        time_conditions=[{"column": "updated_at", "operator": ">", "interval": "1 hour"}]
+        time_conditions=[
+            {"column": "updated_at", "operator": ">", "interval": "1 hour"}
+        ],
     ),
     "recent_scores": lambda: build_health_query(
         "player_scores",
-        time_conditions=[{"column": "updated_at", "operator": ">", "interval": "1 hour"}]
+        time_conditions=[
+            {"column": "updated_at", "operator": ">", "interval": "1 hour"}
+        ],
     ),
     "current_week_lineups": lambda: build_health_query(
         "lineups",
         where_conditions=[
             f"week = {get_extract_sql('week')}",
-            f"year = {get_extract_sql('year')}"
-        ]
+            f"year = {get_extract_sql('year')}",
+        ],
     ),
     "current_week_scores": lambda: build_health_query(
         "player_scores",
         where_conditions=[
             f"week = {get_extract_sql('week')}",
-            f"year = {get_extract_sql('year')}"
-        ]
+            f"year = {get_extract_sql('year')}",
+        ],
     ),
     "pending_waivers": lambda: build_health_query(
         "waiver_claims",
-        where_conditions=[
-            "status = 'pending'",
-            f"process_date <= {get_now_sql()}"
-        ]
+        where_conditions=["status = 'pending'", f"process_date <= {get_now_sql()}"],
     ),
     "stale_waitlist": lambda: build_health_query(
         "waitlist_entries",
         where_conditions=["status = 'pending'"],
-        time_conditions=[{"column": "created_at", "operator": "<", "interval": "72 hours"}]
+        time_conditions=[
+            {"column": "created_at", "operator": "<", "interval": "72 hours"}
+        ],
     ),
 }

@@ -14,8 +14,7 @@ Provides comprehensive AI-powered recommendations including:
 
 import random
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -24,12 +23,12 @@ from domains.leagues.models.team import Team
 from domains.lineups.models.lineup import Lineup
 from domains.scoring.models.score import Score
 from domains.sports.models.player import Player
-from domains.trading.models.trade import Trade
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 try:
@@ -38,6 +37,7 @@ try:
     import pandas as pd
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.preprocessing import StandardScaler
+
     ML_AVAILABLE = True
 except ImportError:
     # Fallback to statistical methods if ML libraries not available
@@ -56,22 +56,22 @@ class Recommendation:
 
     recommendation_type: str
     action: str
-    target_player_id: Optional[str]
-    target_team_id: Optional[str]
+    target_player_id: str | None
+    target_team_id: str | None
     confidence_score: float
     reasoning: str
     expected_impact: float
     risk_level: str
     priority: int
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
 class LineupOptimization:
     """Lineup optimization recommendation."""
 
-    current_lineup: Dict[str, str]
-    recommended_changes: List[Dict[str, Any]]
+    current_lineup: dict[str, str]
+    recommended_changes: list[dict[str, Any]]
     projected_improvement: float
     confidence: float
     reasoning: str
@@ -85,11 +85,11 @@ class WaiverRecommendation:
     player_name: str
     position: str
     pickup_priority: int
-    drop_candidate_id: Optional[str]
+    drop_candidate_id: str | None
     projected_points: float
     confidence: float
     reasoning: str
-    bid_suggestion: Optional[int]
+    bid_suggestion: int | None
 
 
 @dataclass
@@ -97,8 +97,8 @@ class TradeRecommendation:
     """Trade opportunity recommendation."""
 
     target_team_id: str
-    offered_players: List[str]
-    requested_players: List[str]
+    offered_players: list[str]
+    requested_players: list[str]
     fairness_score: float
     mutual_benefit: bool
     reasoning: str
@@ -138,9 +138,15 @@ class AIService:
         """Initialize ML models if available."""
         if ML_AVAILABLE:
             self.ml_models = {
-                "player_performance": RandomForestRegressor(n_estimators=100, random_state=42),
-                "lineup_optimizer": RandomForestRegressor(n_estimators=50, random_state=42),
-                "trade_evaluator": RandomForestRegressor(n_estimators=75, random_state=42),
+                "player_performance": RandomForestRegressor(
+                    n_estimators=100, random_state=42
+                ),
+                "lineup_optimizer": RandomForestRegressor(
+                    n_estimators=50, random_state=42
+                ),
+                "trade_evaluator": RandomForestRegressor(
+                    n_estimators=75, random_state=42
+                ),
             }
             logger.info("ML models initialized successfully")
         else:
@@ -151,7 +157,7 @@ class AIService:
     async def get_lineup_recommendations(
         self,
         team_id: str,
-        week: Optional[int] = None,
+        week: int | None = None,
         include_waiver_targets: bool = False,
     ) -> LineupOptimization:
         """
@@ -193,34 +199,42 @@ class AIService:
 
             if current_starter != str(best_player.player_id):
                 projected_points = await self._predict_player_points(best_player, week)
-                current_points = await self._predict_player_points_by_id(current_starter, week) if current_starter else 0
+                current_points = (
+                    await self._predict_player_points_by_id(current_starter, week)
+                    if current_starter
+                    else 0
+                )
 
                 improvement = projected_points - current_points
                 if improvement > 0.5:  # Only recommend if meaningful improvement
-                    recommendations.append({
-                        "position": position,
-                        "action": "start",
-                        "player_id": str(best_player.player_id),
-                        "player_name": best_player.name,
-                        "bench_player_id": current_starter,
-                        "projected_improvement": round(improvement, 2),
-                        "reasoning": f"Projected to score {projected_points:.1f} points vs {current_points:.1f}",
-                    })
+                    recommendations.append(
+                        {
+                            "position": position,
+                            "action": "start",
+                            "player_id": str(best_player.player_id),
+                            "player_name": best_player.name,
+                            "bench_player_id": current_starter,
+                            "projected_improvement": round(improvement, 2),
+                            "reasoning": f"Projected to score {projected_points:.1f} points vs {current_points:.1f}",
+                        }
+                    )
                     projected_improvement += improvement
 
         # Include waiver wire targets if requested
         if include_waiver_targets:
             waiver_targets = await self._get_waiver_wire_targets(team_id, week)
             for target in waiver_targets[:3]:  # Top 3 targets
-                recommendations.append({
-                    "position": target["position"],
-                    "action": "pickup",
-                    "player_id": target["player_id"],
-                    "player_name": target["player_name"],
-                    "drop_candidate_id": target.get("drop_candidate_id"),
-                    "projected_improvement": target["projected_improvement"],
-                    "reasoning": f"Available on waivers, projected {target['projected_points']:.1f} points",
-                })
+                recommendations.append(
+                    {
+                        "position": target["position"],
+                        "action": "pickup",
+                        "player_id": target["player_id"],
+                        "player_name": target["player_name"],
+                        "drop_candidate_id": target.get("drop_candidate_id"),
+                        "projected_improvement": target["projected_improvement"],
+                        "reasoning": f"Available on waivers, projected {target['projected_points']:.1f} points",
+                    }
+                )
 
         confidence = self._calculate_recommendation_confidence(recommendations)
 
@@ -229,7 +243,9 @@ class AIService:
             recommended_changes=recommendations,
             projected_improvement=round(projected_improvement, 2),
             confidence=confidence,
-            reasoning=self._generate_lineup_reasoning(recommendations, projected_improvement),
+            reasoning=self._generate_lineup_reasoning(
+                recommendations, projected_improvement
+            ),
         )
 
     # Waiver Wire Recommendations
@@ -237,10 +253,10 @@ class AIService:
     async def get_waiver_recommendations(
         self,
         team_id: str,
-        week: Optional[int] = None,
-        budget_remaining: Optional[int] = None,
+        week: int | None = None,
+        budget_remaining: int | None = None,
         top_n: int = 10,
-    ) -> List[WaiverRecommendation]:
+    ) -> list[WaiverRecommendation]:
         """
         Generate AI-powered waiver wire recommendations.
 
@@ -267,11 +283,15 @@ class AIService:
 
         for player in available_players:
             # Calculate pickup value
-            pickup_value = await self._calculate_pickup_value(player, team_id, team_needs)
+            pickup_value = await self._calculate_pickup_value(
+                player, team_id, team_needs
+            )
 
             if pickup_value["should_pickup"]:
                 # Find drop candidate
-                drop_candidate = await self._find_drop_candidate(team_id, player.position)
+                drop_candidate = await self._find_drop_candidate(
+                    team_id, player.position
+                )
 
                 # Calculate bid suggestion
                 bid_suggestion = None
@@ -279,20 +299,24 @@ class AIService:
                     bid_suggestion = self._calculate_bid_suggestion(
                         pickup_value["projected_points"],
                         pickup_value["competition_level"],
-                        budget_remaining
+                        budget_remaining,
                     )
 
-                recommendations.append(WaiverRecommendation(
-                    player_id=str(player.player_id),
-                    player_name=player.name,
-                    position=player.position,
-                    pickup_priority=pickup_value["priority"],
-                    drop_candidate_id=str(drop_candidate.player_id) if drop_candidate else None,
-                    projected_points=pickup_value["projected_points"],
-                    confidence=pickup_value["confidence"],
-                    reasoning=pickup_value["reasoning"],
-                    bid_suggestion=bid_suggestion,
-                ))
+                recommendations.append(
+                    WaiverRecommendation(
+                        player_id=str(player.player_id),
+                        player_name=player.name,
+                        position=player.position,
+                        pickup_priority=pickup_value["priority"],
+                        drop_candidate_id=(
+                            str(drop_candidate.player_id) if drop_candidate else None
+                        ),
+                        projected_points=pickup_value["projected_points"],
+                        confidence=pickup_value["confidence"],
+                        reasoning=pickup_value["reasoning"],
+                        bid_suggestion=bid_suggestion,
+                    )
+                )
 
         # Sort by priority and return top N
         recommendations.sort(key=lambda x: x.pickup_priority)
@@ -304,7 +328,7 @@ class AIService:
         self,
         team_id: str,
         analysis_depth: str = "standard",
-    ) -> List[TradeRecommendation]:
+    ) -> list[TradeRecommendation]:
         """
         Generate AI-powered trade opportunity recommendations.
 
@@ -332,19 +356,26 @@ class AIService:
             )
 
             for opportunity in trade_opportunities:
-                if opportunity["mutual_benefit"] and opportunity["fairness_score"] >= 0.7:
-                    recommendations.append(TradeRecommendation(
-                        target_team_id=str(target_team.team_id),
-                        offered_players=opportunity["offered_players"],
-                        requested_players=opportunity["requested_players"],
-                        fairness_score=opportunity["fairness_score"],
-                        mutual_benefit=opportunity["mutual_benefit"],
-                        reasoning=opportunity["reasoning"],
-                        success_probability=opportunity["success_probability"],
-                    ))
+                if (
+                    opportunity["mutual_benefit"]
+                    and opportunity["fairness_score"] >= 0.7
+                ):
+                    recommendations.append(
+                        TradeRecommendation(
+                            target_team_id=str(target_team.team_id),
+                            offered_players=opportunity["offered_players"],
+                            requested_players=opportunity["requested_players"],
+                            fairness_score=opportunity["fairness_score"],
+                            mutual_benefit=opportunity["mutual_benefit"],
+                            reasoning=opportunity["reasoning"],
+                            success_probability=opportunity["success_probability"],
+                        )
+                    )
 
         # Sort by success probability and mutual benefit
-        recommendations.sort(key=lambda x: (x.success_probability, x.fairness_score), reverse=True)
+        recommendations.sort(
+            key=lambda x: (x.success_probability, x.fairness_score), reverse=True
+        )
         return recommendations[:5]  # Top 5 trade opportunities
 
     # Start/Sit Recommendations
@@ -352,9 +383,9 @@ class AIService:
     async def get_start_sit_recommendations(
         self,
         team_id: str,
-        week: Optional[int] = None,
-        position: Optional[str] = None,
-    ) -> List[Recommendation]:
+        week: int | None = None,
+        position: str | None = None,
+    ) -> list[Recommendation]:
         """
         Generate start/sit recommendations for specific positions.
 
@@ -390,29 +421,33 @@ class AIService:
 
                     if i == 0:  # Best player
                         action = "start"
-                        reasoning = f"Top projected {pos} with {projected_points:.1f} points"
+                        reasoning = (
+                            f"Top projected {pos} with {projected_points:.1f} points"
+                        )
                         confidence = 0.8
                     else:
                         action = "sit"
                         reasoning = f"Projected {projected_points:.1f} points, ranked #{i+1} at {pos}"
                         confidence = 0.7
 
-                    recommendations.append(Recommendation(
-                        recommendation_type=RecommendationType.START_SIT,
-                        action=action,
-                        target_player_id=str(player.player_id),
-                        target_team_id=team_id,
-                        confidence_score=confidence,
-                        reasoning=reasoning,
-                        expected_impact=projected_points,
-                        risk_level=self._assess_player_risk(player),
-                        priority=1 if action == "start" else 2,
-                        metadata={
-                            "position": pos,
-                            "projected_points": projected_points,
-                            "rank": i + 1,
-                        },
-                    ))
+                    recommendations.append(
+                        Recommendation(
+                            recommendation_type=RecommendationType.START_SIT,
+                            action=action,
+                            target_player_id=str(player.player_id),
+                            target_team_id=team_id,
+                            confidence_score=confidence,
+                            reasoning=reasoning,
+                            expected_impact=projected_points,
+                            risk_level=self._assess_player_risk(player),
+                            priority=1 if action == "start" else 2,
+                            metadata={
+                                "position": pos,
+                                "projected_points": projected_points,
+                                "rank": i + 1,
+                            },
+                        )
+                    )
 
         return recommendations
 
@@ -424,7 +459,7 @@ class AIService:
         team_id: str,
         pick_number: int,
         strategy: str = "balanced",
-    ) -> List[Recommendation]:
+    ) -> list[Recommendation]:
         """
         Generate draft pick recommendations.
 
@@ -450,22 +485,24 @@ class AIService:
             )
 
             if value_score > 0.6:  # Only recommend high-value picks
-                recommendations.append(Recommendation(
-                    recommendation_type=RecommendationType.DRAFT_PICK,
-                    action="draft",
-                    target_player_id=str(player.player_id),
-                    target_team_id=team_id,
-                    confidence_score=value_score,
-                    reasoning=f"Excellent value at pick #{pick_number}, addresses {team_needs[player.position]}",
-                    expected_impact=value_score * 100,
-                    risk_level=self._assess_player_risk(player),
-                    priority=1,
-                    metadata={
-                        "position": player.position,
-                        "adp": self._get_average_draft_position(player),
-                        "value_above_replacement": value_score,
-                    },
-                ))
+                recommendations.append(
+                    Recommendation(
+                        recommendation_type=RecommendationType.DRAFT_PICK,
+                        action="draft",
+                        target_player_id=str(player.player_id),
+                        target_team_id=team_id,
+                        confidence_score=value_score,
+                        reasoning=f"Excellent value at pick #{pick_number}, addresses {team_needs[player.position]}",
+                        expected_impact=value_score * 100,
+                        risk_level=self._assess_player_risk(player),
+                        priority=1,
+                        metadata={
+                            "position": player.position,
+                            "adp": self._get_average_draft_position(player),
+                            "value_above_replacement": value_score,
+                        },
+                    )
+                )
 
         # Sort by value score
         recommendations.sort(key=lambda x: x.confidence_score, reverse=True)
@@ -477,8 +514,8 @@ class AIService:
         self,
         team_id: str,
         opponent_team_id: str,
-        week: Optional[int] = None,
-    ) -> List[Recommendation]:
+        week: int | None = None,
+    ) -> list[Recommendation]:
         """
         Generate matchup-specific advice and recommendations.
 
@@ -501,49 +538,69 @@ class AIService:
         # High-ceiling vs safe plays analysis
         if opponent_strengths["avg_points"] > 110:  # High-scoring opponent
             # Recommend high-ceiling plays
-            boom_players = await self._identify_boom_potential_players(user_roster, week)
+            boom_players = await self._identify_boom_potential_players(
+                user_roster, week
+            )
             for player in boom_players[:3]:
-                recommendations.append(Recommendation(
-                    recommendation_type=RecommendationType.MATCHUP_ADVICE,
-                    action="start_high_ceiling",
-                    target_player_id=str(player.player_id),
-                    target_team_id=team_id,
-                    confidence_score=0.75,
-                    reasoning=f"High-ceiling play needed against strong opponent (avg {opponent_strengths['avg_points']:.1f} pts)",
-                    expected_impact=player.projections.get("ceiling", 0) if player.projections else 0,
-                    risk_level=RiskLevel.HIGH,
-                    priority=1,
-                    metadata={"strategy": "high_ceiling", "opponent_strength": "high"},
-                ))
+                recommendations.append(
+                    Recommendation(
+                        recommendation_type=RecommendationType.MATCHUP_ADVICE,
+                        action="start_high_ceiling",
+                        target_player_id=str(player.player_id),
+                        target_team_id=team_id,
+                        confidence_score=0.75,
+                        reasoning=f"High-ceiling play needed against strong opponent (avg {opponent_strengths['avg_points']:.1f} pts)",
+                        expected_impact=(
+                            player.projections.get("ceiling", 0)
+                            if player.projections
+                            else 0
+                        ),
+                        risk_level=RiskLevel.HIGH,
+                        priority=1,
+                        metadata={
+                            "strategy": "high_ceiling",
+                            "opponent_strength": "high",
+                        },
+                    )
+                )
         else:
             # Recommend safe plays
             safe_players = await self._identify_safe_floor_players(user_roster, week)
             for player in safe_players[:3]:
-                recommendations.append(Recommendation(
-                    recommendation_type=RecommendationType.MATCHUP_ADVICE,
-                    action="start_safe_floor",
-                    target_player_id=str(player.player_id),
-                    target_team_id=team_id,
-                    confidence_score=0.8,
-                    reasoning=f"Safe floor play recommended against moderate opponent",
-                    expected_impact=player.projections.get("floor", 0) if player.projections else 0,
-                    risk_level=RiskLevel.LOW,
-                    priority=1,
-                    metadata={"strategy": "safe_floor", "opponent_strength": "moderate"},
-                ))
+                recommendations.append(
+                    Recommendation(
+                        recommendation_type=RecommendationType.MATCHUP_ADVICE,
+                        action="start_safe_floor",
+                        target_player_id=str(player.player_id),
+                        target_team_id=team_id,
+                        confidence_score=0.8,
+                        reasoning="Safe floor play recommended against moderate opponent",
+                        expected_impact=(
+                            player.projections.get("floor", 0)
+                            if player.projections
+                            else 0
+                        ),
+                        risk_level=RiskLevel.LOW,
+                        priority=1,
+                        metadata={
+                            "strategy": "safe_floor",
+                            "opponent_strength": "moderate",
+                        },
+                    )
+                )
 
         return recommendations
 
     # Prediction Methods
 
-    async def _predict_player_points(self, player: Player, week: Optional[int]) -> float:
+    async def _predict_player_points(self, player: Player, week: int | None) -> float:
         """Predict fantasy points for a player."""
         if ML_AVAILABLE and "player_performance" in self.ml_models:
             return await self._ml_predict_points(player, week)
         else:
             return await self._statistical_predict_points(player, week)
 
-    async def _ml_predict_points(self, player: Player, week: Optional[int]) -> float:
+    async def _ml_predict_points(self, player: Player, week: int | None) -> float:
         """ML-based point prediction."""
         # Feature engineering for ML model
         features = self._extract_player_features(player, week)
@@ -553,11 +610,15 @@ class AIService:
                 prediction = self.ml_models["player_performance"].predict([features])[0]
                 return max(0, prediction)  # Ensure non-negative
             except Exception as e:
-                logger.warning(f"ML prediction failed, falling back to statistical: {e}")
+                logger.warning(
+                    f"ML prediction failed, falling back to statistical: {e}"
+                )
 
         return await self._statistical_predict_points(player, week)
 
-    async def _statistical_predict_points(self, player: Player, week: Optional[int]) -> float:
+    async def _statistical_predict_points(
+        self, player: Player, week: int | None
+    ) -> float:
         """Statistical point prediction."""
         # Get recent performance
         recent_scores = self._get_recent_player_scores(str(player.player_id), 5)
@@ -570,20 +631,33 @@ class AIService:
             return self._get_position_average_points(player.position)
 
         # Calculate weighted average (recent games weighted higher)
-        weights = [0.4, 0.3, 0.2, 0.1] if len(recent_scores) >= 4 else [1.0] * len(recent_scores)
-        weighted_avg = sum(score.points * weight for score, weight in zip(recent_scores, weights))
+        weights = (
+            [0.4, 0.3, 0.2, 0.1]
+            if len(recent_scores) >= 4
+            else [1.0] * len(recent_scores)
+        )
+        weighted_avg = sum(
+            score.points * weight
+            for score, weight in zip(recent_scores, weights, strict=False)
+        )
 
         # Adjust for matchup difficulty (simplified)
         matchup_modifier = random.uniform(0.9, 1.1)  # Would use real matchup data
 
         return weighted_avg * matchup_modifier
 
-    async def _predict_player_points_by_id(self, player_id: Optional[str], week: Optional[int]) -> float:
+    async def _predict_player_points_by_id(
+        self, player_id: str | None, week: int | None
+    ) -> float:
         """Predict points for player by ID."""
         if not player_id:
             return 0.0
 
-        player = self.session.query(Player).filter(Player.player_id == UUID(player_id)).first()
+        player = (
+            self.session.query(Player)
+            .filter(Player.player_id == UUID(player_id))
+            .first()
+        )
         if not player:
             return 0.0
 
@@ -591,22 +665,25 @@ class AIService:
 
     # Helper Methods
 
-    def _get_team_roster_players(self, team_id: str) -> List[Player]:
+    def _get_team_roster_players(self, team_id: str) -> list[Player]:
         """Get all players on a team's roster."""
         team = self.session.query(Team).filter(Team.team_id == UUID(team_id)).first()
         if not team or not team.roster:
             return []
 
-        return self.session.query(Player).filter(
-            Player.player_id.in_([UUID(pid) for pid in team.roster])
-        ).all()
+        return (
+            self.session.query(Player)
+            .filter(Player.player_id.in_([UUID(pid) for pid in team.roster]))
+            .all()
+        )
 
-    def _get_current_lineup(self, team_id: str, week: Optional[int]) -> Dict[str, str]:
+    def _get_current_lineup(self, team_id: str, week: int | None) -> dict[str, str]:
         """Get current lineup for team."""
-        lineup = self.session.query(Lineup).filter(
-            Lineup.team_id == UUID(team_id),
-            Lineup.week == (week or 1)
-        ).first()
+        lineup = (
+            self.session.query(Lineup)
+            .filter(Lineup.team_id == UUID(team_id), Lineup.week == (week or 1))
+            .first()
+        )
 
         if not lineup or not lineup.players:
             return {}
@@ -614,12 +691,18 @@ class AIService:
         # Convert to position -> player_id mapping
         lineup_dict = {}
         for player_entry in lineup.players:
-            if isinstance(player_entry, dict) and "position" in player_entry and "player_id" in player_entry:
+            if (
+                isinstance(player_entry, dict)
+                and "position" in player_entry
+                and "player_id" in player_entry
+            ):
                 lineup_dict[player_entry["position"]] = player_entry["player_id"]
 
         return lineup_dict
 
-    async def _get_best_player_for_position(self, players: List[Player], week: Optional[int]) -> Player:
+    async def _get_best_player_for_position(
+        self, players: list[Player], week: int | None
+    ) -> Player:
         """Get the best player for a position based on projections."""
         if not players:
             raise ValueError("No players provided")
@@ -633,7 +716,9 @@ class AIService:
         player_projections.sort(key=lambda x: x[1], reverse=True)
         return player_projections[0][0]
 
-    async def _get_waiver_wire_targets(self, team_id: str, week: Optional[int]) -> List[Dict[str, Any]]:
+    async def _get_waiver_wire_targets(
+        self, team_id: str, week: int | None
+    ) -> list[dict[str, Any]]:
         """Get waiver wire targets for team."""
         # This would get available players not on any roster
         # Simplified implementation
@@ -648,7 +733,9 @@ class AIService:
             }
         ]
 
-    def _calculate_recommendation_confidence(self, recommendations: List[Dict[str, Any]]) -> float:
+    def _calculate_recommendation_confidence(
+        self, recommendations: list[dict[str, Any]]
+    ) -> float:
         """Calculate overall confidence in recommendations."""
         if not recommendations:
             return 0.0
@@ -657,12 +744,16 @@ class AIService:
         base_confidence = min(0.9, len(recommendations) * 0.15)
 
         # Adjust for impact size
-        avg_impact = sum(rec.get("projected_improvement", 0) for rec in recommendations) / len(recommendations)
+        avg_impact = sum(
+            rec.get("projected_improvement", 0) for rec in recommendations
+        ) / len(recommendations)
         impact_bonus = min(0.1, avg_impact * 0.02)
 
         return base_confidence + impact_bonus
 
-    def _generate_lineup_reasoning(self, recommendations: List[Dict[str, Any]], improvement: float) -> str:
+    def _generate_lineup_reasoning(
+        self, recommendations: list[dict[str, Any]], improvement: float
+    ) -> str:
         """Generate reasoning text for lineup recommendations."""
         if not recommendations:
             return "Your current lineup appears optimal with no recommended changes."
@@ -674,13 +765,13 @@ class AIService:
         else:
             return f"Minor lineup tweaks suggested (+{improvement:.1f} projected points). Your lineup is largely optimized."
 
-    async def _get_available_players(self, league_id: str) -> List[Player]:
+    async def _get_available_players(self, league_id: str) -> list[Player]:
         """Get players available on waivers."""
         # This would exclude players on any team roster
         # Simplified implementation
         return self.session.query(Player).limit(50).all()
 
-    async def _analyze_team_needs(self, team_id: str) -> Dict[str, str]:
+    async def _analyze_team_needs(self, team_id: str) -> dict[str, str]:
         """Analyze team's positional needs."""
         # Simplified analysis
         return {
@@ -693,8 +784,8 @@ class AIService:
         }
 
     async def _calculate_pickup_value(
-        self, player: Player, team_id: str, team_needs: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, player: Player, team_id: str, team_needs: dict[str, str]
+    ) -> dict[str, Any]:
         """Calculate value of picking up a player."""
         projected_points = await self._predict_player_points(player, None)
 
@@ -711,10 +802,12 @@ class AIService:
             "priority": int(adjusted_value),
             "confidence": 0.75,
             "reasoning": f"Projected {projected_points:.1f} points, fills {team_needs.get(player.position)} need",
-            "competition_level": random.randint(1, 5),  # Would analyze actual competition
+            "competition_level": random.randint(
+                1, 5
+            ),  # Would analyze actual competition
         }
 
-    async def _find_drop_candidate(self, team_id: str, position: str) -> Optional[Player]:
+    async def _find_drop_candidate(self, team_id: str, position: str) -> Player | None:
         """Find the best drop candidate for a position."""
         roster_players = self._get_team_roster_players(team_id)
         position_players = [p for p in roster_players if p.position == position]
@@ -731,7 +824,9 @@ class AIService:
         player_values.sort(key=lambda x: x[1])
         return player_values[0][0] if player_values else None
 
-    def _calculate_bid_suggestion(self, projected_points: float, competition: int, budget: int) -> int:
+    def _calculate_bid_suggestion(
+        self, projected_points: float, competition: int, budget: int
+    ) -> int:
         """Calculate FAAB bid suggestion."""
         base_bid = max(1, int(projected_points * 2))  # $2 per projected point
         competition_adjustment = competition * 2  # Add $2 per competitor
@@ -739,13 +834,13 @@ class AIService:
 
         return min(base_bid + competition_adjustment, budget_cap)
 
-    def _get_league_teams(self, league_id: str) -> List[Team]:
+    def _get_league_teams(self, league_id: str) -> list[Team]:
         """Get all teams in league."""
         return self.session.query(Team).filter(Team.league_id == UUID(league_id)).all()
 
     async def _analyze_trade_opportunities(
         self, team_id: str, target_team_id: str, depth: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Analyze potential trades between teams."""
         # Simplified analysis
         return [
@@ -759,15 +854,19 @@ class AIService:
             }
         ]
 
-    async def _rank_players_for_week(self, players: List[Player], week: Optional[int]) -> List[Dict[str, Any]]:
+    async def _rank_players_for_week(
+        self, players: list[Player], week: int | None
+    ) -> list[dict[str, Any]]:
         """Rank players for a specific week."""
         ranked = []
         for player in players:
             projected_points = await self._predict_player_points(player, week)
-            ranked.append({
-                "player": player,
-                "projected_points": projected_points,
-            })
+            ranked.append(
+                {
+                    "player": player,
+                    "projected_points": projected_points,
+                }
+            )
 
         ranked.sort(key=lambda x: x["projected_points"], reverse=True)
         return ranked
@@ -783,12 +882,14 @@ class AIService:
         else:
             return RiskLevel.LOW
 
-    async def _get_available_draft_players(self, draft_id: str) -> List[Player]:
+    async def _get_available_draft_players(self, draft_id: str) -> list[Player]:
         """Get available players in draft."""
         # This would exclude already drafted players
         return self.session.query(Player).limit(100).all()
 
-    async def _analyze_draft_needs(self, team_id: str, pick_number: int) -> Dict[str, str]:
+    async def _analyze_draft_needs(
+        self, team_id: str, pick_number: int
+    ) -> dict[str, str]:
         """Analyze team needs for draft."""
         # Would analyze current roster and draft strategy
         return {
@@ -801,12 +902,16 @@ class AIService:
         }
 
     async def _calculate_draft_value(
-        self, player: Player, pick_number: int, needs: Dict[str, str], strategy: str
+        self, player: Player, pick_number: int, needs: dict[str, str], strategy: str
     ) -> float:
         """Calculate draft value for player."""
         base_value = await self._predict_player_points(player, None) / 200  # Normalize
-        need_bonus = {"high": 0.2, "medium": 0.1, "low": 0.0}.get(needs.get(player.position, "low"), 0.0)
-        pick_adjustment = max(0.1, 1.0 - (pick_number / 200))  # Later picks less valuable
+        need_bonus = {"high": 0.2, "medium": 0.1, "low": 0.0}.get(
+            needs.get(player.position, "low"), 0.0
+        )
+        pick_adjustment = max(
+            0.1, 1.0 - (pick_number / 200)
+        )  # Later picks less valuable
 
         return min(1.0, base_value + need_bonus + pick_adjustment)
 
@@ -815,7 +920,9 @@ class AIService:
         # Would use historical draft data
         return random.randint(20, 100)
 
-    async def _analyze_opponent_strengths(self, opponent_team_id: str) -> Dict[str, Any]:
+    async def _analyze_opponent_strengths(
+        self, opponent_team_id: str
+    ) -> dict[str, Any]:
         """Analyze opponent's strengths and tendencies."""
         # Simplified analysis
         return {
@@ -825,7 +932,9 @@ class AIService:
             "weaknesses": ["QB", "TE"],
         }
 
-    async def _identify_boom_potential_players(self, roster: List[Player], week: Optional[int]) -> List[Player]:
+    async def _identify_boom_potential_players(
+        self, roster: list[Player], week: int | None
+    ) -> list[Player]:
         """Identify players with high ceiling potential."""
         boom_players = []
         for player in roster:
@@ -835,7 +944,9 @@ class AIService:
 
         return boom_players[:5]
 
-    async def _identify_safe_floor_players(self, roster: List[Player], week: Optional[int]) -> List[Player]:
+    async def _identify_safe_floor_players(
+        self, roster: list[Player], week: int | None
+    ) -> list[Player]:
         """Identify players with safe floor."""
         safe_players = []
         for player in roster:
@@ -845,7 +956,7 @@ class AIService:
 
         return safe_players[:5]
 
-    def _extract_player_features(self, player: Player, week: Optional[int]) -> List[float]:
+    def _extract_player_features(self, player: Player, week: int | None) -> list[float]:
         """Extract features for ML model."""
         # Extract numerical features for ML prediction
         features = [
@@ -864,7 +975,7 @@ class AIService:
         ]
         return features
 
-    def _get_recent_player_scores(self, player_id: str, n_games: int) -> List[Score]:
+    def _get_recent_player_scores(self, player_id: str, n_games: int) -> list[Score]:
         """Get recent scores for player."""
         return (
             self.session.query(Score)
@@ -888,7 +999,7 @@ class AIService:
 
 
 # Global service instance
-_ai_service: Optional[AIService] = None
+_ai_service: AIService | None = None
 
 
 def get_ai_service(session: Session) -> AIService:

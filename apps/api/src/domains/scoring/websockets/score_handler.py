@@ -13,10 +13,9 @@ Provides comprehensive scoring event handling including:
 """
 
 import asyncio
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set
 from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -24,25 +23,31 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
+from domains.teams.models.team import Team
+
+from domains.leagues.models.league import League
+from domains.scoring.services.scoring_service import get_scoring_service
+from domains.sports.services.sports_data_service import get_sports_data_service
 from infrastructure.events.redis_pubsub import (
-    get_event_system, Event, EventType, EventFilter
+    Event,
+    EventFilter,
+    EventType,
+    get_event_system,
 )
 from infrastructure.websockets.connection_manager import (
-    get_connection_manager, MessageType, RoomType
+    MessageType,
+    RoomType,
+    get_connection_manager,
 )
-from domains.leagues.models.league import League
-from domains.teams.models.team import Team
-from domains.sports.services.sports_data_service import get_sports_data_service
-from domains.scoring.services.scoring_service import get_scoring_service
 
 logger = get_logger(__name__)
 
 
 class ScoreWebSocketError(Exception):
     """Score WebSocket handler errors."""
-    pass
 
 
 class ScoreWebSocketHandler:
@@ -54,8 +59,12 @@ class ScoreWebSocketHandler:
         self.event_system = get_event_system()
 
         # Active subscriptions by user/league
-        self.user_subscriptions: Dict[str, Set[str]] = defaultdict(set)  # user_id -> league_ids
-        self.league_subscribers: Dict[str, Set[str]] = defaultdict(set)  # league_id -> user_ids
+        self.user_subscriptions: dict[str, set[str]] = defaultdict(
+            set
+        )  # user_id -> league_ids
+        self.league_subscribers: dict[str, set[str]] = defaultdict(
+            set
+        )  # league_id -> user_ids
 
         # Scoring thresholds for notifications
         self.score_thresholds = {
@@ -67,11 +76,11 @@ class ScoreWebSocketHandler:
         }
 
         # Event subscription
-        self.subscription_id: Optional[str] = None
+        self.subscription_id: str | None = None
 
         # Performance tracking
-        self.player_performance_cache: Dict[str, Dict[str, Any]] = {}
-        self.game_status_cache: Dict[str, Dict[str, Any]] = {}
+        self.player_performance_cache: dict[str, dict[str, Any]] = {}
+        self.game_status_cache: dict[str, dict[str, Any]] = {}
 
     async def initialize(self):
         """Initialize the score handler."""
@@ -97,7 +106,7 @@ class ScoreWebSocketHandler:
             self.subscription_id = await self.event_system.subscribe(
                 handler=self._handle_score_event,
                 event_filter=score_filter,
-                subscription_id="score_websocket_handler"
+                subscription_id="score_websocket_handler",
             )
 
             # Start background tasks
@@ -120,10 +129,9 @@ class ScoreWebSocketHandler:
         except Exception as e:
             logger.error(f"Error shutting down score handler: {e}")
 
-    async def subscribe_to_league_scores(self,
-                                       connection_id: str,
-                                       user_id: str,
-                                       league_id: str) -> Dict[str, Any]:
+    async def subscribe_to_league_scores(
+        self, connection_id: str, user_id: str, league_id: str
+    ) -> dict[str, Any]:
         """
         Subscribe user to live score updates for a league.
 
@@ -153,11 +161,13 @@ class ScoreWebSocketHandler:
                     "league_id": league_id,
                     "type": "scores",
                     "created_at": datetime.utcnow().isoformat(),
-                }
+                },
             )
 
             # Join the room
-            join_success = await self.connection_manager.join_room(connection_id, room_id)
+            join_success = await self.connection_manager.join_room(
+                connection_id, room_id
+            )
             if not join_success:
                 return {
                     "success": False,
@@ -179,18 +189,20 @@ class ScoreWebSocketHandler:
                     "action": "subscribed",
                     "league_id": league_id,
                     "current_games": current_games,
-                    "user_lineup": await self._get_user_lineup_status(user_id, league_id),
+                    "user_lineup": await self._get_user_lineup_status(
+                        user_id, league_id
+                    ),
                 },
                 room_id=room_id,
             )
 
             logger.info(
-                f"User subscribed to league scores",
+                "User subscribed to league scores",
                 extra={
                     "user_id": user_id,
                     "league_id": league_id,
                     "room_id": room_id,
-                }
+                },
             )
 
             return {
@@ -206,10 +218,9 @@ class ScoreWebSocketHandler:
                 "error": f"Failed to subscribe: {e}",
             }
 
-    async def unsubscribe_from_league_scores(self,
-                                           connection_id: str,
-                                           user_id: str,
-                                           league_id: str):
+    async def unsubscribe_from_league_scores(
+        self, connection_id: str, user_id: str, league_id: str
+    ):
         """
         Unsubscribe user from league score updates.
 
@@ -234,7 +245,9 @@ class ScoreWebSocketHandler:
             if not self.league_subscribers[league_id]:
                 del self.league_subscribers[league_id]
 
-            logger.info(f"User unsubscribed from league scores: {user_id} from {league_id}")
+            logger.info(
+                f"User unsubscribed from league scores: {user_id} from {league_id}"
+            )
 
         except Exception as e:
             logger.error(f"Error unsubscribing from league scores: {e}")
@@ -259,7 +272,7 @@ class ScoreWebSocketHandler:
         except Exception as e:
             logger.error(f"Error handling score event: {e}")
 
-    async def _handle_score_update(self, data: Dict[str, Any]):
+    async def _handle_score_update(self, data: dict[str, Any]):
         """Handle real-time score updates."""
         try:
             game_id = data.get("game_id")
@@ -291,16 +304,18 @@ class ScoreWebSocketHandler:
                         "game_data": data,
                         "fantasy_impact": fantasy_impact,
                         "timestamp": datetime.utcnow().isoformat(),
-                    }
+                    },
                 )
 
                 # Send personalized notifications
-                await self._send_personalized_score_notifications(league_id, data, fantasy_impact)
+                await self._send_personalized_score_notifications(
+                    league_id, data, fantasy_impact
+                )
 
         except Exception as e:
             logger.error(f"Error handling score update: {e}")
 
-    async def _handle_game_started(self, data: Dict[str, Any]):
+    async def _handle_game_started(self, data: dict[str, Any]):
         """Handle game start notifications."""
         try:
             game_id = data.get("game_id")
@@ -321,13 +336,13 @@ class ScoreWebSocketHandler:
                         "game_data": data,
                         "lineup_alerts": lineup_alerts,
                         "started_at": data.get("started_at"),
-                    }
+                    },
                 )
 
         except Exception as e:
             logger.error(f"Error handling game start: {e}")
 
-    async def _handle_game_completed(self, data: Dict[str, Any]):
+    async def _handle_game_completed(self, data: dict[str, Any]):
         """Handle game completion notifications."""
         try:
             game_id = data.get("game_id")
@@ -348,13 +363,13 @@ class ScoreWebSocketHandler:
                         "game_data": data,
                         "final_scores": final_scores,
                         "completed_at": data.get("completed_at"),
-                    }
+                    },
                 )
 
         except Exception as e:
             logger.error(f"Error handling game completion: {e}")
 
-    async def _handle_player_stats_updated(self, data: Dict[str, Any]):
+    async def _handle_player_stats_updated(self, data: dict[str, Any]):
         """Handle player statistics updates."""
         try:
             player_id = data.get("player_id")
@@ -374,7 +389,9 @@ class ScoreWebSocketHandler:
                 room_id = f"scores_{league_id}"
 
                 # Calculate fantasy points for this update
-                fantasy_points = await self._calculate_player_fantasy_points(player_id, data, league_id)
+                fantasy_points = await self._calculate_player_fantasy_points(
+                    player_id, data, league_id
+                )
 
                 # Check for milestone achievements
                 milestones = self._check_player_milestones(data)
@@ -389,26 +406,30 @@ class ScoreWebSocketHandler:
                         "fantasy_points": fantasy_points,
                         "milestones": milestones,
                         "timestamp": datetime.utcnow().isoformat(),
-                    }
+                    },
                 )
 
                 # Send targeted notifications to player owners
-                await self._send_player_owner_notifications(league_id, player_id, data, fantasy_points, milestones)
+                await self._send_player_owner_notifications(
+                    league_id, player_id, data, fantasy_points, milestones
+                )
 
         except Exception as e:
             logger.error(f"Error handling player stats update: {e}")
 
-    async def _handle_score_subscription_request(self, connection_id: str, data: Dict[str, Any], room_id: str):
+    async def _handle_score_subscription_request(
+        self, connection_id: str, data: dict[str, Any], room_id: str
+    ):
         """Handle score subscription requests from WebSocket."""
         try:
-            action = data.get("action")
+            data.get("action")
             league_id = data.get("league_id")
 
             if not league_id:
                 await self.connection_manager.send_message(
                     connection_id=connection_id,
                     message_type=MessageType.ERROR,
-                    data={"message": "league_id required"}
+                    data={"message": "league_id required"},
                 )
                 return
 
@@ -416,13 +437,15 @@ class ScoreWebSocketHandler:
             await self.connection_manager.send_message(
                 connection_id=connection_id,
                 message_type=MessageType.ERROR,
-                data={"message": "Score subscriptions handled during connection setup"}
+                data={"message": "Score subscriptions handled during connection setup"},
             )
 
         except Exception as e:
             logger.error(f"Error handling score subscription request: {e}")
 
-    async def _handle_player_stats_request(self, connection_id: str, data: Dict[str, Any], room_id: str):
+    async def _handle_player_stats_request(
+        self, connection_id: str, data: dict[str, Any], room_id: str
+    ):
         """Handle player statistics requests."""
         try:
             player_id = data.get("player_id")
@@ -430,7 +453,7 @@ class ScoreWebSocketHandler:
                 await self.connection_manager.send_message(
                     connection_id=connection_id,
                     message_type=MessageType.ERROR,
-                    data={"message": "player_id required"}
+                    data={"message": "player_id required"},
                 )
                 return
 
@@ -467,13 +490,13 @@ class ScoreWebSocketHandler:
 
     # Helper methods
 
-    async def _validate_league_access(self, league_id: str, user_id: str) -> Dict[str, Any]:
+    async def _validate_league_access(
+        self, league_id: str, user_id: str
+    ) -> dict[str, Any]:
         """Validate if user can access league scores."""
         try:
             # Get league
-            league = self.db.query(League).filter(
-                League.league_id == league_id
-            ).first()
+            league = self.db.query(League).filter(League.league_id == league_id).first()
 
             if not league:
                 return {
@@ -482,10 +505,11 @@ class ScoreWebSocketHandler:
                 }
 
             # Check if user is in this league
-            user_team = self.db.query(Team).filter(
-                Team.league_id == league_id,
-                Team.owner_id == user_id
-            ).first()
+            user_team = (
+                self.db.query(Team)
+                .filter(Team.league_id == league_id, Team.owner_id == user_id)
+                .first()
+            )
 
             if not user_team and league.commissioner_id != user_id:
                 return {
@@ -505,7 +529,7 @@ class ScoreWebSocketHandler:
                 "reason": f"Validation error: {e}",
             }
 
-    async def _get_current_league_games(self, league_id: str) -> List[Dict[str, Any]]:
+    async def _get_current_league_games(self, league_id: str) -> list[dict[str, Any]]:
         """Get current games relevant to a league."""
         try:
             # This would integrate with sports data service
@@ -520,9 +544,7 @@ class ScoreWebSocketHandler:
 
             # Get today's games
             today_games = await sports_service.get_schedule(
-                sport=sport.upper(),
-                date=datetime.utcnow().date(),
-                use_cache=True
+                sport=sport.upper(), date=datetime.utcnow().date(), use_cache=True
             )
 
             return today_games or []
@@ -531,14 +553,17 @@ class ScoreWebSocketHandler:
             logger.error(f"Error getting current league games: {e}")
             return []
 
-    async def _get_user_lineup_status(self, user_id: str, league_id: str) -> Dict[str, Any]:
+    async def _get_user_lineup_status(
+        self, user_id: str, league_id: str
+    ) -> dict[str, Any]:
         """Get user's current lineup status."""
         try:
             # Get user's team
-            user_team = self.db.query(Team).filter(
-                Team.league_id == league_id,
-                Team.owner_id == user_id
-            ).first()
+            user_team = (
+                self.db.query(Team)
+                .filter(Team.league_id == league_id, Team.owner_id == user_id)
+                .first()
+            )
 
             if not user_team:
                 return {}
@@ -558,7 +583,7 @@ class ScoreWebSocketHandler:
             logger.error(f"Error getting user lineup status: {e}")
             return {}
 
-    async def _find_leagues_affected_by_game(self, game_id: str) -> List[str]:
+    async def _find_leagues_affected_by_game(self, game_id: str) -> list[str]:
         """Find all leagues that have players in the given game."""
         try:
             # This would require cross-referencing game teams with rostered players
@@ -569,14 +594,15 @@ class ScoreWebSocketHandler:
             logger.error(f"Error finding leagues affected by game: {e}")
             return []
 
-    async def _calculate_fantasy_impact(self, game_data: Dict[str, Any], league_id: str) -> Dict[str, Any]:
+    async def _calculate_fantasy_impact(
+        self, game_data: dict[str, Any], league_id: str
+    ) -> dict[str, Any]:
         """Calculate fantasy impact of game events."""
         try:
-            scoring_service = get_scoring_service()
+            get_scoring_service()
 
             # Get league scoring rules
-            league = self.db.query(League).filter(League.league_id == league_id).first()
-            scoring_rules = league.scoring_rules if league else {}
+            self.db.query(League).filter(League.league_id == league_id).first()
 
             # Calculate impact (simplified)
             return {
@@ -589,10 +615,9 @@ class ScoreWebSocketHandler:
             logger.error(f"Error calculating fantasy impact: {e}")
             return {}
 
-    async def _send_personalized_score_notifications(self,
-                                                   league_id: str,
-                                                   game_data: Dict[str, Any],
-                                                   fantasy_impact: Dict[str, Any]):
+    async def _send_personalized_score_notifications(
+        self, league_id: str, game_data: dict[str, Any], fantasy_impact: dict[str, Any]
+    ):
         """Send personalized notifications based on user rosters."""
         try:
             # Get all users in league
@@ -600,7 +625,9 @@ class ScoreWebSocketHandler:
 
             for user_id in subscribers:
                 # Check if user has players in this game
-                user_players = await self._get_user_players_in_game(user_id, league_id, game_data)
+                user_players = await self._get_user_players_in_game(
+                    user_id, league_id, game_data
+                )
 
                 if user_players:
                     # Send targeted notification
@@ -614,37 +641,45 @@ class ScoreWebSocketHandler:
                             "game_id": game_data.get("game_id"),
                             "your_players": user_players,
                             "fantasy_impact": fantasy_impact,
-                        }
+                        },
                     )
 
         except Exception as e:
             logger.error(f"Error sending personalized notifications: {e}")
 
-    async def _get_user_players_in_game(self, user_id: str, league_id: str, game_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _get_user_players_in_game(
+        self, user_id: str, league_id: str, game_data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Get user's players who are in the current game."""
         # Simplified implementation
         return []
 
-    def _check_player_milestones(self, stats_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _check_player_milestones(
+        self, stats_data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Check if player hit any milestones."""
         milestones = []
 
         # Check various milestones
         if stats_data.get("touchdowns", 0) >= 3:
-            milestones.append({
-                "type": "hat_trick",
-                "description": "3+ Touchdowns",
-                "icon": "🔥",
-                "significance": "high",
-            })
+            milestones.append(
+                {
+                    "type": "hat_trick",
+                    "description": "3+ Touchdowns",
+                    "icon": "🔥",
+                    "significance": "high",
+                }
+            )
 
         if stats_data.get("passing_yards", 0) >= 300:
-            milestones.append({
-                "type": "passing_milestone",
-                "description": "300+ Passing Yards",
-                "icon": "💪",
-                "significance": "medium",
-            })
+            milestones.append(
+                {
+                    "type": "passing_milestone",
+                    "description": "300+ Passing Yards",
+                    "icon": "💪",
+                    "significance": "medium",
+                }
+            )
 
         return milestones
 
@@ -676,7 +711,7 @@ class ScoreWebSocketHandler:
         except Exception as e:
             logger.error(f"Error updating performance summaries: {e}")
 
-    def get_subscription_stats(self) -> Dict[str, Any]:
+    def get_subscription_stats(self) -> dict[str, Any]:
         """Get statistics about score subscriptions."""
         return {
             "total_user_subscriptions": len(self.user_subscriptions),
@@ -686,12 +721,12 @@ class ScoreWebSocketHandler:
             "subscriptions_by_league": {
                 league_id: len(users)
                 for league_id, users in self.league_subscribers.items()
-            }
+            },
         }
 
 
 # Global handler instance
-_score_handler: Optional[ScoreWebSocketHandler] = None
+_score_handler: ScoreWebSocketHandler | None = None
 
 
 def get_score_handler(db_session: Session) -> ScoreWebSocketHandler:

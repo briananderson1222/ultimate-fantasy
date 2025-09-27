@@ -14,8 +14,6 @@ Provides comprehensive draft timing functionality including:
 import asyncio
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from uuid import UUID, uuid4
 from enum import Enum
 
 from fastapi import WebSocket
@@ -24,7 +22,10 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
+
+import contextlib
 
 from domains.drafts.algorithms.snake_draft import (
     DraftOrder,
@@ -37,6 +38,7 @@ logger = get_logger(__name__)
 
 class TimerState(Enum):
     """Draft timer states."""
+
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     PAUSED = "paused"
@@ -45,15 +47,14 @@ class TimerState(Enum):
 
 class DraftTimerError(Exception):
     """Draft timer service errors."""
-    pass
 
 
 class WebSocketManager:
     """Manages WebSocket connections for draft rooms."""
 
     def __init__(self):
-        self.connections: Dict[str, Set[WebSocket]] = {}
-        self.user_connections: Dict[str, Dict[str, WebSocket]] = {}
+        self.connections: dict[str, set[WebSocket]] = {}
+        self.user_connections: dict[str, dict[str, WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, draft_id: str, user_id: str):
         """Connect a user to a draft room."""
@@ -98,8 +99,10 @@ class WebSocketManager:
 
     async def send_to_user(self, draft_id: str, user_id: str, message: dict):
         """Send message to a specific user."""
-        if (draft_id in self.user_connections and
-            user_id in self.user_connections[draft_id]):
+        if (
+            draft_id in self.user_connections
+            and user_id in self.user_connections[draft_id]
+        ):
 
             websocket = self.user_connections[draft_id][user_id]
             try:
@@ -117,7 +120,7 @@ class DraftTimer:
         draft_id: str,
         draft_order: DraftOrder,
         pick_time_seconds: int = 90,
-        websocket_manager: Optional[WebSocketManager] = None,
+        websocket_manager: WebSocketManager | None = None,
     ):
         self.draft_id = draft_id
         self.draft_order = draft_order
@@ -125,14 +128,14 @@ class DraftTimer:
         self.websocket_manager = websocket_manager or WebSocketManager()
 
         # Timer state
-        self.current_pick: Optional[DraftPick] = None
-        self.pick_start_time: Optional[datetime] = None
-        self.timer_task: Optional[asyncio.Task] = None
+        self.current_pick: DraftPick | None = None
+        self.pick_start_time: datetime | None = None
+        self.timer_task: asyncio.Task | None = None
         self.is_paused = False
-        self.pause_time_remaining: Optional[int] = None
+        self.pause_time_remaining: int | None = None
 
         # Completed picks tracking
-        self.completed_picks: Set[int] = set()
+        self.completed_picks: set[int] = set()
 
         # Callbacks
         self.on_pick_timeout_callback = None
@@ -148,8 +151,7 @@ class DraftTimer:
         try:
             # Get first pick
             first_pick = self.snake_algorithm.get_current_pick(
-                self.draft_order,
-                list(self.completed_picks)
+                self.draft_order, list(self.completed_picks)
             )
 
             if not first_pick:
@@ -158,13 +160,18 @@ class DraftTimer:
             await self._start_pick_timer(first_pick)
 
             # Broadcast draft started
-            await self._broadcast_draft_status("draft_started", {
-                "draft_id": self.draft_id,
-                "current_pick": self._serialize_pick(first_pick),
-                "pick_time_seconds": self.pick_time_seconds,
-            })
+            await self._broadcast_draft_status(
+                "draft_started",
+                {
+                    "draft_id": self.draft_id,
+                    "current_pick": self._serialize_pick(first_pick),
+                    "pick_time_seconds": self.pick_time_seconds,
+                },
+            )
 
-            logger.info(f"Draft {self.draft_id} started with pick {first_pick.overall_pick}")
+            logger.info(
+                f"Draft {self.draft_id} started with pick {first_pick.overall_pick}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to start draft {self.draft_id}: {e}")
@@ -180,10 +187,7 @@ class DraftTimer:
         try:
             # Validate pick
             if not self.snake_algorithm.validate_pick(
-                self.draft_order,
-                overall_pick,
-                team_id,
-                list(self.completed_picks)
+                self.draft_order, overall_pick, team_id, list(self.completed_picks)
             ):
                 logger.warning(f"Invalid pick: {overall_pick} by team {team_id}")
                 return False
@@ -196,24 +200,28 @@ class DraftTimer:
 
             # Update pick with player and timestamp
             pick = next(
-                p for p in self.draft_order.picks
-                if p.overall_pick == overall_pick
+                p for p in self.draft_order.picks if p.overall_pick == overall_pick
             )
             pick.player_id = player_id
             pick.pick_time = datetime.utcnow()
             pick.is_autopick = False
 
             # Broadcast pick made
-            await self._broadcast_draft_status("pick_made", {
-                "pick": self._serialize_pick(pick),
-                "player_id": player_id,
-                "team_id": team_id,
-            })
+            await self._broadcast_draft_status(
+                "pick_made",
+                {
+                    "pick": self._serialize_pick(pick),
+                    "player_id": player_id,
+                    "team_id": team_id,
+                },
+            )
 
             # Start timer for next pick
             await self._advance_to_next_pick()
 
-            logger.info(f"Pick {overall_pick} made by team {team_id} for player {player_id}")
+            logger.info(
+                f"Pick {overall_pick} made by team {team_id} for player {player_id}"
+            )
             return True
 
         except Exception as e:
@@ -229,7 +237,9 @@ class DraftTimer:
             # Calculate remaining time
             if self.pick_start_time:
                 elapsed = (datetime.utcnow() - self.pick_start_time).total_seconds()
-                self.pause_time_remaining = max(0, self.pick_time_seconds - int(elapsed))
+                self.pause_time_remaining = max(
+                    0, self.pick_time_seconds - int(elapsed)
+                )
             else:
                 self.pause_time_remaining = self.pick_time_seconds
 
@@ -238,12 +248,17 @@ class DraftTimer:
             self.is_paused = True
 
             # Broadcast pause
-            await self._broadcast_draft_status("draft_paused", {
-                "time_remaining": self.pause_time_remaining,
-                "current_pick": self._serialize_pick(self.current_pick),
-            })
+            await self._broadcast_draft_status(
+                "draft_paused",
+                {
+                    "time_remaining": self.pause_time_remaining,
+                    "current_pick": self._serialize_pick(self.current_pick),
+                },
+            )
 
-            logger.info(f"Draft {self.draft_id} paused with {self.pause_time_remaining}s remaining")
+            logger.info(
+                f"Draft {self.draft_id} paused with {self.pause_time_remaining}s remaining"
+            )
             return True
 
         except Exception as e:
@@ -264,10 +279,13 @@ class DraftTimer:
             self.pause_time_remaining = None
 
             # Broadcast resume
-            await self._broadcast_draft_status("draft_resumed", {
-                "current_pick": self._serialize_pick(self.current_pick),
-                "time_remaining": resume_time,
-            })
+            await self._broadcast_draft_status(
+                "draft_resumed",
+                {
+                    "current_pick": self._serialize_pick(self.current_pick),
+                    "time_remaining": resume_time,
+                },
+            )
 
             logger.info(f"Draft {self.draft_id} resumed with {resume_time}s remaining")
             return True
@@ -291,8 +309,7 @@ class DraftTimer:
             time_remaining = self.pause_time_remaining or 0
         elif self.pick_start_time:
             time_remaining = self.snake_algorithm.get_time_remaining(
-                self.pick_start_time,
-                self.pick_time_seconds
+                self.pick_start_time, self.pick_time_seconds
             )
 
         return {
@@ -315,23 +332,26 @@ class DraftTimer:
 
     # Private methods
 
-    async def _start_pick_timer(self, pick: DraftPick, time_seconds: Optional[int] = None):
+    async def _start_pick_timer(self, pick: DraftPick, time_seconds: int | None = None):
         """Start countdown timer for a pick."""
         self.current_pick = pick
         self.pick_start_time = datetime.utcnow()
         pick_time = time_seconds or self.pick_time_seconds
 
         # Start timer task
-        self.timer_task = asyncio.create_task(
-            self._run_pick_timer(pick, pick_time)
-        )
+        self.timer_task = asyncio.create_task(self._run_pick_timer(pick, pick_time))
 
         # Broadcast timer started
-        await self._broadcast_draft_status("pick_timer_started", {
-            "current_pick": self._serialize_pick(pick),
-            "time_remaining": pick_time,
-            "pick_deadline": (self.pick_start_time + timedelta(seconds=pick_time)).isoformat(),
-        })
+        await self._broadcast_draft_status(
+            "pick_timer_started",
+            {
+                "current_pick": self._serialize_pick(pick),
+                "time_remaining": pick_time,
+                "pick_deadline": (
+                    self.pick_start_time + timedelta(seconds=pick_time)
+                ).isoformat(),
+            },
+        )
 
     async def _run_pick_timer(self, pick: DraftPick, time_seconds: int):
         """Run the countdown timer for a pick."""
@@ -346,20 +366,26 @@ class DraftTimer:
 
                 # Send warning at 30 seconds
                 if remaining == 30 and not warning_sent:
-                    await self._broadcast_draft_status("pick_warning", {
-                        "current_pick": self._serialize_pick(pick),
-                        "time_remaining": remaining,
-                    })
+                    await self._broadcast_draft_status(
+                        "pick_warning",
+                        {
+                            "current_pick": self._serialize_pick(pick),
+                            "time_remaining": remaining,
+                        },
+                    )
                     if self.on_pick_warning_callback:
                         await self.on_pick_warning_callback(pick, remaining)
                     warning_sent = True
 
                 # Send countdown updates every 10 seconds or last 10 seconds
                 if remaining % 10 == 0 or remaining <= 10:
-                    await self._broadcast_draft_status("pick_countdown", {
-                        "current_pick": self._serialize_pick(pick),
-                        "time_remaining": remaining,
-                    })
+                    await self._broadcast_draft_status(
+                        "pick_countdown",
+                        {
+                            "current_pick": self._serialize_pick(pick),
+                            "time_remaining": remaining,
+                        },
+                    )
 
                 await asyncio.sleep(1)
 
@@ -382,10 +408,13 @@ class DraftTimer:
             self.completed_picks.add(pick.overall_pick)
 
             # Broadcast timeout
-            await self._broadcast_draft_status("pick_timeout", {
-                "pick": self._serialize_pick(pick),
-                "auto_pick": True,
-            })
+            await self._broadcast_draft_status(
+                "pick_timeout",
+                {
+                    "pick": self._serialize_pick(pick),
+                    "auto_pick": True,
+                },
+            )
 
             # Call timeout callback
             if self.on_pick_timeout_callback:
@@ -404,14 +433,15 @@ class DraftTimer:
         try:
             # Get next pick
             next_pick = self.snake_algorithm.get_current_pick(
-                self.draft_order,
-                list(self.completed_picks)
+                self.draft_order, list(self.completed_picks)
             )
 
             if next_pick:
                 # Start timer for next pick
                 await self._start_pick_timer(next_pick)
-                logger.info(f"Advanced to pick {next_pick.overall_pick} for team {next_pick.team_id}")
+                logger.info(
+                    f"Advanced to pick {next_pick.overall_pick} for team {next_pick.team_id}"
+                )
             else:
                 # Draft is complete
                 await self._handle_draft_complete()
@@ -424,21 +454,24 @@ class DraftTimer:
         self.current_pick = None
         self.pick_start_time = None
 
-        await self._broadcast_draft_status("draft_complete", {
-            "total_picks": len(self.completed_picks),
-            "completed_at": datetime.utcnow().isoformat(),
-        })
+        await self._broadcast_draft_status(
+            "draft_complete",
+            {
+                "total_picks": len(self.completed_picks),
+                "completed_at": datetime.utcnow().isoformat(),
+            },
+        )
 
-        logger.info(f"Draft {self.draft_id} completed with {len(self.completed_picks)} picks")
+        logger.info(
+            f"Draft {self.draft_id} completed with {len(self.completed_picks)} picks"
+        )
 
     async def _stop_timer(self):
         """Stop the current timer task."""
         if self.timer_task and not self.timer_task.cancelled():
             self.timer_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.timer_task
-            except asyncio.CancelledError:
-                pass
             self.timer_task = None
 
     async def _broadcast_draft_status(self, event_type: str, data: dict):
@@ -474,7 +507,7 @@ class DraftTimerService:
     """Service for managing multiple draft timers."""
 
     def __init__(self):
-        self.active_drafts: Dict[str, DraftTimer] = {}
+        self.active_drafts: dict[str, DraftTimer] = {}
         self.websocket_manager = WebSocketManager()
 
     async def create_draft_timer(
@@ -499,7 +532,7 @@ class DraftTimerService:
         logger.info(f"Created draft timer for {draft_id}")
         return timer
 
-    def get_draft_timer(self, draft_id: str) -> Optional[DraftTimer]:
+    def get_draft_timer(self, draft_id: str) -> DraftTimer | None:
         """Get existing draft timer."""
         return self.active_drafts.get(draft_id)
 
@@ -537,13 +570,13 @@ class DraftTimerService:
         """Get number of active drafts."""
         return len(self.active_drafts)
 
-    def list_active_drafts(self) -> List[str]:
+    def list_active_drafts(self) -> list[str]:
         """List all active draft IDs."""
         return list(self.active_drafts.keys())
 
 
 # Global service instance
-_draft_timer_service: Optional[DraftTimerService] = None
+_draft_timer_service: DraftTimerService | None = None
 
 
 def get_draft_timer_service() -> DraftTimerService:

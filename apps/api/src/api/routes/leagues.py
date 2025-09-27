@@ -42,14 +42,14 @@ class CreateLeagueRequest(BaseModel):
     )
 
     @validator("sport")
-    def validate_sport(cls, v):
+    def validate_sport(self, v):
         valid_sports = ["mlb", "nfl", "nba", "nhl"]
         if v.lower() not in valid_sports:
             raise ValueError(f"Sport must be one of: {valid_sports}")
         return v.lower()
 
     @validator("league_type")
-    def validate_league_type(cls, v):
+    def validate_league_type(self, v):
         valid_types = ["standard", "keeper", "dynasty"]
         if v.lower() not in valid_types:
             raise ValueError(f"League type must be one of: {valid_types}")
@@ -187,12 +187,11 @@ async def get_league(
         # Check if user is a member or if league is public
         if not league_service.is_user_in_league(
             league_id=league_id, user_id=current_user["user_id"], db=db
-        ):
-            if league.status != LeagueStatus.RECRUITING:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied to private league",
-                )
+        ) and league.status != LeagueStatus.RECRUITING:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to private league",
+            )
 
         return APIResponse(
             success=True,

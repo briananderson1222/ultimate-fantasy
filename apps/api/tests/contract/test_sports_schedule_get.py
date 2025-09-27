@@ -30,7 +30,9 @@ class TestSportsScheduleGetContract:
         assert "games" in data
         assert isinstance(data["games"], list)
 
-    def test_get_schedule_with_date_filter_returns_filtered_results(self, authenticated_client):
+    def test_get_schedule_with_date_filter_returns_filtered_results(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/schedule?date=2024-01-01 returns games for date.
 

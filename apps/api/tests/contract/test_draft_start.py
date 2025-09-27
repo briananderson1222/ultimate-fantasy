@@ -24,7 +24,9 @@ class TestDraftStartContract:
         league_id = "league_123"
         draft_data = {"draft_type": "snake", "rounds": 16, "pick_time_limit": 120}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}", json=draft_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}", json=draft_data
+        )
 
         assert response.status_code == 201
         data = response.json()
@@ -44,10 +46,12 @@ class TestDraftStartContract:
         """
         draft_data = {"draft_type": "snake", "rounds": 16, "pick_time_limit": 120}
 
-        response = authenticated_client.post("/api/v1/draft/invalid_league", json=draft_data)
+        response = authenticated_client.post(
+            "/api/v1/draft/invalid_league", json=draft_data
+        )
 
         assert response.status_code == 404
         data = response.json()
 
-        assert "error" in data
-        assert "league not found" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "league not found" in data["detail"]["message"].lower()

@@ -29,7 +29,9 @@ def upgrade() -> None:
     # This is simpler than trying to add all the missing columns one by one
 
     # Create the complete users table with all required columns
-    connection.execute(sa.text("""
+    connection.execute(
+        sa.text(
+            """
         CREATE TABLE users_new (
             user_id VARCHAR(36) PRIMARY KEY,
             username VARCHAR(50) NOT NULL UNIQUE,
@@ -60,7 +62,9 @@ def upgrade() -> None:
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL
         )
-    """))
+    """
+        )
+    )
 
     # Copy any existing data from old table to new table (though there should be none)
     # We'll create a default user if the old table had any data
@@ -70,34 +74,39 @@ def upgrade() -> None:
             # Create a username from email if it doesn't exist
             username = old_user[6] if len(old_user) > 6 and old_user[6] else None
             if not username and len(old_user) > 1:
-                username = old_user[1].split('@')[0].lower()  # Use email prefix
+                username = old_user[1].split("@")[0].lower()  # Use email prefix
 
-            connection.execute(sa.text("""
+            connection.execute(
+                sa.text(
+                    """
                 INSERT INTO users_new (
                     user_id, username, email, cognito_sub, display_name,
                     created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """), {
-                'user_id': old_user[0],
-                'username': username,
-                'email': old_user[1],
-                'cognito_sub': old_user[3],
-                'display_name': old_user[2],
-                'created_at': old_user[4],
-                'updated_at': old_user[5]
-            })
+            """
+                ),
+                {
+                    "user_id": old_user[0],
+                    "username": username,
+                    "email": old_user[1],
+                    "cognito_sub": old_user[3],
+                    "display_name": old_user[2],
+                    "created_at": old_user[4],
+                    "updated_at": old_user[5],
+                },
+            )
 
     # Drop old table and rename new table
     connection.execute(sa.text("DROP TABLE users"))
     connection.execute(sa.text("ALTER TABLE users_new RENAME TO users"))
 
     # Create indexes
-    op.create_index('idx_user_username', 'users', ['username'], unique=True)
-    op.create_index('idx_user_email', 'users', ['email'], unique=True)
-    op.create_index('idx_user_cognito_sub', 'users', ['cognito_sub'], unique=True)
+    op.create_index("idx_user_username", "users", ["username"], unique=True)
+    op.create_index("idx_user_email", "users", ["email"], unique=True)
+    op.create_index("idx_user_cognito_sub", "users", ["cognito_sub"], unique=True)
 
 
 def downgrade() -> None:
     """Remove username column from users table."""
-    op.drop_index('idx_user_username', table_name='users')
-    op.drop_column('users', 'username')
+    op.drop_index("idx_user_username", table_name="users")
+    op.drop_column("users", "username")

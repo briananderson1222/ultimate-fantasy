@@ -24,7 +24,9 @@ class TestTradesPatchContract:
         trade_id = "trade_123"
         response_data = {"action": "accept"}
 
-        response = authenticated_client.patch(f"/api/v1/trades/{trade_id}", json=response_data)
+        response = authenticated_client.patch(
+            f"/api/v1/trades/{trade_id}", json=response_data
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -44,7 +46,9 @@ class TestTradesPatchContract:
         trade_id = "trade_123"
         response_data = {"action": "reject", "reason": "Not interested in this trade"}
 
-        response = authenticated_client.patch(f"/api/v1/trades/{trade_id}", json=response_data)
+        response = authenticated_client.patch(
+            f"/api/v1/trades/{trade_id}", json=response_data
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -61,13 +65,15 @@ class TestTradesPatchContract:
         """
         response_data = {"action": "accept"}
 
-        response = authenticated_client.patch("/api/v1/trades/invalid_trade", json=response_data)
+        response = authenticated_client.patch(
+            "/api/v1/trades/invalid_trade", json=response_data
+        )
 
         assert response.status_code == 404
         data = response.json()
 
-        assert "error" in data
-        assert "trade not found" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "trade not found" in data["detail"]["message"].lower()
 
     def test_respond_to_expired_trade_returns_400(self, authenticated_client):
         """
@@ -78,13 +84,15 @@ class TestTradesPatchContract:
         trade_id = "expired_trade_123"
         response_data = {"action": "accept"}
 
-        response = authenticated_client.patch(f"/api/v1/trades/{trade_id}", json=response_data)
+        response = authenticated_client.patch(
+            f"/api/v1/trades/{trade_id}", json=response_data
+        )
 
         assert response.status_code == 400
         data = response.json()
 
-        assert "error" in data
-        assert "expired" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "expired" in data["detail"]["message"].lower()
 
     def test_accept_trade_processes_player_transfers(self, authenticated_client):
         """
@@ -95,7 +103,9 @@ class TestTradesPatchContract:
         trade_id = "trade_123"
         response_data = {"action": "accept"}
 
-        response = authenticated_client.patch(f"/api/v1/trades/{trade_id}", json=response_data)
+        response = authenticated_client.patch(
+            f"/api/v1/trades/{trade_id}", json=response_data
+        )
 
         assert response.status_code == 200
         data = response.json()

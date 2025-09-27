@@ -12,7 +12,6 @@ Provides comprehensive live scores and game statistics with:
 """
 
 from datetime import date, datetime
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -27,6 +26,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -41,10 +41,10 @@ class PlayerGameStats(BaseModel):
     player_name: str
     position: str
     team: str
-    stats: Dict[str, float] = Field(default_factory=dict)
+    stats: dict[str, float] = Field(default_factory=dict)
     fantasy_points: float = 0.0
     is_final: bool = False
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
 
 class GameScore(BaseModel):
@@ -59,32 +59,32 @@ class GameScore(BaseModel):
     status: str = "scheduled"  # scheduled, in_progress, final, postponed, cancelled
 
     # Game state
-    period: Optional[int] = None
-    time_remaining: Optional[str] = None
+    period: int | None = None
+    time_remaining: str | None = None
     is_final: bool = False
 
     # Game information
-    scheduled_at: Optional[str] = None
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    scheduled_at: str | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
 
     # Additional data
-    venue: Optional[str] = None
-    attendance: Optional[int] = None
-    weather: Optional[str] = None
+    venue: str | None = None
+    attendance: int | None = None
+    weather: str | None = None
 
     # Last update information
     last_updated: str
-    update_frequency: Optional[str] = None  # live, final, etc.
+    update_frequency: str | None = None  # live, final, etc.
 
 
 class ScoresResponse(BaseModel):
     """Scores response model."""
 
-    games: List[GameScore]
-    player_stats: List[PlayerGameStats] = Field(default_factory=list)
+    games: list[GameScore]
+    player_stats: list[PlayerGameStats] = Field(default_factory=list)
     sport: str
-    date: Optional[str] = None
+    date: str | None = None
     live_games_count: int = 0
     completed_games_count: int = 0
     total_games: int = 0
@@ -94,11 +94,11 @@ class ScoresResponse(BaseModel):
 @router.get("/scores", response_model=StandardResponse[ScoresResponse])
 async def get_scores(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
-    date: Optional[date] = Query(None, description="Specific date (YYYY-MM-DD)"),
+    date: date | None = Query(None, description="Specific date (YYYY-MM-DD)"),
     live_only: bool = Query(False, description="Only in-progress games"),
     include_player_stats: bool = Query(False, description="Include player statistics"),
-    team: Optional[str] = Query(None, description="Filter by team"),
-    week: Optional[int] = Query(None, description="Specific week number"),
+    team: str | None = Query(None, description="Filter by team"),
+    week: int | None = Query(None, description="Specific week number"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StandardResponse[ScoresResponse]:
@@ -116,7 +116,7 @@ async def get_scores(
     """
     try:
         logger.info(
-            f"Scores request",
+            "Scores request",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
@@ -124,7 +124,7 @@ async def get_scores(
                 "live_only": live_only,
                 "include_player_stats": include_player_stats,
                 "team": team,
-            }
+            },
         )
 
         # Get sports data service
@@ -135,7 +135,7 @@ async def get_scores(
             sport=sport.upper(),
             date=date,
             live_only=live_only,
-            use_cache=False  # Always get fresh score data
+            use_cache=False,  # Always get fresh score data
         )
 
         if not scores_data:
@@ -152,15 +152,16 @@ async def get_scores(
                     total_games=0,
                     last_updated=datetime.utcnow().isoformat(),
                 ),
-                message=f"No games found for {sport.upper()}"
+                message=f"No games found for {sport.upper()}",
             )
 
         # Filter by team if specified
         if team:
             scores_data = [
-                game for game in scores_data
-                if game.get("home_team", "").upper() == team.upper() or
-                   game.get("away_team", "").upper() == team.upper()
+                game
+                for game in scores_data
+                if game.get("home_team", "").upper() == team.upper()
+                or game.get("away_team", "").upper() == team.upper()
             ]
 
         # Convert to response models
@@ -197,8 +198,12 @@ async def get_scores(
                     venue=game_data.get("venue"),
                     attendance=game_data.get("attendance"),
                     weather=game_data.get("weather"),
-                    last_updated=game_data.get("last_updated", datetime.utcnow().isoformat()),
-                    update_frequency="live" if is_live else "final" if is_completed else "scheduled",
+                    last_updated=game_data.get(
+                        "last_updated", datetime.utcnow().isoformat()
+                    ),
+                    update_frequency=(
+                        "live" if is_live else "final" if is_completed else "scheduled"
+                    ),
                 )
                 game_scores.append(game_score)
 
@@ -207,10 +212,12 @@ async def get_scores(
                 continue
 
         # Sort games by status (live first, then by start time)
-        game_scores.sort(key=lambda g: (
-            0 if g.status == "in_progress" else 1 if g.status == "final" else 2,
-            g.scheduled_at or ""
-        ))
+        game_scores.sort(
+            key=lambda g: (
+                0 if g.status == "in_progress" else 1 if g.status == "final" else 2,
+                g.scheduled_at or "",
+            )
+        )
 
         # Get player stats if requested
         player_stats = []
@@ -231,7 +238,7 @@ async def get_scores(
         )
 
         logger.info(
-            f"Scores request completed",
+            "Scores request completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
@@ -239,34 +246,33 @@ async def get_scores(
                 "live_games": live_count,
                 "completed_games": completed_count,
                 "player_stats_count": len(player_stats),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Found {len(game_scores)} games for {sport.upper()}"
+            message=f"Found {len(game_scores)} games for {sport.upper()}",
         )
 
     except Exception as e:
         logger.error(
-            f"Scores request failed",
+            "Scores request failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve scores. Please try again later."
+            status_code=500, detail="Failed to retrieve scores. Please try again later."
         )
 
 
 @router.get("/scores/live", response_model=StandardResponse[ScoresResponse])
 async def get_live_scores(
-    sport: Optional[str] = Query(None, description="Sport type", regex="^(mlb|nfl|wnba)$"),
+    sport: str | None = Query(None, description="Sport type", regex="^(mlb|nfl|wnba)$"),
     include_player_stats: bool = Query(True, description="Include player statistics"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -328,7 +334,7 @@ async def get_live_scores(
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Found {total_live} live games across all sports"
+            message=f"Found {total_live} live games across all sports",
         )
 
 
@@ -349,11 +355,11 @@ async def get_game_score(
     """
     try:
         logger.info(
-            f"Game score request",
+            "Game score request",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
-            }
+            },
         )
 
         # Get sports data service
@@ -365,13 +371,11 @@ async def get_game_score(
 
         for sport in ["nfl", "mlb", "wnba"]:
             scores = await sports_service.get_scores(
-                sport=sport.upper(),
-                use_cache=False  # Get fresh data
+                sport=sport.upper(), use_cache=False  # Get fresh data
             )
 
             game_data = next(
-                (game for game in scores if game.get("game_id") == game_id),
-                None
+                (game for game in scores if game.get("game_id") == game_id), None
             )
 
             if game_data:
@@ -380,8 +384,7 @@ async def get_game_score(
 
         if not game_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"Game with ID {game_id} not found"
+                status_code=404, detail=f"Game with ID {game_id} not found"
             )
 
         # Convert to response model
@@ -406,52 +409,58 @@ async def get_game_score(
             attendance=game_data.get("attendance"),
             weather=game_data.get("weather"),
             last_updated=game_data.get("last_updated", datetime.utcnow().isoformat()),
-            update_frequency="live" if status == "in_progress" else "final" if is_completed else "scheduled",
+            update_frequency=(
+                "live"
+                if status == "in_progress"
+                else "final" if is_completed else "scheduled"
+            ),
         )
 
         logger.info(
-            f"Game score completed",
+            "Game score completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "home_team": game_score.home_team,
                 "away_team": game_score.away_team,
                 "status": game_score.status,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=game_score,
-            message=f"Game score for {game_score.away_team} @ {game_score.home_team}"
+            message=f"Game score for {game_score.away_team} @ {game_score.home_team}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Game score failed",
+            "Game score failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve game score. Please try again later."
+            detail="Failed to retrieve game score. Please try again later.",
         )
 
 
-@router.get("/scores/{game_id}/stats", response_model=StandardResponse[List[PlayerGameStats]])
+@router.get(
+    "/scores/{game_id}/stats", response_model=StandardResponse[list[PlayerGameStats]]
+)
 async def get_game_player_stats(
     game_id: str,
-    team: Optional[str] = Query(None, description="Filter by team"),
-    position: Optional[str] = Query(None, description="Filter by position"),
+    team: str | None = Query(None, description="Filter by team"),
+    position: str | None = Query(None, description="Filter by position"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[PlayerGameStats]]:
+) -> StandardResponse[list[PlayerGameStats]]:
     """
     Get player statistics for a specific game.
 
@@ -463,13 +472,13 @@ async def get_game_player_stats(
     """
     try:
         logger.info(
-            f"Game player stats request",
+            "Game player stats request",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "team": team,
                 "position": position,
-            }
+            },
         )
 
         # Get game info first
@@ -477,8 +486,7 @@ async def get_game_player_stats(
 
         if not game_response.success or not game_response.data:
             raise HTTPException(
-                status_code=404,
-                detail=f"Game with ID {game_id} not found"
+                status_code=404, detail=f"Game with ID {game_id} not found"
             )
 
         game_score = game_response.data
@@ -492,46 +500,47 @@ async def get_game_player_stats(
         )
 
         logger.info(
-            f"Game player stats completed",
+            "Game player stats completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "stats_count": len(player_stats),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=player_stats,
-            message=f"Found {len(player_stats)} player stat records for game"
+            message=f"Found {len(player_stats)} player stat records for game",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Game player stats failed",
+            "Game player stats failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve game player statistics. Please try again later."
+            detail="Failed to retrieve game player statistics. Please try again later.",
         )
 
 
 # Helper functions
 
+
 async def _get_player_game_stats(
     sports_service,
     sport: str,
-    game_scores: List[GameScore],
-    target_date: Optional[date],
-) -> List[PlayerGameStats]:
+    game_scores: list[GameScore],
+    target_date: date | None,
+) -> list[PlayerGameStats]:
     """Get player statistics for multiple games."""
     try:
         player_stats = []
@@ -555,9 +564,9 @@ async def _get_game_specific_player_stats(
     sports_service,
     sport: str,
     game_id: str,
-    team_filter: Optional[str] = None,
-    position_filter: Optional[str] = None,
-) -> List[PlayerGameStats]:
+    team_filter: str | None = None,
+    position_filter: str | None = None,
+) -> list[PlayerGameStats]:
     """Get player statistics for a specific game."""
     try:
         # This would fetch player stats for the specific game
@@ -583,10 +592,16 @@ async def _get_game_specific_player_stats(
 
         # Apply filters
         if team_filter:
-            mock_stats = [stat for stat in mock_stats if stat.team.upper() == team_filter.upper()]
+            mock_stats = [
+                stat for stat in mock_stats if stat.team.upper() == team_filter.upper()
+            ]
 
         if position_filter:
-            mock_stats = [stat for stat in mock_stats if stat.position.upper() == position_filter.upper()]
+            mock_stats = [
+                stat
+                for stat in mock_stats
+                if stat.position.upper() == position_filter.upper()
+            ]
 
         return mock_stats
 

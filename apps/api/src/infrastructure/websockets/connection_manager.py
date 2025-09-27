@@ -13,14 +13,14 @@ Provides comprehensive WebSocket connection management including:
 """
 
 import asyncio
+import contextlib
 import json
-import time
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Any, Callable
 from enum import Enum
-from dataclasses import dataclass, asdict
+from typing import Any
 from uuid import uuid4
-import weakref
 
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -29,6 +29,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -36,11 +37,11 @@ logger = get_logger(__name__)
 
 class ConnectionError(Exception):
     """WebSocket connection manager errors."""
-    pass
 
 
 class MessageType(Enum):
     """WebSocket message types."""
+
     # Connection management
     AUTH = "auth"
     HEARTBEAT = "heartbeat"
@@ -75,6 +76,7 @@ class MessageType(Enum):
 
 class RoomType(Enum):
     """Types of real-time rooms."""
+
     LEAGUE = "league"
     DRAFT = "draft"
     GAME = "game"
@@ -86,12 +88,12 @@ class ConnectionInfo:
     """Information about a WebSocket connection."""
 
     connection_id: str
-    user_id: Optional[str]
+    user_id: str | None
     websocket: WebSocket
     connected_at: datetime
     last_heartbeat: datetime
-    subscribed_rooms: Set[str]
-    metadata: Dict[str, Any]
+    subscribed_rooms: set[str]
+    metadata: dict[str, Any]
     rate_limit_tokens: int
     rate_limit_reset: datetime
 
@@ -102,8 +104,8 @@ class Room:
 
     room_id: str
     room_type: RoomType
-    connections: Set[str]  # connection_ids
-    metadata: Dict[str, Any]
+    connections: set[str]  # connection_ids
+    metadata: dict[str, Any]
     created_at: datetime
     last_activity: datetime
 
@@ -113,9 +115,9 @@ class Message:
     """WebSocket message structure."""
 
     type: MessageType
-    room_id: Optional[str]
-    data: Dict[str, Any]
-    sender_id: Optional[str]
+    room_id: str | None
+    data: dict[str, Any]
+    sender_id: str | None
     timestamp: datetime
     message_id: str
 
@@ -123,20 +125,22 @@ class Message:
 class WebSocketConnectionManager:
     """Manages WebSocket connections for real-time features."""
 
-    def __init__(self,
-                 heartbeat_interval: int = 30,
-                 connection_timeout: int = 300,
-                 rate_limit_per_minute: int = 100):
+    def __init__(
+        self,
+        heartbeat_interval: int = 30,
+        connection_timeout: int = 300,
+        rate_limit_per_minute: int = 100,
+    ):
 
         # Connection storage
-        self.connections: Dict[str, ConnectionInfo] = {}
-        self.user_connections: Dict[str, Set[str]] = {}  # user_id -> connection_ids
-        self.rooms: Dict[str, Room] = {}
+        self.connections: dict[str, ConnectionInfo] = {}
+        self.user_connections: dict[str, set[str]] = {}  # user_id -> connection_ids
+        self.rooms: dict[str, Room] = {}
 
         # Event handlers
-        self.message_handlers: Dict[MessageType, List[Callable]] = {}
-        self.connection_handlers: List[Callable] = []
-        self.disconnection_handlers: List[Callable] = []
+        self.message_handlers: dict[MessageType, list[Callable]] = {}
+        self.connection_handlers: list[Callable] = []
+        self.disconnection_handlers: list[Callable] = []
 
         # Configuration
         self.heartbeat_interval = heartbeat_interval
@@ -144,8 +148,8 @@ class WebSocketConnectionManager:
         self.rate_limit_per_minute = rate_limit_per_minute
 
         # Background tasks
-        self.cleanup_task: Optional[asyncio.Task] = None
-        self.heartbeat_task: Optional[asyncio.Task] = None
+        self.cleanup_task: asyncio.Task | None = None
+        self.heartbeat_task: asyncio.Task | None = None
 
         # Statistics
         self.stats = {
@@ -171,17 +175,13 @@ class WebSocketConnectionManager:
         """Stop background tasks and cleanup."""
         if self.cleanup_task:
             self.cleanup_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.cleanup_task
-            except asyncio.CancelledError:
-                pass
 
         if self.heartbeat_task:
             self.heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.heartbeat_task
-            except asyncio.CancelledError:
-                pass
 
         # Disconnect all connections
         for connection_id in list(self.connections.keys()):
@@ -189,10 +189,12 @@ class WebSocketConnectionManager:
 
         logger.info("WebSocket connection manager stopped")
 
-    async def connect(self,
-                     websocket: WebSocket,
-                     user_id: Optional[str] = None,
-                     metadata: Optional[Dict[str, Any]] = None) -> str:
+    async def connect(
+        self,
+        websocket: WebSocket,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
         """
         Accept a new WebSocket connection.
 
@@ -244,12 +246,12 @@ class WebSocketConnectionManager:
                     logger.warning(f"Connection handler error: {e}")
 
             logger.info(
-                f"WebSocket connected",
+                "WebSocket connected",
                 extra={
                     "connection_id": connection_id,
                     "user_id": user_id,
                     "total_connections": self.stats["active_connections"],
-                }
+                },
             )
 
             return connection_id
@@ -302,23 +304,25 @@ class WebSocketConnectionManager:
                     logger.warning(f"Disconnection handler error: {e}")
 
             logger.info(
-                f"WebSocket disconnected",
+                "WebSocket disconnected",
                 extra={
                     "connection_id": connection_id,
                     "user_id": connection.user_id,
                     "reason": reason,
                     "total_connections": self.stats["active_connections"],
-                }
+                },
             )
 
         except Exception as e:
             logger.error(f"Failed to disconnect WebSocket {connection_id}: {e}")
 
-    async def send_message(self,
-                          connection_id: str,
-                          message_type: MessageType,
-                          data: Dict[str, Any],
-                          room_id: Optional[str] = None) -> bool:
+    async def send_message(
+        self,
+        connection_id: str,
+        message_type: MessageType,
+        data: dict[str, Any],
+        room_id: str | None = None,
+    ) -> bool:
         """
         Send message to a specific connection.
 
@@ -371,11 +375,13 @@ class WebSocketConnectionManager:
             await self.disconnect(connection_id, "send_error")
             return False
 
-    async def broadcast_to_room(self,
-                               room_id: str,
-                               message_type: MessageType,
-                               data: Dict[str, Any],
-                               exclude_connections: Optional[Set[str]] = None) -> int:
+    async def broadcast_to_room(
+        self,
+        room_id: str,
+        message_type: MessageType,
+        data: dict[str, Any],
+        exclude_connections: set[str] | None = None,
+    ) -> int:
         """
         Broadcast message to all connections in a room.
 
@@ -415,7 +421,7 @@ class WebSocketConnectionManager:
                     "message_type": message_type.value,
                     "connections": len(room.connections),
                     "sent": sent_count,
-                }
+                },
             )
 
             return sent_count
@@ -424,10 +430,9 @@ class WebSocketConnectionManager:
             logger.error(f"Failed to broadcast to room {room_id}: {e}")
             return 0
 
-    async def broadcast_to_user(self,
-                               user_id: str,
-                               message_type: MessageType,
-                               data: Dict[str, Any]) -> int:
+    async def broadcast_to_user(
+        self, user_id: str, message_type: MessageType, data: dict[str, Any]
+    ) -> int:
         """
         Send message to all connections for a user.
 
@@ -454,10 +459,9 @@ class WebSocketConnectionManager:
             logger.error(f"Failed to broadcast to user {user_id}: {e}")
             return 0
 
-    async def create_room(self,
-                         room_id: str,
-                         room_type: RoomType,
-                         metadata: Optional[Dict[str, Any]] = None) -> bool:
+    async def create_room(
+        self, room_id: str, room_type: RoomType, metadata: dict[str, Any] | None = None
+    ) -> bool:
         """
         Create a new room for connections.
 
@@ -522,12 +526,12 @@ class WebSocketConnectionManager:
             room.last_activity = datetime.utcnow()
 
             logger.debug(
-                f"Connection joined room",
+                "Connection joined room",
                 extra={
                     "connection_id": connection_id,
                     "room_id": room_id,
                     "room_size": len(room.connections),
-                }
+                },
             )
 
             return True
@@ -564,11 +568,11 @@ class WebSocketConnectionManager:
                     logger.debug(f"Empty room deleted: {room_id}")
 
             logger.debug(
-                f"Connection left room",
+                "Connection left room",
                 extra={
                     "connection_id": connection_id,
                     "room_id": room_id,
-                }
+                },
             )
 
             return True
@@ -598,9 +602,7 @@ class WebSocketConnectionManager:
 
             if connection.rate_limit_tokens <= 0:
                 await self.send_message(
-                    connection_id,
-                    MessageType.ERROR,
-                    {"message": "Rate limit exceeded"}
+                    connection_id, MessageType.ERROR, {"message": "Rate limit exceeded"}
                 )
                 return
 
@@ -616,7 +618,7 @@ class WebSocketConnectionManager:
                 await self.send_message(
                     connection_id,
                     MessageType.ERROR,
-                    {"message": f"Invalid message format: {e}"}
+                    {"message": f"Invalid message format: {e}"},
                 )
                 return
 
@@ -627,9 +629,7 @@ class WebSocketConnectionManager:
             # Handle built-in message types
             if message_type == MessageType.HEARTBEAT:
                 await self.send_message(
-                    connection_id,
-                    MessageType.HEARTBEAT,
-                    {"timestamp": now.isoformat()}
+                    connection_id, MessageType.HEARTBEAT, {"timestamp": now.isoformat()}
                 )
                 return
 
@@ -640,7 +640,7 @@ class WebSocketConnectionManager:
                     await self.send_message(
                         connection_id,
                         MessageType.SUCCESS,
-                        {"message": f"Subscribed to {room_id}"}
+                        {"message": f"Subscribed to {room_id}"},
                     )
                 return
 
@@ -651,7 +651,7 @@ class WebSocketConnectionManager:
                     await self.send_message(
                         connection_id,
                         MessageType.SUCCESS,
-                        {"message": f"Unsubscribed from {room_id}"}
+                        {"message": f"Unsubscribed from {room_id}"},
                     )
                 return
 
@@ -666,9 +666,7 @@ class WebSocketConnectionManager:
         except Exception as e:
             logger.error(f"Failed to handle message from {connection_id}: {e}")
 
-    def register_message_handler(self,
-                                message_type: MessageType,
-                                handler: Callable):
+    def register_message_handler(self, message_type: MessageType, handler: Callable):
         """Register a handler for a specific message type."""
         if message_type not in self.message_handlers:
             self.message_handlers[message_type] = []
@@ -731,25 +729,24 @@ class WebSocketConnectionManager:
                 await self.send_message(
                     connection_id,
                     MessageType.HEARTBEAT,
-                    {"server_time": now.isoformat()}
+                    {"server_time": now.isoformat()},
                 )
             except Exception as e:
                 logger.warning(f"Failed to send heartbeat to {connection_id}: {e}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get connection manager statistics."""
         return {
             **self.stats,
             "active_rooms": len(self.rooms),
             "connections_by_room": {
-                room_id: len(room.connections)
-                for room_id, room in self.rooms.items()
+                room_id: len(room.connections) for room_id, room in self.rooms.items()
             },
         }
 
 
 # Global connection manager instance
-_connection_manager: Optional[WebSocketConnectionManager] = None
+_connection_manager: WebSocketConnectionManager | None = None
 
 
 def get_connection_manager() -> WebSocketConnectionManager:

@@ -10,18 +10,18 @@ This module provides comprehensive compression middleware including:
 """
 
 import gzip
-import time
+import json
 import logging
-from typing import Callable, Optional, Set, Dict, Any
-from fastapi import Request, Response, HTTPException
+import time
+from collections.abc import Callable
+from typing import Any
+
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response as StarletteResponse
-import asyncio
-import json
-from io import BytesIO
 
 logger = logging.getLogger(__name__)
+
 
 class CompressionMiddleware(BaseHTTPMiddleware):
     """Advanced compression middleware with intelligent compression strategies."""
@@ -31,10 +31,10 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         app,
         minimum_size: int = 500,
         compression_level: int = 6,
-        compress_media_types: Optional[Set[str]] = None,
-        exclude_paths: Optional[Set[str]] = None,
+        compress_media_types: set[str] | None = None,
+        exclude_paths: set[str] | None = None,
         enable_streaming_compression: bool = True,
-        cache_compressed_responses: bool = True
+        cache_compressed_responses: bool = True,
     ):
         super().__init__(app)
         self.minimum_size = minimum_size
@@ -55,15 +55,11 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             "application/x-javascript",
             "application/rss+xml",
             "application/atom+xml",
-            "image/svg+xml"
+            "image/svg+xml",
         }
 
         # Paths to exclude from compression
-        self.exclude_paths = exclude_paths or {
-            "/health",
-            "/metrics",
-            "/static/"
-        }
+        self.exclude_paths = exclude_paths or {"/health", "/metrics", "/static/"}
 
         # Compression performance metrics
         self.compression_stats = {
@@ -71,11 +67,11 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             "compressed_requests": 0,
             "total_bytes_saved": 0,
             "average_compression_ratio": 0.0,
-            "compression_time_ms": 0.0
+            "compression_time_ms": 0.0,
         }
 
         # Cache for compressed responses
-        self.compression_cache: Dict[str, bytes] = {}
+        self.compression_cache: dict[str, bytes] = {}
         self.cache_max_size = 1000
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -125,10 +121,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
 
         # Check content length if available
         content_length = response.headers.get("content-length")
-        if content_length and int(content_length) < self.minimum_size:
-            return False
-
-        return True
+        return not (content_length and int(content_length) < self.minimum_size)
 
     async def _compress_response(
         self, request: Request, response: Response, start_time: float
@@ -147,10 +140,10 @@ class CompressionMiddleware(BaseHTTPMiddleware):
                     )
 
             # Get response content
-            if hasattr(response, 'body'):
+            if hasattr(response, "body"):
                 content = response.body
             elif isinstance(response, JSONResponse):
-                content = json.dumps(response.content).encode('utf-8')
+                content = json.dumps(response.content).encode("utf-8")
             elif isinstance(response, StreamingResponse):
                 # Handle streaming responses
                 return await self._compress_streaming_response(response)
@@ -166,7 +159,9 @@ class CompressionMiddleware(BaseHTTPMiddleware):
 
             # Compress content
             compression_start = time.time()
-            compressed_content = gzip.compress(content, compresslevel=self.compression_level)
+            compressed_content = gzip.compress(
+                content, compresslevel=self.compression_level
+            )
             compression_time = (time.time() - compression_start) * 1000
 
             # Cache compressed content
@@ -185,14 +180,18 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             logger.error(f"Compression failed: {e}")
             return response
 
-    async def _compress_streaming_response(self, response: StreamingResponse) -> Response:
+    async def _compress_streaming_response(
+        self, response: StreamingResponse
+    ) -> Response:
         """Compress streaming response content."""
         if not self.enable_streaming_compression:
             return response
 
         async def compress_stream():
             """Generator for compressed streaming content."""
-            compressor = gzip.GzipFile(mode='wb', fileobj=None, compresslevel=self.compression_level)
+            compressor = gzip.GzipFile(
+                mode="wb", fileobj=None, compresslevel=self.compression_level
+            )
 
             try:
                 async for chunk in response.body_iterator:
@@ -217,7 +216,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             compress_stream(),
             status_code=response.status_code,
             headers=dict(response.headers),
-            media_type=response.media_type
+            media_type=response.media_type,
         )
 
         # Add compression headers
@@ -231,7 +230,10 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         return compressed_response
 
     def _create_compressed_response(
-        self, original_response: Response, compressed_content: bytes, from_cache: bool = False
+        self,
+        original_response: Response,
+        compressed_content: bytes,
+        from_cache: bool = False,
     ) -> Response:
         """Create a new response with compressed content."""
         # Create new response
@@ -239,7 +241,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             content=compressed_content,
             status_code=original_response.status_code,
             headers=dict(original_response.headers),
-            media_type=original_response.media_type
+            media_type=original_response.media_type,
         )
 
         # Update headers for compression
@@ -264,7 +266,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             request.method,
             str(request.url),
             response.headers.get("content-type", ""),
-            str(response.status_code)
+            str(response.status_code),
         ]
 
         # Include relevant query parameters
@@ -284,19 +286,25 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         self.compression_stats["total_bytes_saved"] += bytes_saved
 
         # Update average compression ratio
-        compression_ratio = compressed_size / original_size if original_size > 0 else 1.0
+        compression_ratio = (
+            compressed_size / original_size if original_size > 0 else 1.0
+        )
         current_avg = self.compression_stats["average_compression_ratio"]
         request_count = self.compression_stats["compressed_requests"]
 
-        new_avg = ((current_avg * (request_count - 1)) + compression_ratio) / request_count
+        new_avg = (
+            (current_avg * (request_count - 1)) + compression_ratio
+        ) / request_count
         self.compression_stats["average_compression_ratio"] = new_avg
 
         # Update average compression time
         current_time_avg = self.compression_stats["compression_time_ms"]
-        new_time_avg = ((current_time_avg * (request_count - 1)) + compression_time) / request_count
+        new_time_avg = (
+            (current_time_avg * (request_count - 1)) + compression_time
+        ) / request_count
         self.compression_stats["compression_time_ms"] = new_time_avg
 
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         """Get compression performance statistics."""
         total_requests = self.compression_stats["total_requests"]
         compressed_requests = self.compression_stats["compressed_requests"]
@@ -304,12 +312,20 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         return {
             "total_requests": total_requests,
             "compressed_requests": compressed_requests,
-            "compression_rate": (compressed_requests / total_requests * 100) if total_requests > 0 else 0,
+            "compression_rate": (
+                (compressed_requests / total_requests * 100)
+                if total_requests > 0
+                else 0
+            ),
             "total_bytes_saved": self.compression_stats["total_bytes_saved"],
-            "average_compression_ratio": self.compression_stats["average_compression_ratio"],
-            "average_compression_time_ms": self.compression_stats["compression_time_ms"],
+            "average_compression_ratio": self.compression_stats[
+                "average_compression_ratio"
+            ],
+            "average_compression_time_ms": self.compression_stats[
+                "compression_time_ms"
+            ],
             "cache_size": len(self.compression_cache),
-            "cache_hit_rate": self._calculate_cache_hit_rate()
+            "cache_hit_rate": self._calculate_cache_hit_rate(),
         }
 
     def _calculate_cache_hit_rate(self) -> float:
@@ -319,7 +335,12 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         if self.compression_stats["compressed_requests"] == 0:
             return 0.0
 
-        return min(len(self.compression_cache) / self.compression_stats["compressed_requests"] * 100, 100.0)
+        return min(
+            len(self.compression_cache)
+            / self.compression_stats["compressed_requests"]
+            * 100,
+            100.0,
+        )
 
     def clear_compression_cache(self):
         """Clear the compression cache."""
@@ -342,6 +363,7 @@ class BrotliCompressionMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         try:
             import brotli
+
             self.brotli = brotli
             self.brotli_available = True
         except ImportError:
@@ -349,8 +371,8 @@ class BrotliCompressionMiddleware(BaseHTTPMiddleware):
             self.brotli_available = False
 
         # Inherit configuration from kwargs
-        self.minimum_size = kwargs.get('minimum_size', 500)
-        self.quality = kwargs.get('quality', 6)  # Brotli quality (0-11)
+        self.minimum_size = kwargs.get("minimum_size", 500)
+        self.quality = kwargs.get("quality", 6)  # Brotli quality (0-11)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Apply Brotli compression if supported."""
@@ -376,26 +398,18 @@ def create_compression_middleware(
     minimum_size: int = 500,
     compression_level: int = 6,
     enable_brotli: bool = True,
-    **kwargs
+    **kwargs,
 ) -> BaseHTTPMiddleware:
     """Create compression middleware with optimal settings."""
 
-    if enable_brotli:
-        try:
-            import brotli
-            return BrotliCompressionMiddleware(None, **kwargs)
-        except ImportError:
-            logger.info("Brotli not available, using gzip compression")
-
     return CompressionMiddleware(
-        None,
-        minimum_size=minimum_size,
-        compression_level=compression_level,
-        **kwargs
+        None, minimum_size=minimum_size, compression_level=compression_level, **kwargs
     )
 
 
 # Export compression statistics endpoint
-async def compression_stats_endpoint(middleware: CompressionMiddleware) -> Dict[str, Any]:
+async def compression_stats_endpoint(
+    middleware: CompressionMiddleware,
+) -> dict[str, Any]:
     """Endpoint to retrieve compression statistics."""
     return middleware.get_compression_stats()

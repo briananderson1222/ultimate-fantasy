@@ -12,20 +12,22 @@ Provides advanced ML-powered player performance prediction including:
 - Real-time prediction updates and model retraining
 """
 
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any, Union
-from dataclasses import dataclass
-from enum import Enum
 import json
 import pickle
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -33,6 +35,7 @@ logger = get_logger(__name__)
 
 class ModelType(Enum):
     """Types of prediction models."""
+
     LINEAR_REGRESSION = "linear_regression"
     RANDOM_FOREST = "random_forest"
     GRADIENT_BOOSTING = "gradient_boosting"
@@ -42,6 +45,7 @@ class ModelType(Enum):
 
 class Sport(Enum):
     """Supported sports."""
+
     NFL = "nfl"
     MLB = "mlb"
     WNBA = "wnba"
@@ -54,8 +58,8 @@ class PredictionResult:
     player_id: str
     predicted_points: float
     confidence_score: float
-    prediction_range: Tuple[float, float]  # (min, max)
-    factors: Dict[str, float]
+    prediction_range: tuple[float, float]  # (min, max)
+    factors: dict[str, float]
     model_version: str
     generated_at: datetime
     sport: Sport
@@ -68,9 +72,9 @@ class PredictionResult:
     weather_adjustment: float
 
     # Feature contributions
-    feature_importance: Dict[str, float]
-    risk_factors: List[str]
-    upside_factors: List[str]
+    feature_importance: dict[str, float]
+    risk_factors: list[str]
+    upside_factors: list[str]
 
 
 @dataclass
@@ -91,12 +95,11 @@ class ModelMetrics:
 
     # Feature metrics
     feature_count: int
-    top_features: List[Tuple[str, float]]
+    top_features: list[tuple[str, float]]
 
 
 class PerformancePredictorError(Exception):
     """Performance predictor errors."""
-    pass
 
 
 class PlayerPerformancePredictor:
@@ -106,7 +109,7 @@ class PlayerPerformancePredictor:
         self.sport = sport
         self.model_type = model_type
         self.model = None
-        self.feature_names: List[str] = []
+        self.feature_names: list[str] = []
         self.scaler = None
         self.is_trained = False
 
@@ -123,12 +126,22 @@ class PlayerPerformancePredictor:
 
         logger.info(f"Initialized {sport.value} performance predictor")
 
-    def _get_sport_config(self, sport: Sport) -> Dict[str, Any]:
+    def _get_sport_config(self, sport: Sport) -> dict[str, Any]:
         """Get sport-specific configuration."""
         configs = {
             Sport.NFL: {
-                "primary_stats": ["passing_yards", "rushing_yards", "touchdowns", "receptions", "receiving_yards"],
-                "positional_features": ["position", "team_strength", "opponent_strength"],
+                "primary_stats": [
+                    "passing_yards",
+                    "rushing_yards",
+                    "touchdowns",
+                    "receptions",
+                    "receiving_yards",
+                ],
+                "positional_features": [
+                    "position",
+                    "team_strength",
+                    "opponent_strength",
+                ],
                 "scoring_weights": {"touchdown": 6, "field_goal": 3, "yard": 0.1},
                 "game_length": 60,  # minutes
                 "season_games": 17,
@@ -143,17 +156,25 @@ class PlayerPerformancePredictor:
             Sport.WNBA: {
                 "primary_stats": ["points", "rebounds", "assists", "steals", "blocks"],
                 "positional_features": ["position", "minutes_played", "usage_rate"],
-                "scoring_weights": {"point": 1, "rebound": 1.2, "assist": 1.5, "steal": 2, "block": 2},
+                "scoring_weights": {
+                    "point": 1,
+                    "rebound": 1.2,
+                    "assist": 1.5,
+                    "steal": 2,
+                    "block": 2,
+                },
                 "game_length": 40,  # minutes
                 "season_games": 34,
-            }
+            },
         }
         return configs.get(sport, configs[Sport.NFL])
 
-    async def train_model(self,
-                         training_data: pd.DataFrame,
-                         target_column: str = "fantasy_points",
-                         validation_split: float = 0.2) -> ModelMetrics:
+    async def train_model(
+        self,
+        training_data: pd.DataFrame,
+        target_column: str = "fantasy_points",
+        validation_split: float = 0.2,
+    ) -> ModelMetrics:
         """
         Train the performance prediction model.
 
@@ -166,7 +187,9 @@ class PlayerPerformancePredictor:
             ModelMetrics: Training results and model performance
         """
         try:
-            logger.info(f"Training {self.sport.value} model with {len(training_data)} samples")
+            logger.info(
+                f"Training {self.sport.value} model with {len(training_data)} samples"
+            )
 
             # Feature engineering
             features_df = await self._engineer_features(training_data)
@@ -181,6 +204,7 @@ class PlayerPerformancePredictor:
 
             # Scale features
             from sklearn.preprocessing import StandardScaler
+
             self.scaler = StandardScaler()
             X_train_scaled = self.scaler.fit_transform(X_train)
             X_val_scaled = self.scaler.transform(X_val)
@@ -191,7 +215,9 @@ class PlayerPerformancePredictor:
             elif self.model_type == ModelType.RANDOM_FOREST:
                 self.model = await self._train_random_forest(X_train_scaled, y_train)
             elif self.model_type == ModelType.GRADIENT_BOOSTING:
-                self.model = await self._train_gradient_boosting(X_train_scaled, y_train)
+                self.model = await self._train_gradient_boosting(
+                    X_train_scaled, y_train
+                )
             else:
                 self.model = await self._train_linear_model(X_train_scaled, y_train)
 
@@ -205,13 +231,13 @@ class PlayerPerformancePredictor:
             self.is_trained = True
 
             logger.info(
-                f"Model training completed",
+                "Model training completed",
                 extra={
                     "sport": self.sport.value,
                     "model_type": self.model_type.value,
                     "r2_score": metrics.r2_score,
                     "mae": metrics.mae,
-                }
+                },
             )
 
             return metrics
@@ -220,10 +246,12 @@ class PlayerPerformancePredictor:
             logger.error(f"Model training failed: {e}")
             raise PerformancePredictorError(f"Training failed: {e}")
 
-    async def predict_performance(self,
-                                player_data: Dict[str, Any],
-                                opponent_data: Optional[Dict[str, Any]] = None,
-                                game_context: Optional[Dict[str, Any]] = None) -> PredictionResult:
+    async def predict_performance(
+        self,
+        player_data: dict[str, Any],
+        opponent_data: dict[str, Any] | None = None,
+        game_context: dict[str, Any] | None = None,
+    ) -> PredictionResult:
         """
         Predict player fantasy performance for upcoming game.
 
@@ -298,12 +326,12 @@ class PlayerPerformancePredictor:
             )
 
             logger.debug(
-                f"Generated prediction",
+                "Generated prediction",
                 extra={
                     "player_id": player_data.get("player_id"),
                     "predicted_points": final_prediction,
                     "confidence": confidence,
-                }
+                },
             )
 
             return result
@@ -312,9 +340,11 @@ class PlayerPerformancePredictor:
             logger.error(f"Prediction failed: {e}")
             raise PerformancePredictorError(f"Prediction failed: {e}")
 
-    async def batch_predict(self,
-                          players_data: List[Dict[str, Any]],
-                          game_context: Optional[Dict[str, Any]] = None) -> List[PredictionResult]:
+    async def batch_predict(
+        self,
+        players_data: list[dict[str, Any]],
+        game_context: dict[str, Any] | None = None,
+    ) -> list[PredictionResult]:
         """
         Generate predictions for multiple players efficiently.
 
@@ -330,8 +360,7 @@ class PlayerPerformancePredictor:
 
             for player_data in players_data:
                 prediction = await self.predict_performance(
-                    player_data=player_data,
-                    game_context=game_context
+                    player_data=player_data, game_context=game_context
                 )
                 predictions.append(prediction)
 
@@ -353,35 +382,68 @@ class PlayerPerformancePredictor:
             for stat in self.config["primary_stats"]:
                 if stat in features_df.columns:
                     # Rolling averages
-                    features_df[f"{stat}_avg_3"] = features_df.groupby('player_id')[stat].rolling(3).mean().reset_index(0, drop=True)
-                    features_df[f"{stat}_avg_5"] = features_df.groupby('player_id')[stat].rolling(5).mean().reset_index(0, drop=True)
-                    features_df[f"{stat}_avg_10"] = features_df.groupby('player_id')[stat].rolling(10).mean().reset_index(0, drop=True)
+                    features_df[f"{stat}_avg_3"] = (
+                        features_df.groupby("player_id")[stat]
+                        .rolling(3)
+                        .mean()
+                        .reset_index(0, drop=True)
+                    )
+                    features_df[f"{stat}_avg_5"] = (
+                        features_df.groupby("player_id")[stat]
+                        .rolling(5)
+                        .mean()
+                        .reset_index(0, drop=True)
+                    )
+                    features_df[f"{stat}_avg_10"] = (
+                        features_df.groupby("player_id")[stat]
+                        .rolling(10)
+                        .mean()
+                        .reset_index(0, drop=True)
+                    )
 
                     # Trends
-                    features_df[f"{stat}_trend"] = features_df.groupby('player_id')[stat].pct_change(3).reset_index(0, drop=True)
+                    features_df[f"{stat}_trend"] = (
+                        features_df.groupby("player_id")[stat]
+                        .pct_change(3)
+                        .reset_index(0, drop=True)
+                    )
 
                     # Consistency (standard deviation)
-                    features_df[f"{stat}_std_5"] = features_df.groupby('player_id')[stat].rolling(5).std().reset_index(0, drop=True)
+                    features_df[f"{stat}_std_5"] = (
+                        features_df.groupby("player_id")[stat]
+                        .rolling(5)
+                        .std()
+                        .reset_index(0, drop=True)
+                    )
 
             # Opponent strength features
-            if 'opponent_rank' in features_df.columns:
-                features_df['opponent_strength'] = 1 / (features_df['opponent_rank'] + 1)
+            if "opponent_rank" in features_df.columns:
+                features_df["opponent_strength"] = 1 / (
+                    features_df["opponent_rank"] + 1
+                )
 
             # Venue features
-            if 'is_home' in features_df.columns:
-                features_df['home_advantage'] = features_df['is_home'].astype(int)
+            if "is_home" in features_df.columns:
+                features_df["home_advantage"] = features_df["is_home"].astype(int)
 
             # Time-based features
-            if 'game_date' in features_df.columns:
-                features_df['day_of_week'] = pd.to_datetime(features_df['game_date']).dt.dayofweek
-                features_df['week_of_season'] = pd.to_datetime(features_df['game_date']).dt.isocalendar().week
+            if "game_date" in features_df.columns:
+                features_df["day_of_week"] = pd.to_datetime(
+                    features_df["game_date"]
+                ).dt.dayofweek
+                features_df["week_of_season"] = (
+                    pd.to_datetime(features_df["game_date"]).dt.isocalendar().week
+                )
 
             # Remove rows with insufficient data
             features_df = features_df.dropna()
 
             # Store feature names
-            self.feature_names = [col for col in features_df.columns
-                                if col not in ['player_id', 'game_date', 'fantasy_points']]
+            self.feature_names = [
+                col
+                for col in features_df.columns
+                if col not in ["player_id", "game_date", "fantasy_points"]
+            ]
 
             return features_df
 
@@ -389,7 +451,9 @@ class PlayerPerformancePredictor:
             logger.error(f"Feature engineering failed: {e}")
             raise PerformancePredictorError(f"Feature engineering failed: {e}")
 
-    def _prepare_training_data(self, features_df: pd.DataFrame, target_column: str) -> Tuple[np.ndarray, np.ndarray]:
+    def _prepare_training_data(
+        self, features_df: pd.DataFrame, target_column: str
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Prepare features and target for training."""
         try:
             # Select feature columns
@@ -412,9 +476,12 @@ class PlayerPerformancePredictor:
     async def _train_ensemble_model(self, X: np.ndarray, y: np.ndarray):
         """Train ensemble model combining multiple algorithms."""
         try:
-            from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+            from sklearn.ensemble import (
+                GradientBoostingRegressor,
+                RandomForestRegressor,
+                VotingRegressor,
+            )
             from sklearn.linear_model import LinearRegression
-            from sklearn.ensemble import VotingRegressor
 
             # Individual models
             rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
@@ -422,11 +489,9 @@ class PlayerPerformancePredictor:
             lr_model = LinearRegression()
 
             # Ensemble
-            ensemble = VotingRegressor([
-                ('rf', rf_model),
-                ('gb', gb_model),
-                ('lr', lr_model)
-            ])
+            ensemble = VotingRegressor(
+                [("rf", rf_model), ("gb", gb_model), ("lr", lr_model)]
+            )
 
             ensemble.fit(X, y)
             return ensemble
@@ -445,7 +510,7 @@ class PlayerPerformancePredictor:
                 max_depth=10,
                 min_samples_split=5,
                 min_samples_leaf=2,
-                random_state=42
+                random_state=42,
             )
 
             model.fit(X, y)
@@ -461,10 +526,7 @@ class PlayerPerformancePredictor:
             from sklearn.ensemble import GradientBoostingRegressor
 
             model = GradientBoostingRegressor(
-                n_estimators=200,
-                learning_rate=0.1,
-                max_depth=6,
-                random_state=42
+                n_estimators=200, learning_rate=0.1, max_depth=6, random_state=42
             )
 
             model.fit(X, y)
@@ -487,11 +549,20 @@ class PlayerPerformancePredictor:
             logger.error(f"Linear model training failed: {e}")
             raise PerformancePredictorError(f"Linear model training failed: {e}")
 
-    def _calculate_metrics(self, y_true: np.ndarray, y_pred: np.ndarray,
-                          train_samples: int, val_samples: int) -> ModelMetrics:
+    def _calculate_metrics(
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        train_samples: int,
+        val_samples: int,
+    ) -> ModelMetrics:
         """Calculate model performance metrics."""
         try:
-            from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score
+            from sklearn.metrics import (
+                mean_absolute_error,
+                mean_squared_error,
+                r2_score,
+            )
 
             mae = mean_absolute_error(y_true, y_pred)
             rmse = np.sqrt(mean_squared_error(y_true, y_pred))
@@ -504,9 +575,17 @@ class PlayerPerformancePredictor:
 
             # Feature importance (if available)
             top_features = []
-            if hasattr(self.model, 'feature_importances_'):
-                importance_pairs = list(zip(self.feature_names, self.model.feature_importances_))
-                top_features = sorted(importance_pairs, key=lambda x: x[1], reverse=True)[:10]
+            if hasattr(self.model, "feature_importances_"):
+                importance_pairs = list(
+                    zip(
+                        self.feature_names,
+                        self.model.feature_importances_,
+                        strict=False,
+                    )
+                )
+                top_features = sorted(
+                    importance_pairs, key=lambda x: x[1], reverse=True
+                )[:10]
 
             return ModelMetrics(
                 model_id=f"{self.sport.value}_{self.model_type.value}",
@@ -528,10 +607,12 @@ class PlayerPerformancePredictor:
 
     # Prediction helper methods
 
-    async def _engineer_prediction_features(self,
-                                          player_data: Dict[str, Any],
-                                          opponent_data: Optional[Dict[str, Any]],
-                                          game_context: Optional[Dict[str, Any]]) -> List[float]:
+    async def _engineer_prediction_features(
+        self,
+        player_data: dict[str, Any],
+        opponent_data: dict[str, Any] | None,
+        game_context: dict[str, Any] | None,
+    ) -> list[float]:
         """Engineer features for a single prediction."""
         try:
             features = []
@@ -542,15 +623,19 @@ class PlayerPerformancePredictor:
                 stat_values = [game.get(stat, 0) for game in recent_games[-10:]]
 
                 # Averages
-                features.extend([
-                    np.mean(stat_values[-3:]) if len(stat_values) >= 3 else 0,
-                    np.mean(stat_values[-5:]) if len(stat_values) >= 5 else 0,
-                    np.mean(stat_values) if stat_values else 0,
-                ])
+                features.extend(
+                    [
+                        np.mean(stat_values[-3:]) if len(stat_values) >= 3 else 0,
+                        np.mean(stat_values[-5:]) if len(stat_values) >= 5 else 0,
+                        np.mean(stat_values) if stat_values else 0,
+                    ]
+                )
 
                 # Trend and consistency
                 if len(stat_values) >= 3:
-                    trend = (stat_values[-1] - stat_values[-3]) / max(stat_values[-3], 1)
+                    trend = (stat_values[-1] - stat_values[-3]) / max(
+                        stat_values[-3], 1
+                    )
                     features.append(trend)
                 else:
                     features.append(0)
@@ -576,13 +661,17 @@ class PlayerPerformancePredictor:
             while len(features) < len(self.feature_names):
                 features.append(0.0)
 
-            return features[:len(self.feature_names)]
+            return features[: len(self.feature_names)]
 
         except Exception as e:
             logger.error(f"Prediction feature engineering failed: {e}")
-            raise PerformancePredictorError(f"Prediction feature engineering failed: {e}")
+            raise PerformancePredictorError(
+                f"Prediction feature engineering failed: {e}"
+            )
 
-    def _calculate_prediction_confidence(self, features: List[float], player_data: Dict[str, Any]) -> float:
+    def _calculate_prediction_confidence(
+        self, features: list[float], player_data: dict[str, Any]
+    ) -> float:
         """Calculate confidence score for prediction."""
         try:
             confidence_factors = []
@@ -594,9 +683,13 @@ class PlayerPerformancePredictor:
 
             # Consistency factor
             if recent_games:
-                fantasy_points = [game.get("fantasy_points", 0) for game in recent_games]
+                fantasy_points = [
+                    game.get("fantasy_points", 0) for game in recent_games
+                ]
                 if len(fantasy_points) >= 3:
-                    consistency = 1.0 - (np.std(fantasy_points) / max(np.mean(fantasy_points), 1))
+                    consistency = 1.0 - (
+                        np.std(fantasy_points) / max(np.mean(fantasy_points), 1)
+                    )
                     confidence_factors.append(max(0.3, min(1.0, consistency)))
                 else:
                     confidence_factors.append(0.5)
@@ -624,8 +717,9 @@ class PlayerPerformancePredictor:
             logger.error(f"Confidence calculation failed: {e}")
             return 0.5
 
-    def _calculate_prediction_range(self, prediction: float, confidence: float,
-                                  player_data: Dict[str, Any]) -> Tuple[float, float]:
+    def _calculate_prediction_range(
+        self, prediction: float, confidence: float, player_data: dict[str, Any]
+    ) -> tuple[float, float]:
         """Calculate prediction range based on confidence and historical variance."""
         try:
             # Base range based on confidence
@@ -634,7 +728,9 @@ class PlayerPerformancePredictor:
             # Adjust for player's historical variance
             recent_games = player_data.get("recent_games", [])
             if recent_games:
-                fantasy_points = [game.get("fantasy_points", 0) for game in recent_games]
+                fantasy_points = [
+                    game.get("fantasy_points", 0) for game in recent_games
+                ]
                 if len(fantasy_points) >= 3:
                     historical_std = np.std(fantasy_points)
                     uncertainty = max(uncertainty, historical_std * 0.5)
@@ -648,10 +744,12 @@ class PlayerPerformancePredictor:
             logger.error(f"Prediction range calculation failed: {e}")
             return (max(0, prediction * 0.7), prediction * 1.3)
 
-    def _calculate_adjustments(self,
-                             player_data: Dict[str, Any],
-                             opponent_data: Optional[Dict[str, Any]],
-                             game_context: Optional[Dict[str, Any]]) -> Dict[str, float]:
+    def _calculate_adjustments(
+        self,
+        player_data: dict[str, Any],
+        opponent_data: dict[str, Any] | None,
+        game_context: dict[str, Any] | None,
+    ) -> dict[str, float]:
         """Calculate various adjustments to base prediction."""
         adjustments = {}
 
@@ -661,7 +759,7 @@ class PlayerPerformancePredictor:
             if opponent_rank <= 5:
                 adjustments["matchup"] = -2.0  # Tough matchup
             elif opponent_rank >= 25:
-                adjustments["matchup"] = 2.0   # Easy matchup
+                adjustments["matchup"] = 2.0  # Easy matchup
             else:
                 adjustments["matchup"] = 0.0
         else:
@@ -680,7 +778,9 @@ class PlayerPerformancePredictor:
         # Recent form adjustment
         recent_games = player_data.get("recent_games", [])
         if len(recent_games) >= 3:
-            recent_avg = np.mean([game.get("fantasy_points", 0) for game in recent_games[-3:]])
+            recent_avg = np.mean(
+                [game.get("fantasy_points", 0) for game in recent_games[-3:]]
+            )
             season_avg = player_data.get("season_average", recent_avg)
             if season_avg > 0:
                 form_factor = (recent_avg - season_avg) / season_avg
@@ -710,27 +810,33 @@ class PlayerPerformancePredictor:
 
         return adjustments
 
-    def _get_feature_importance(self, features: List[float]) -> Dict[str, float]:
+    def _get_feature_importance(self, features: list[float]) -> dict[str, float]:
         """Get feature importance for this prediction."""
         try:
-            if hasattr(self.model, 'feature_importances_'):
+            if hasattr(self.model, "feature_importances_"):
                 importance_dict = {}
                 for i, feature_name in enumerate(self.feature_names):
                     if i < len(self.model.feature_importances_):
-                        importance_dict[feature_name] = float(self.model.feature_importances_[i])
+                        importance_dict[feature_name] = float(
+                            self.model.feature_importances_[i]
+                        )
                 return importance_dict
             else:
                 # Fallback for models without feature importance
-                return {name: 1.0 / len(self.feature_names) for name in self.feature_names}
+                return {
+                    name: 1.0 / len(self.feature_names) for name in self.feature_names
+                }
 
         except Exception as e:
             logger.error(f"Feature importance calculation failed: {e}")
             return {}
 
-    def _identify_factors(self,
-                         player_data: Dict[str, Any],
-                         opponent_data: Optional[Dict[str, Any]],
-                         game_context: Optional[Dict[str, Any]]) -> Tuple[List[str], List[str]]:
+    def _identify_factors(
+        self,
+        player_data: dict[str, Any],
+        opponent_data: dict[str, Any] | None,
+        game_context: dict[str, Any] | None,
+    ) -> tuple[list[str], list[str]]:
         """Identify risk and upside factors."""
         risk_factors = []
         upside_factors = []
@@ -751,7 +857,9 @@ class PlayerPerformancePredictor:
         # Form factors
         recent_games = player_data.get("recent_games", [])
         if len(recent_games) >= 3:
-            recent_avg = np.mean([game.get("fantasy_points", 0) for game in recent_games[-3:]])
+            recent_avg = np.mean(
+                [game.get("fantasy_points", 0) for game in recent_games[-3:]]
+            )
             season_avg = player_data.get("season_average", recent_avg)
 
             if recent_avg > season_avg * 1.2:
@@ -785,15 +893,15 @@ class PlayerPerformancePredictor:
             features_path = self.model_dir / f"features_{self.model_type.value}.json"
 
             # Save model
-            with open(model_path, 'wb') as f:
+            with open(model_path, "wb") as f:
                 pickle.dump(self.model, f)
 
             # Save scaler
-            with open(scaler_path, 'wb') as f:
+            with open(scaler_path, "wb") as f:
                 pickle.dump(self.scaler, f)
 
             # Save feature names
-            with open(features_path, 'w') as f:
+            with open(features_path, "w") as f:
                 json.dump(self.feature_names, f)
 
             logger.info(f"Model saved to {model_path}")
@@ -809,20 +917,22 @@ class PlayerPerformancePredictor:
             scaler_path = self.model_dir / f"scaler_{self.model_type.value}.pkl"
             features_path = self.model_dir / f"features_{self.model_type.value}.json"
 
-            if not all(path.exists() for path in [model_path, scaler_path, features_path]):
+            if not all(
+                path.exists() for path in [model_path, scaler_path, features_path]
+            ):
                 logger.warning(f"Model files not found for {self.sport.value}")
                 return
 
             # Load model
-            with open(model_path, 'rb') as f:
+            with open(model_path, "rb") as f:
                 self.model = pickle.load(f)
 
             # Load scaler
-            with open(scaler_path, 'rb') as f:
+            with open(scaler_path, "rb") as f:
                 self.scaler = pickle.load(f)
 
             # Load feature names
-            with open(features_path, 'r') as f:
+            with open(features_path) as f:
                 self.feature_names = json.load(f)
 
             self.is_trained = True
@@ -838,11 +948,12 @@ PerformancePredictor = PlayerPerformancePredictor
 PredictionModel = ModelType
 
 # Global predictors for each sport
-_predictors: Dict[Sport, PlayerPerformancePredictor] = {}
+_predictors: dict[Sport, PlayerPerformancePredictor] = {}
 
 
-def get_performance_predictor(sport: Sport,
-                            model_type: ModelType = ModelType.ENSEMBLE) -> PlayerPerformancePredictor:
+def get_performance_predictor(
+    sport: Sport, model_type: ModelType = ModelType.ENSEMBLE
+) -> PlayerPerformancePredictor:
     """Get or create performance predictor for a sport."""
     global _predictors
 
@@ -867,3 +978,30 @@ def reset_predictors():
     """Reset all predictors (useful for testing)."""
     global _predictors
     _predictors = {}
+
+
+class FeatureExtractor:
+    """Feature extractor for player performance prediction."""
+
+    def __init__(self, config: dict):
+        self.config = config
+
+    def extract_features(self, player_data: dict, game_context: dict) -> dict:
+        """Extract features from player data and game context."""
+        features = {}
+
+        # Basic player features
+        features["player_id"] = player_data.get("player_id")
+        features["age"] = player_data.get("age", 25)
+        features["experience"] = player_data.get("experience", 1)
+
+        # Performance features
+        stats = player_data.get("season_stats", {})
+        for stat in self.config.get("primary_stats", []):
+            features[stat] = stats.get(stat, 0)
+
+        # Game context features
+        features["home_advantage"] = 1 if game_context.get("is_home") else 0
+        features["opponent_strength"] = game_context.get("opponent_strength", 0.5)
+
+        return features

@@ -6,18 +6,22 @@ Handles The Athletic-specific data formats, endpoints, and authentication.
 """
 
 import logging
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 from domains.sports.services.sports_data_service import (
-    SportsDataProvider,
-    PlayerStats,
-    PlayerProjection,
     InjuryReport,
-    SportsDataServiceError
+    PlayerProjection,
+    PlayerStats,
+    SportsDataProvider,
+    SportsDataServiceError,
 )
-from .api_client import SportsAPIClient, APIConfig, RateLimitConfig, APIError
-from .data_normalizer import normalize_player_data, normalize_game_data, normalize_stats_data
+
+from .api_client import APIConfig, RateLimitConfig, SportsAPIClient
+from .data_normalizer import (
+    normalize_game_data,
+    normalize_stats_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,17 +49,15 @@ class AthleticSportsProvider(SportsDataProvider):
             max_retries=3,
             retry_delay=2.0,
             rate_limit=RateLimitConfig(
-                requests_per_minute=60,
-                burst_limit=10,
-                window_size=60
+                requests_per_minute=60, burst_limit=10, window_size=60
             ),
             headers={
                 "Accept": "application/json",
                 "User-Agent": "Ultimate Fantasy Platform/1.0",
-                "X-API-Version": "v1"
-            }
+                "X-API-Version": "v1",
+            },
         )
-        self.client: Optional[SportsAPIClient] = None
+        self.client: SportsAPIClient | None = None
 
     async def _get_client(self) -> SportsAPIClient:
         """Get or create API client."""
@@ -72,17 +74,17 @@ class AthleticSportsProvider(SportsDataProvider):
             "MLB": "mlb",
             "NHL": "nhl",
             "WNBA": "wnba",
-            "MLS": "mls"
+            "MLS": "mls",
         }
         return sport_mappings.get(sport.upper(), "nfl")
 
     async def get_players(
         self,
         sport: str = "NFL",
-        position: Optional[str] = None,
-        team: Optional[str] = None,
+        position: str | None = None,
+        team: str | None = None,
         active_only: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get players data from The Athletic API.
 
@@ -100,10 +102,7 @@ class AthleticSportsProvider(SportsDataProvider):
             sport_id = self._get_sport_id(sport)
 
             endpoint = f"sports/{sport_id}/players"
-            params = {
-                "limit": 1000,
-                "active": active_only
-            }
+            params = {"limit": 1000, "active": active_only}
 
             if position:
                 params["position"] = position
@@ -123,7 +122,9 @@ class AthleticSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get players from The Athletic: {e}")
             raise SportsDataServiceError(f"The Athletic API error: {e}")
 
-    def _normalize_athletic_player(self, player_data: Dict[str, Any], sport: str) -> Dict[str, Any]:
+    def _normalize_athletic_player(
+        self, player_data: dict[str, Any], sport: str
+    ) -> dict[str, Any]:
         """Normalize The Athletic player data to standard format."""
         return {
             "player_id": str(player_data.get("id", "")),
@@ -147,15 +148,12 @@ class AthleticSportsProvider(SportsDataProvider):
             "headshot_url": player_data.get("headshot_url"),
             "athletic_url": player_data.get("athletic_url"),
             "fantasy_rating": player_data.get("fantasy_rating"),
-            "analyst_notes": player_data.get("analyst_notes")
+            "analyst_notes": player_data.get("analyst_notes"),
         }
 
     async def get_player_stats(
-        self,
-        player_id: str,
-        season: str,
-        week: Optional[int] = None
-    ) -> Optional[PlayerStats]:
+        self, player_id: str, season: str, week: int | None = None
+    ) -> PlayerStats | None:
         """
         Get player statistics from The Athletic.
 
@@ -192,8 +190,7 @@ class AthleticSportsProvider(SportsDataProvider):
 
             # Normalize based on position
             normalized_stats = normalize_stats_data(
-                combined_stats,
-                player_info.get("position", "")
+                combined_stats, player_info.get("position", "")
             )
 
             return PlayerStats(
@@ -205,7 +202,7 @@ class AthleticSportsProvider(SportsDataProvider):
                 stats=normalized_stats,
                 fantasy_points=stats_data.get("fantasy_points", 0.0),
                 position=player_info.get("position", ""),
-                team=player_info.get("team", {}).get("abbreviation", "")
+                team=player_info.get("team", {}).get("abbreviation", ""),
             )
 
         except Exception as e:
@@ -213,11 +210,8 @@ class AthleticSportsProvider(SportsDataProvider):
             return None
 
     async def get_player_projections(
-        self,
-        player_id: str,
-        week: int,
-        season: str
-    ) -> Optional[PlayerProjection]:
+        self, player_id: str, week: int, season: str
+    ) -> PlayerProjection | None:
         """
         Get player projections from The Athletic.
 
@@ -227,10 +221,7 @@ class AthleticSportsProvider(SportsDataProvider):
             client = await self._get_client()
 
             endpoint = f"players/{player_id}/projections"
-            params = {
-                "season": season,
-                "week": week
-            }
+            params = {"season": season, "week": week}
 
             response = await client.get(endpoint, params=params)
 
@@ -244,11 +235,13 @@ class AthleticSportsProvider(SportsDataProvider):
                 week=week,
                 season=season,
                 projected_stats=projection_data.get("projected_stats", {}),
-                projected_fantasy_points=projection_data.get("projected_fantasy_points", 0.0),
+                projected_fantasy_points=projection_data.get(
+                    "projected_fantasy_points", 0.0
+                ),
                 confidence=projection_data.get("confidence_score", 0.8),
                 last_updated=datetime.fromisoformat(
                     projection_data.get("last_updated", datetime.utcnow().isoformat())
-                )
+                ),
             )
 
         except Exception as e:
@@ -256,10 +249,8 @@ class AthleticSportsProvider(SportsDataProvider):
             return None
 
     async def get_injury_report(
-        self,
-        player_id: Optional[str] = None,
-        team: Optional[str] = None
-    ) -> List[InjuryReport]:
+        self, player_id: str | None = None, team: str | None = None
+    ) -> list[InjuryReport]:
         """
         Get comprehensive injury reports from The Athletic.
 
@@ -280,7 +271,9 @@ class AthleticSportsProvider(SportsDataProvider):
 
                 if "data" in response:
                     injury_data = response["data"]
-                    injuries.append(self._normalize_athletic_injury(injury_data, player_id))
+                    injuries.append(
+                        self._normalize_athletic_injury(injury_data, player_id)
+                    )
 
             else:
                 endpoint = "injuries"
@@ -293,8 +286,7 @@ class AthleticSportsProvider(SportsDataProvider):
                 for injury_data in response.get("data", []):
                     injuries.append(
                         self._normalize_athletic_injury(
-                            injury_data,
-                            injury_data.get("player_id")
+                            injury_data, injury_data.get("player_id")
                         )
                     )
 
@@ -304,7 +296,9 @@ class AthleticSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get injury reports from The Athletic: {e}")
             return []
 
-    def _normalize_athletic_injury(self, injury_data: Dict[str, Any], player_id: str) -> InjuryReport:
+    def _normalize_athletic_injury(
+        self, injury_data: dict[str, Any], player_id: str
+    ) -> InjuryReport:
         """Normalize The Athletic injury data."""
         status_mapping = {
             "healthy": "healthy",
@@ -312,7 +306,7 @@ class AthleticSportsProvider(SportsDataProvider):
             "doubtful": "doubtful",
             "out": "out",
             "ir": "ir",
-            "suspended": "out"
+            "suspended": "out",
         }
 
         status = injury_data.get("status", "healthy").lower()
@@ -339,10 +333,10 @@ class AthleticSportsProvider(SportsDataProvider):
             severity=severity,
             last_updated=datetime.fromisoformat(
                 injury_data.get("last_updated", datetime.utcnow().isoformat())
-            )
+            ),
         )
 
-    async def get_teams(self, sport: str = "NFL") -> List[Dict[str, Any]]:
+    async def get_teams(self, sport: str = "NFL") -> list[dict[str, Any]]:
         """
         Get teams data from The Athletic.
 
@@ -369,7 +363,9 @@ class AthleticSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get teams from The Athletic: {e}")
             raise SportsDataServiceError(f"The Athletic teams API error: {e}")
 
-    def _normalize_athletic_team(self, team_data: Dict[str, Any], sport: str) -> Dict[str, Any]:
+    def _normalize_athletic_team(
+        self, team_data: dict[str, Any], sport: str
+    ) -> dict[str, Any]:
         """Normalize The Athletic team data."""
         return {
             "team_id": team_data.get("abbreviation", ""),
@@ -389,15 +385,12 @@ class AthleticSportsProvider(SportsDataProvider):
             "general_manager": team_data.get("general_manager", {}).get("name"),
             "owner": team_data.get("owner", {}).get("name"),
             "market_value": team_data.get("market_value"),
-            "payroll": team_data.get("payroll")
+            "payroll": team_data.get("payroll"),
         }
 
     async def get_schedule(
-        self,
-        season: str,
-        week: Optional[int] = None,
-        team: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, season: str, week: int | None = None, team: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Get schedule data from The Athletic.
 
@@ -426,15 +419,17 @@ class AthleticSportsProvider(SportsDataProvider):
                 normalized_game = normalize_game_data(game_data)
 
                 # Add The Athletic specific data
-                normalized_game.update({
-                    "betting_line": game_data.get("betting_line"),
-                    "over_under": game_data.get("over_under"),
-                    "weather": game_data.get("weather"),
-                    "attendance": game_data.get("attendance"),
-                    "tv_coverage": game_data.get("tv_coverage"),
-                    "analyst_preview": game_data.get("analyst_preview"),
-                    "key_matchups": game_data.get("key_matchups", [])
-                })
+                normalized_game.update(
+                    {
+                        "betting_line": game_data.get("betting_line"),
+                        "over_under": game_data.get("over_under"),
+                        "weather": game_data.get("weather"),
+                        "attendance": game_data.get("attendance"),
+                        "tv_coverage": game_data.get("tv_coverage"),
+                        "analyst_preview": game_data.get("analyst_preview"),
+                        "key_matchups": game_data.get("key_matchups", []),
+                    }
+                )
 
                 games.append(normalized_game)
 
@@ -444,7 +439,9 @@ class AthleticSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get schedule from The Athletic: {e}")
             return []
 
-    async def get_advanced_metrics(self, player_id: str, metric_types: List[str]) -> Dict[str, Any]:
+    async def get_advanced_metrics(
+        self, player_id: str, metric_types: list[str]
+    ) -> dict[str, Any]:
         """
         Get advanced player metrics from The Athletic.
 
@@ -469,7 +466,7 @@ class AthleticSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get advanced metrics: {e}")
             return {}
 
-    async def get_expert_analysis(self, player_id: str) -> Dict[str, Any]:
+    async def get_expert_analysis(self, player_id: str) -> dict[str, Any]:
         """
         Get expert analysis and commentary for a player.
 
@@ -491,7 +488,7 @@ class AthleticSportsProvider(SportsDataProvider):
                 "weaknesses": response.get("data", {}).get("weaknesses", []),
                 "fantasy_analysis": response.get("data", {}).get("fantasy_analysis"),
                 "analyst_rating": response.get("data", {}).get("analyst_rating"),
-                "last_updated": response.get("data", {}).get("last_updated")
+                "last_updated": response.get("data", {}).get("last_updated"),
             }
 
         except Exception as e:

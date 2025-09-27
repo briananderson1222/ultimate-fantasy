@@ -11,9 +11,9 @@ Provides draft pick submission and validation functionality including:
 """
 
 from datetime import datetime
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from domains.teams.models.team import Team
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -22,13 +22,13 @@ from api.models.response import StandardResponse
 from domains.drafts.services.draft_timer import get_draft_timer_service
 from domains.leagues.models.league import League
 from domains.sports.services.sports_data_service import get_sports_data_service
-from domains.teams.models.team import Team
 from domains.users.models.user import User
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -39,18 +39,12 @@ router = APIRouter()
 class DraftPickRequest(BaseModel):
     """Request model for making a draft pick."""
 
-    player_id: str = Field(
-        ...,
-        description="External player ID to draft"
-    )
-    team_id: str = Field(
-        ...,
-        description="Team making the pick"
-    )
+    player_id: str = Field(..., description="External player ID to draft")
+    team_id: str = Field(..., description="Team making the pick")
     pick_type: str = Field(
         default="manual",
         regex="^(manual|auto)$",
-        description="Type of pick (manual or auto)"
+        description="Type of pick (manual or auto)",
     )
 
 
@@ -67,8 +61,8 @@ class DraftPickResponse(BaseModel):
     player_info: dict
     pick_time: str
     is_autopick: bool
-    time_remaining: Optional[int]
-    next_pick: Optional[dict]
+    time_remaining: int | None
+    next_pick: dict | None
     draft_status: dict
 
 
@@ -80,12 +74,14 @@ class PickValidationError(BaseModel):
     details: dict
 
 
-@router.post("/draft/{league_id}/pick", response_model=StandardResponse[DraftPickResponse])
+@router.post(
+    "/draft/{league_id}/pick", response_model=StandardResponse[DraftPickResponse]
+)
 async def make_draft_pick(
     league_id: str = Path(..., description="League ID for the draft"),
-    request: DraftPickRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    request: DraftPickRequest = Body(...),
 ) -> StandardResponse[DraftPickResponse]:
     """
     Submit a draft pick for the current draft.
@@ -112,32 +108,27 @@ async def make_draft_pick(
     """
     try:
         logger.info(
-            f"Draft pick request",
+            "Draft pick request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "team_id": request.team_id,
                 "player_id": request.player_id,
                 "pick_type": request.pick_type,
-            }
+            },
         )
 
         # Validate league exists
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         # Validate draft is active
         if league.status != "drafting":
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot make pick for league in '{league.status}' status. Draft must be active."
+                detail=f"Cannot make pick for league in '{league.status}' status. Draft must be active.",
             )
 
         # Get draft timer
@@ -146,21 +137,23 @@ async def make_draft_pick(
 
         if not draft_timer:
             raise HTTPException(
-                status_code=404,
-                detail="No active draft found for this league"
+                status_code=404, detail="No active draft found for this league"
             )
 
         # Validate user's team
-        team = db.query(Team).filter(
-            Team.team_id == request.team_id,
-            Team.league_id == league_id,
-            Team.owner_id == current_user.user_id
-        ).first()
+        team = (
+            db.query(Team)
+            .filter(
+                Team.team_id == request.team_id,
+                Team.league_id == league_id,
+                Team.owner_id == current_user.user_id,
+            )
+            .first()
+        )
 
         if not team:
             raise HTTPException(
-                status_code=403,
-                detail="You can only make picks for your own team"
+                status_code=403, detail="You can only make picks for your own team"
             )
 
         # Get current draft status
@@ -169,8 +162,7 @@ async def make_draft_pick(
 
         if not current_pick:
             raise HTTPException(
-                status_code=400,
-                detail="Draft is complete or no current pick available"
+                status_code=400, detail="Draft is complete or no current pick available"
             )
 
         # Validate it's this team's turn
@@ -178,7 +170,7 @@ async def make_draft_pick(
             expected_team = current_pick["team_id"]
             raise HTTPException(
                 status_code=400,
-                detail=f"It's not your turn to pick. Current pick belongs to team {expected_team}"
+                detail=f"It's not your turn to pick. Current pick belongs to team {expected_team}",
             )
 
         # Validate player is available
@@ -187,8 +179,7 @@ async def make_draft_pick(
 
         if not player_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"Player {request.player_id} not found"
+                status_code=404, detail=f"Player {request.player_id} not found"
             )
 
         # Check if player is already drafted
@@ -204,7 +195,7 @@ async def make_draft_pick(
         if already_drafted:
             raise HTTPException(
                 status_code=409,
-                detail=f"Player {request.player_id} has already been drafted"
+                detail=f"Player {request.player_id} has already been drafted",
             )
 
         # Validate pick timing (unless auto-pick)
@@ -213,7 +204,7 @@ async def make_draft_pick(
             if time_remaining <= 0:
                 raise HTTPException(
                     status_code=408,
-                    detail="Pick time has expired. Pick will be processed as auto-pick."
+                    detail="Pick time has expired. Pick will be processed as auto-pick.",
                 )
 
         # Make the pick
@@ -221,13 +212,12 @@ async def make_draft_pick(
         success = await draft_timer.make_pick(
             overall_pick=overall_pick,
             team_id=request.team_id,
-            player_id=request.player_id
+            player_id=request.player_id,
         )
 
         if not success:
             raise HTTPException(
-                status_code=400,
-                detail="Failed to process pick. Please try again."
+                status_code=400, detail="Failed to process pick. Please try again."
             )
 
         # Get updated timer status
@@ -264,11 +254,11 @@ async def make_draft_pick(
                 "completed_picks": updated_status["completed_picks"],
                 "total_picks": updated_status["total_picks"],
                 "is_paused": updated_status["is_paused"],
-            }
+            },
         )
 
         logger.info(
-            f"Draft pick completed",
+            "Draft pick completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
@@ -277,43 +267,43 @@ async def make_draft_pick(
                 "overall_pick": overall_pick,
                 "round_number": current_pick["round_number"],
                 "pick_type": request.pick_type,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Pick {overall_pick}: {team.team_name} selects {player_info['name']}"
+            message=f"Pick {overall_pick}: {team.team_name} selects {player_info['name']}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to process draft pick",
+            "Failed to process draft pick",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "team_id": request.team_id,
                 "player_id": request.player_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to process draft pick. Please try again later."
+            detail="Failed to process draft pick. Please try again later.",
         )
 
 
-@router.get("/draft/{league_id}/picks", response_model=StandardResponse[List[dict]])
+@router.get("/draft/{league_id}/picks", response_model=StandardResponse[list[dict]])
 async def get_draft_picks(
     league_id: str = Path(..., description="League ID for the draft"),
-    round_number: Optional[int] = None,
-    team_id: Optional[str] = None,
+    round_number: int | None = None,
+    team_id: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[dict]]:
+) -> StandardResponse[list[dict]]:
     """
     Get draft picks for a league.
 
@@ -333,36 +323,32 @@ async def get_draft_picks(
     """
     try:
         logger.info(
-            f"Draft picks request",
+            "Draft picks request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "round_number": round_number,
                 "team_id": team_id,
-            }
+            },
         )
 
         # Validate league and user access
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         # Check if user is member of the league
-        user_team = db.query(Team).filter(
-            Team.league_id == league_id,
-            Team.owner_id == current_user.user_id
-        ).first()
+        user_team = (
+            db.query(Team)
+            .filter(Team.league_id == league_id, Team.owner_id == current_user.user_id)
+            .first()
+        )
 
         if not user_team and league.commissioner_id != current_user.user_id:
             raise HTTPException(
                 status_code=403,
-                detail="You must be a league member to view draft picks"
+                detail="You must be a league member to view draft picks",
             )
 
         # Get draft timer
@@ -371,9 +357,7 @@ async def get_draft_picks(
 
         if not draft_timer:
             return StandardResponse(
-                success=True,
-                data=[],
-                message="No draft found for this league"
+                success=True, data=[], message="No draft found for this league"
             )
 
         # Get all picks
@@ -394,17 +378,19 @@ async def get_draft_picks(
                 continue
 
             # Get team info
-            team = db.query(Team).filter(
-                Team.team_id == pick.team_id
-            ).first()
+            team = db.query(Team).filter(Team.team_id == pick.team_id).first()
 
             # Get player info
             player_data = {}
             if pick.player_id != "AUTO_PICK_PLACEHOLDER":
                 try:
-                    player_data = await sports_service.get_player_details(pick.player_id) or {}
+                    player_data = (
+                        await sports_service.get_player_details(pick.player_id) or {}
+                    )
                 except Exception as e:
-                    logger.warning(f"Failed to get player data for {pick.player_id}: {e}")
+                    logger.warning(
+                        f"Failed to get player data for {pick.player_id}: {e}"
+                    )
 
             pick_data = {
                 "overall_pick": pick.overall_pick,
@@ -430,51 +416,53 @@ async def get_draft_picks(
         completed_picks.sort(key=lambda x: x["overall_pick"])
 
         logger.info(
-            f"Draft picks retrieved",
+            "Draft picks retrieved",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "picks_count": len(completed_picks),
                 "round_filter": round_number,
                 "team_filter": team_id,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=completed_picks,
-            message=f"Retrieved {len(completed_picks)} draft picks"
+            message=f"Retrieved {len(completed_picks)} draft picks",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to get draft picks",
+            "Failed to get draft picks",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve draft picks. Please try again later."
+            detail="Failed to retrieve draft picks. Please try again later.",
         )
 
 
-@router.get("/draft/{league_id}/available-players", response_model=StandardResponse[List[dict]])
+@router.get(
+    "/draft/{league_id}/available-players", response_model=StandardResponse[list[dict]]
+)
 async def get_available_players(
     league_id: str = Path(..., description="League ID for the draft"),
-    sport: Optional[str] = None,
-    position: Optional[str] = None,
-    search: Optional[str] = None,
+    sport: str | None = None,
+    position: str | None = None,
+    search: str | None = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[dict]]:
+) -> StandardResponse[list[dict]]:
     """
     Get available players for drafting.
 
@@ -496,37 +484,33 @@ async def get_available_players(
     """
     try:
         logger.info(
-            f"Available players request",
+            "Available players request",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "sport": sport,
                 "position": position,
                 "search": search,
-            }
+            },
         )
 
         # Validate league and user access
-        league = db.query(League).filter(
-            League.league_id == league_id
-        ).first()
+        league = db.query(League).filter(League.league_id == league_id).first()
 
         if not league:
-            raise HTTPException(
-                status_code=404,
-                detail=f"League {league_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
         # Check if user is member of the league
-        user_team = db.query(Team).filter(
-            Team.league_id == league_id,
-            Team.owner_id == current_user.user_id
-        ).first()
+        user_team = (
+            db.query(Team)
+            .filter(Team.league_id == league_id, Team.owner_id == current_user.user_id)
+            .first()
+        )
 
         if not user_team and league.commissioner_id != current_user.user_id:
             raise HTTPException(
                 status_code=403,
-                detail="You must be a league member to view available players"
+                detail="You must be a league member to view available players",
             )
 
         # Validate limit
@@ -545,70 +529,64 @@ async def get_available_players(
         # Get sports data service
         sports_service = await get_sports_data_service()
 
-        # Build search parameters
-        search_params = {
-            "limit": limit + len(drafted_players),  # Get extra to account for filtering
-            "offset": offset,
-        }
-
-        if sport:
-            search_params["sport"] = sport.upper()
-        if position:
-            search_params["position"] = position.upper()
-        if search:
-            search_params["name"] = search
-
         # Get players
-        players_data = await sports_service.search_players(**search_params)
+        players_data = await sports_service.search_players(
+            query=search or "",
+            sport=sport.upper() if sport else "NFL",
+            limit=limit + len(drafted_players),
+            use_cache=True,
+        )
 
         # Filter out drafted players
         available_players = []
         for player in players_data:
             if player.get("player_id") not in drafted_players:
-                available_players.append({
-                    "player_id": player.get("player_id"),
-                    "name": player.get("name"),
-                    "position": player.get("position"),
-                    "team": player.get("team"),
-                    "sport": player.get("sport"),
-                    "injury_status": player.get("injury_status", "healthy"),
-                    "season_stats": player.get("season_stats", {}),
-                    "projections": player.get("projections", {}),
-                })
+                available_players.append(
+                    {
+                        "player_id": player.get("player_id"),
+                        "name": player.get("name"),
+                        "position": player.get("position"),
+                        "team": player.get("team"),
+                        "sport": player.get("sport"),
+                        "injury_status": player.get("injury_status", "healthy"),
+                        "season_stats": player.get("season_stats", {}),
+                        "projections": player.get("projections", {}),
+                    }
+                )
 
             # Stop when we have enough
             if len(available_players) >= limit:
                 break
 
         logger.info(
-            f"Available players retrieved",
+            "Available players retrieved",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "available_count": len(available_players),
                 "drafted_count": len(drafted_players),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=available_players,
-            message=f"Found {len(available_players)} available players"
+            message=f"Found {len(available_players)} available players",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to get available players",
+            "Failed to get available players",
             extra={
                 "user_id": str(current_user.user_id),
                 "league_id": league_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve available players. Please try again later."
+            detail="Failed to retrieve available players. Please try again later.",
         )

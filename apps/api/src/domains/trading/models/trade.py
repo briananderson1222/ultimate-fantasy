@@ -38,9 +38,7 @@ class Trade(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     trade_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    commissioner_notes: Mapped[str | None] = mapped_column(
-        String(1000), nullable=True
-    )
+    commissioner_notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     vetoed_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

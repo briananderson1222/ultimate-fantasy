@@ -2,29 +2,32 @@
 Query optimization utilities for improved database performance.
 """
 
-import logging
-import time
-from typing import Any, Dict, List, Optional, Union
-from functools import wraps
-from dataclasses import dataclass
-from sqlalchemy import text, Index
-from sqlalchemy.orm import Query, Session
-from sqlalchemy.sql import Select
-import redis
 import hashlib
 import json
+import logging
+import time
+from dataclasses import dataclass
+from functools import wraps
+from typing import Any
+
+import redis
+from sqlalchemy.orm import Query, Session
+from sqlalchemy.sql import Select
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class QueryPerformanceMetrics:
     """Metrics for query performance analysis."""
+
     query_hash: str
     execution_time: float
     rows_returned: int
     cache_hit: bool
     optimization_applied: bool
     timestamp: float
+
 
 class QueryCache:
     """Redis-based query result caching with intelligent invalidation."""
@@ -35,12 +38,12 @@ class QueryCache:
         self.cache_prefix = "query_cache:"
         self.invalidation_prefix = "query_invalidation:"
 
-    def _generate_cache_key(self, query: str, params: Dict[str, Any] = None) -> str:
+    def _generate_cache_key(self, query: str, params: dict[str, Any] | None = None) -> str:
         """Generate a unique cache key for the query and parameters."""
         content = f"{query}:{json.dumps(params or {}, sort_keys=True)}"
         return f"{self.cache_prefix}{hashlib.md5(content.encode()).hexdigest()}"
 
-    def get(self, query: str, params: Dict[str, Any] = None) -> Optional[Any]:
+    def get(self, query: str, params: dict[str, Any] | None = None) -> Any | None:
         """Retrieve cached query result."""
         cache_key = self._generate_cache_key(query, params)
         try:
@@ -52,7 +55,13 @@ class QueryCache:
             logger.warning(f"Cache retrieval failed: {e}")
             return None
 
-    def set(self, query: str, result: Any, params: Dict[str, Any] = None, ttl: Optional[int] = None) -> bool:
+    def set(
+        self,
+        query: str,
+        result: Any,
+        params: dict[str, Any] | None = None,
+        ttl: int | None = None,
+    ) -> bool:
         """Cache query result with TTL."""
         cache_key = self._generate_cache_key(query, params)
         ttl = ttl or self.default_ttl
@@ -79,16 +88,17 @@ class QueryCache:
         """Invalidate all cache entries related to a table."""
         return self.invalidate_pattern(table_name)
 
+
 class QueryOptimizer:
     """Advanced query optimization with performance monitoring."""
 
-    def __init__(self, session: Session, cache: Optional[QueryCache] = None):
+    def __init__(self, session: Session, cache: QueryCache | None = None):
         self.session = session
         self.cache = cache
-        self.metrics: List[QueryPerformanceMetrics] = []
+        self.metrics: list[QueryPerformanceMetrics] = []
         self.slow_query_threshold = 1.0  # seconds
 
-    def optimize_query(self, query: Union[Query, Select], use_cache: bool = True) -> Any:
+    def optimize_query(self, query: Query | Select, use_cache: bool = True) -> Any:
         """Execute query with optimizations applied."""
         start_time = time.time()
         query_str = str(query)
@@ -101,8 +111,11 @@ class QueryOptimizer:
             if cached_result is not None:
                 execution_time = time.time() - start_time
                 self._record_metrics(
-                    query_hash, execution_time, len(cached_result),
-                    cache_hit=True, optimization_applied=False
+                    query_hash,
+                    execution_time,
+                    len(cached_result),
+                    cache_hit=True,
+                    optimization_applied=False,
                 )
                 return cached_result
 
@@ -112,7 +125,7 @@ class QueryOptimizer:
 
         # Execute query
         try:
-            if hasattr(optimized_query, 'all'):
+            if hasattr(optimized_query, "all"):
                 result = optimized_query.all()
             else:
                 result = self.session.execute(optimized_query).fetchall()
@@ -122,18 +135,26 @@ class QueryOptimizer:
             # Cache result if applicable
             if use_cache and self.cache and execution_time > 0.1:
                 # Convert result to serializable format
-                serializable_result = [dict(row._mapping) if hasattr(row, '_mapping') else row for row in result]
+                serializable_result = [
+                    dict(row._mapping) if hasattr(row, "_mapping") else row
+                    for row in result
+                ]
                 self.cache.set(query_str, serializable_result)
 
             # Record metrics
             self._record_metrics(
-                query_hash, execution_time, len(result),
-                cache_hit=False, optimization_applied=optimization_applied
+                query_hash,
+                execution_time,
+                len(result),
+                cache_hit=False,
+                optimization_applied=optimization_applied,
             )
 
             # Log slow queries
             if execution_time > self.slow_query_threshold:
-                logger.warning(f"Slow query detected: {execution_time:.2f}s - {query_str[:200]}...")
+                logger.warning(
+                    f"Slow query detected: {execution_time:.2f}s - {query_str[:200]}..."
+                )
 
             return result
 
@@ -141,17 +162,17 @@ class QueryOptimizer:
             logger.error(f"Query execution failed: {e}")
             raise
 
-    def _apply_optimizations(self, query: Union[Query, Select]) -> Union[Query, Select]:
+    def _apply_optimizations(self, query: Query | Select) -> Query | Select:
         """Apply various query optimizations."""
         try:
             # Add LIMIT if not present for potentially large result sets
-            if hasattr(query, 'limit') and not self._has_limit(query):
+            if hasattr(query, "limit") and not self._has_limit(query):
                 # Apply reasonable default limit for safety
                 if self._is_potentially_large_query(query):
                     query = query.limit(10000)
 
             # Add appropriate ORDER BY for pagination queries
-            if hasattr(query, 'order_by') and self._needs_ordering(query):
+            if hasattr(query, "order_by") and self._needs_ordering(query):
                 # Add default ordering by primary key if no ordering exists
                 query = self._add_default_ordering(query)
 
@@ -161,37 +182,43 @@ class QueryOptimizer:
             logger.warning(f"Query optimization failed: {e}")
             return query
 
-    def _has_limit(self, query: Union[Query, Select]) -> bool:
+    def _has_limit(self, query: Query | Select) -> bool:
         """Check if query already has a LIMIT clause."""
         query_str = str(query).lower()
-        return 'limit' in query_str
+        return "limit" in query_str
 
-    def _is_potentially_large_query(self, query: Union[Query, Select]) -> bool:
+    def _is_potentially_large_query(self, query: Query | Select) -> bool:
         """Determine if query might return large result set."""
         query_str = str(query).lower()
         # Check for absence of WHERE clauses that would limit results
-        has_where = 'where' in query_str
-        has_join_condition = 'on' in query_str and 'join' in query_str
+        has_where = "where" in query_str
+        has_join_condition = "on" in query_str and "join" in query_str
         return not (has_where or has_join_condition)
 
-    def _needs_ordering(self, query: Union[Query, Select]) -> bool:
+    def _needs_ordering(self, query: Query | Select) -> bool:
         """Check if query would benefit from explicit ordering."""
         query_str = str(query).lower()
-        return 'order by' not in query_str
+        return "order by" not in query_str
 
-    def _add_default_ordering(self, query: Union[Query, Select]) -> Union[Query, Select]:
+    def _add_default_ordering(self, query: Query | Select) -> Query | Select:
         """Add default ordering by primary key."""
         try:
             # This is a simplified approach - in practice, you'd inspect the query
             # to determine the primary table and its primary key column
-            if hasattr(query, 'order_by'):
-                return query.order_by('id')
+            if hasattr(query, "order_by"):
+                return query.order_by("id")
             return query
         except Exception:
             return query
 
-    def _record_metrics(self, query_hash: str, execution_time: float,
-                       rows_returned: int, cache_hit: bool, optimization_applied: bool):
+    def _record_metrics(
+        self,
+        query_hash: str,
+        execution_time: float,
+        rows_returned: int,
+        cache_hit: bool,
+        optimization_applied: bool,
+    ):
         """Record query performance metrics."""
         metrics = QueryPerformanceMetrics(
             query_hash=query_hash,
@@ -199,7 +226,7 @@ class QueryOptimizer:
             rows_returned=rows_returned,
             cache_hit=cache_hit,
             optimization_applied=optimization_applied,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
         self.metrics.append(metrics)
 
@@ -207,14 +234,16 @@ class QueryOptimizer:
         if len(self.metrics) > 1000:
             self.metrics = self.metrics[-1000:]
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """Generate performance report from collected metrics."""
         if not self.metrics:
             return {"message": "No metrics available"}
 
         total_queries = len(self.metrics)
         cache_hits = sum(1 for m in self.metrics if m.cache_hit)
-        slow_queries = sum(1 for m in self.metrics if m.execution_time > self.slow_query_threshold)
+        slow_queries = sum(
+            1 for m in self.metrics if m.execution_time > self.slow_query_threshold
+        )
         optimized_queries = sum(1 for m in self.metrics if m.optimization_applied)
 
         avg_execution_time = sum(m.execution_time for m in self.metrics) / total_queries
@@ -227,7 +256,7 @@ class QueryOptimizer:
             "optimization_rate": optimized_queries / total_queries * 100,
             "average_execution_time": avg_execution_time,
             "average_rows_returned": avg_rows_returned,
-            "performance_score": self._calculate_performance_score()
+            "performance_score": self._calculate_performance_score(),
         }
 
     def _calculate_performance_score(self) -> float:
@@ -236,8 +265,12 @@ class QueryOptimizer:
             return 0.0
 
         cache_hit_rate = sum(1 for m in self.metrics if m.cache_hit) / len(self.metrics)
-        slow_query_rate = sum(1 for m in self.metrics if m.execution_time > self.slow_query_threshold) / len(self.metrics)
-        avg_execution_time = sum(m.execution_time for m in self.metrics) / len(self.metrics)
+        slow_query_rate = sum(
+            1 for m in self.metrics if m.execution_time > self.slow_query_threshold
+        ) / len(self.metrics)
+        avg_execution_time = sum(m.execution_time for m in self.metrics) / len(
+            self.metrics
+        )
 
         # Score based on cache hits (40%), low slow query rate (40%), fast avg time (20%)
         cache_score = cache_hit_rate * 40
@@ -246,8 +279,10 @@ class QueryOptimizer:
 
         return cache_score + speed_score + time_score
 
-def query_performance_monitor(cache: Optional[QueryCache] = None):
+
+def query_performance_monitor(cache: QueryCache | None = None):
     """Decorator for monitoring query performance."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -257,12 +292,18 @@ def query_performance_monitor(cache: Optional[QueryCache] = None):
                 execution_time = time.time() - start_time
 
                 # Log performance metrics
-                logger.info(f"Query function {func.__name__} executed in {execution_time:.3f}s")
+                logger.info(
+                    f"Query function {func.__name__} executed in {execution_time:.3f}s"
+                )
 
                 return result
             except Exception as e:
                 execution_time = time.time() - start_time
-                logger.error(f"Query function {func.__name__} failed after {execution_time:.3f}s: {e}")
+                logger.error(
+                    f"Query function {func.__name__} failed after {execution_time:.3f}s: {e}"
+                )
                 raise
+
         return wrapper
+
     return decorator

@@ -18,22 +18,26 @@ from dataclasses import dataclass
 
 # Import AI recommendation components
 from domains.ai.models.performance_predictor import (
-    PerformancePredictor, PredictionModel, FeatureExtractor
+    PerformancePredictor,
+    PredictionModel,
+    FeatureExtractor,
 )
 from domains.ai.algorithms.lineup_optimizer import (
-    LineupOptimizer, OptimizationResult, LineupConstraints
+    LineupOptimizer,
+    LineupConstraints,
 )
 from domains.ai.algorithms.waiver_recommender import (
-    WaiverRecommender, WaiverRecommendation, PlayerTrend
+    WaiverRecommendationEngine,
 )
 from domains.ai.services.ai_service import AIService
 from domains.analytics.services.analytics_service import AnalyticsService
-from models.player import Player, PlayerPosition
+from domains.sports.models.player import Player, PlayerPosition
 
 
 @dataclass
 class MockPlayer:
     """Mock player for testing."""
+
     id: str
     name: str
     position: PlayerPosition
@@ -49,6 +53,7 @@ class MockPlayer:
 @dataclass
 class MockMatchup:
     """Mock matchup data for testing."""
+
     player_id: str
     opponent: str
     home_away: str
@@ -67,29 +72,53 @@ class TestPerformancePredictor:
         # Create mock players with varying performance patterns
         self.players = {
             "consistent": MockPlayer(
-                "p1", "Consistent Player", PlayerPosition.RB, "SF",
-                salary=8500, projected_points=18.5,
+                "p1",
+                "Consistent Player",
+                PlayerPosition.RB,
+                "SF",
+                salary=8500,
+                projected_points=18.5,
                 actual_points=[18.2, 19.1, 17.8, 18.9, 18.4, 17.6, 19.3],
-                injury_risk=0.1, ownership_percentage=0.25, opponent_rank=15
+                injury_risk=0.1,
+                ownership_percentage=0.25,
+                opponent_rank=15,
             ),
             "volatile": MockPlayer(
-                "p2", "Volatile Player", PlayerPosition.WR, "KC",
-                salary=7200, projected_points=15.8,
+                "p2",
+                "Volatile Player",
+                PlayerPosition.WR,
+                "KC",
+                salary=7200,
+                projected_points=15.8,
                 actual_points=[8.2, 24.1, 11.8, 28.9, 7.4, 22.6, 13.3],
-                injury_risk=0.2, ownership_percentage=0.18, opponent_rank=8
+                injury_risk=0.2,
+                ownership_percentage=0.18,
+                opponent_rank=8,
             ),
             "trending_up": MockPlayer(
-                "p3", "Trending Up", PlayerPosition.QB, "BUF",
-                salary=9200, projected_points=22.3,
+                "p3",
+                "Trending Up",
+                PlayerPosition.QB,
+                "BUF",
+                salary=9200,
+                projected_points=22.3,
                 actual_points=[16.2, 17.8, 19.4, 21.1, 23.7, 25.2, 26.8],
-                injury_risk=0.05, ownership_percentage=0.35, opponent_rank=22
+                injury_risk=0.05,
+                ownership_percentage=0.35,
+                opponent_rank=22,
             ),
             "injury_prone": MockPlayer(
-                "p4", "Injury Prone", PlayerPosition.TE, "GB",
-                salary=6800, projected_points=12.5,
+                "p4",
+                "Injury Prone",
+                PlayerPosition.TE,
+                "GB",
+                salary=6800,
+                projected_points=12.5,
                 actual_points=[14.2, 0.0, 15.8, 0.0, 13.4, 16.6, 0.0],
-                injury_risk=0.6, ownership_percentage=0.12, opponent_rank=10
-            )
+                injury_risk=0.6,
+                ownership_percentage=0.12,
+                opponent_rank=10,
+            ),
         }
 
     def test_extract_basic_features(self):
@@ -137,10 +166,8 @@ class TestPerformancePredictor:
         """Test basic performance prediction."""
         player = self.players["consistent"]
 
-        with patch.object(self.predictor, '_get_matchup_data') as mock_matchup:
-            mock_matchup.return_value = MockMatchup(
-                player.id, "SEA", "home", None, 1.0
-            )
+        with patch.object(self.predictor, "_get_matchup_data") as mock_matchup:
+            mock_matchup.return_value = MockMatchup(player.id, "SEA", "home", None, 1.0)
 
             prediction = self.predictor.predict_performance(player)
 
@@ -164,7 +191,7 @@ class TestPerformancePredictor:
             player.id, "best_defense", "away", {"temp": 32, "wind": 20}, 0.8
         )
 
-        with patch.object(self.predictor, '_get_matchup_data') as mock_matchup:
+        with patch.object(self.predictor, "_get_matchup_data") as mock_matchup:
             # Test good matchup
             mock_matchup.return_value = good_matchup
             good_prediction = self.predictor.predict_performance(player)
@@ -228,16 +255,126 @@ class TestLineupOptimizer:
 
         # Create player pool for optimization
         self.player_pool = [
-            MockPlayer("qb1", "Elite QB", PlayerPosition.QB, "KC", 9200, 24.5, [24.0, 25.0], 0.1, 0.35, 15),
-            MockPlayer("qb2", "Value QB", PlayerPosition.QB, "BUF", 7800, 20.2, [19.5, 21.0], 0.15, 0.22, 18),
-            MockPlayer("rb1", "Top RB", PlayerPosition.RB, "SF", 8800, 22.8, [23.0, 22.5], 0.2, 0.40, 12),
-            MockPlayer("rb2", "Solid RB", PlayerPosition.RB, "DAL", 7400, 18.6, [18.0, 19.2], 0.25, 0.28, 16),
-            MockPlayer("rb3", "Value RB", PlayerPosition.RB, "GB", 6200, 14.8, [15.0, 14.5], 0.3, 0.15, 20),
-            MockPlayer("wr1", "Elite WR", PlayerPosition.WR, "BUF", 8600, 21.4, [21.0, 22.0], 0.15, 0.38, 14),
-            MockPlayer("wr2", "Good WR", PlayerPosition.WR, "MIA", 7200, 17.8, [18.0, 17.5], 0.2, 0.25, 17),
-            MockPlayer("wr3", "Value WR", PlayerPosition.WR, "LAR", 5800, 13.2, [13.5, 13.0], 0.25, 0.12, 22),
-            MockPlayer("te1", "Top TE", PlayerPosition.TE, "KC", 7000, 16.5, [16.0, 17.0], 0.2, 0.30, 19),
-            MockPlayer("te2", "Value TE", PlayerPosition.TE, "SF", 4800, 11.8, [12.0, 11.5], 0.3, 0.08, 25),
+            MockPlayer(
+                "qb1",
+                "Elite QB",
+                PlayerPosition.QB,
+                "KC",
+                9200,
+                24.5,
+                [24.0, 25.0],
+                0.1,
+                0.35,
+                15,
+            ),
+            MockPlayer(
+                "qb2",
+                "Value QB",
+                PlayerPosition.QB,
+                "BUF",
+                7800,
+                20.2,
+                [19.5, 21.0],
+                0.15,
+                0.22,
+                18,
+            ),
+            MockPlayer(
+                "rb1",
+                "Top RB",
+                PlayerPosition.RB,
+                "SF",
+                8800,
+                22.8,
+                [23.0, 22.5],
+                0.2,
+                0.40,
+                12,
+            ),
+            MockPlayer(
+                "rb2",
+                "Solid RB",
+                PlayerPosition.RB,
+                "DAL",
+                7400,
+                18.6,
+                [18.0, 19.2],
+                0.25,
+                0.28,
+                16,
+            ),
+            MockPlayer(
+                "rb3",
+                "Value RB",
+                PlayerPosition.RB,
+                "GB",
+                6200,
+                14.8,
+                [15.0, 14.5],
+                0.3,
+                0.15,
+                20,
+            ),
+            MockPlayer(
+                "wr1",
+                "Elite WR",
+                PlayerPosition.WR,
+                "BUF",
+                8600,
+                21.4,
+                [21.0, 22.0],
+                0.15,
+                0.38,
+                14,
+            ),
+            MockPlayer(
+                "wr2",
+                "Good WR",
+                PlayerPosition.WR,
+                "MIA",
+                7200,
+                17.8,
+                [18.0, 17.5],
+                0.2,
+                0.25,
+                17,
+            ),
+            MockPlayer(
+                "wr3",
+                "Value WR",
+                PlayerPosition.WR,
+                "LAR",
+                5800,
+                13.2,
+                [13.5, 13.0],
+                0.25,
+                0.12,
+                22,
+            ),
+            MockPlayer(
+                "te1",
+                "Top TE",
+                PlayerPosition.TE,
+                "KC",
+                7000,
+                16.5,
+                [16.0, 17.0],
+                0.2,
+                0.30,
+                19,
+            ),
+            MockPlayer(
+                "te2",
+                "Value TE",
+                PlayerPosition.TE,
+                "SF",
+                4800,
+                11.8,
+                [12.0, 11.5],
+                0.3,
+                0.08,
+                25,
+            ),
         ]
 
         # DraftKings-style constraints
@@ -251,7 +388,7 @@ class TestLineupOptimizer:
             },
             total_players=9,
             max_players_per_team=None,
-            max_ownership=None
+            max_ownership=None,
         )
 
     def test_optimize_basic_lineup(self):
@@ -289,7 +426,7 @@ class TestLineupOptimizer:
         """Test optimization with team stacking preferences."""
         stack_preferences = {
             "KC": 2,  # Want 2 KC players
-            "BUF": 2  # Want 2 BUF players
+            "BUF": 2,  # Want 2 BUF players
         }
 
         result = self.optimizer.optimize_lineup(
@@ -372,17 +509,94 @@ class TestWaiverRecommender:
 
         # Mock available players on waivers
         self.waiver_players = [
-            MockPlayer("wa1", "Handcuff RB", PlayerPosition.RB, "SF", 0, 8.5, [0, 0, 20.5], 0.1, 0.05, 12),
-            MockPlayer("wa2", "Emerging WR", PlayerPosition.WR, "MIA", 0, 12.8, [6.2, 8.1, 15.4], 0.2, 0.08, 18),
-            MockPlayer("wa3", "Injury Replacement", PlayerPosition.QB, "GB", 0, 18.2, [22.1, 16.8], 0.3, 0.02, 20),
-            MockPlayer("wa4", "Lottery Ticket", PlayerPosition.WR, "LAR", 0, 7.2, [2.1, 4.8, 18.9], 0.4, 0.01, 25),
+            MockPlayer(
+                "wa1",
+                "Handcuff RB",
+                PlayerPosition.RB,
+                "SF",
+                0,
+                8.5,
+                [0, 0, 20.5],
+                0.1,
+                0.05,
+                12,
+            ),
+            MockPlayer(
+                "wa2",
+                "Emerging WR",
+                PlayerPosition.WR,
+                "MIA",
+                0,
+                12.8,
+                [6.2, 8.1, 15.4],
+                0.2,
+                0.08,
+                18,
+            ),
+            MockPlayer(
+                "wa3",
+                "Injury Replacement",
+                PlayerPosition.QB,
+                "GB",
+                0,
+                18.2,
+                [22.1, 16.8],
+                0.3,
+                0.02,
+                20,
+            ),
+            MockPlayer(
+                "wa4",
+                "Lottery Ticket",
+                PlayerPosition.WR,
+                "LAR",
+                0,
+                7.2,
+                [2.1, 4.8, 18.9],
+                0.4,
+                0.01,
+                25,
+            ),
         ]
 
         # Mock user's current roster
         self.current_roster = [
-            MockPlayer("r1", "Starting QB", PlayerPosition.QB, "KC", 0, 24.5, [24.0, 25.0], 0.1, 0.35, 15),
-            MockPlayer("r2", "Injured RB", PlayerPosition.RB, "DAL", 0, 0.0, [18.0, 0.0], 0.9, 0.25, 16),  # Injured
-            MockPlayer("r3", "Underperforming WR", PlayerPosition.WR, "NYJ", 0, 8.2, [6.0, 4.5], 0.2, 0.15, 30),  # Bad
+            MockPlayer(
+                "r1",
+                "Starting QB",
+                PlayerPosition.QB,
+                "KC",
+                0,
+                24.5,
+                [24.0, 25.0],
+                0.1,
+                0.35,
+                15,
+            ),
+            MockPlayer(
+                "r2",
+                "Injured RB",
+                PlayerPosition.RB,
+                "DAL",
+                0,
+                0.0,
+                [18.0, 0.0],
+                0.9,
+                0.25,
+                16,
+            ),  # Injured
+            MockPlayer(
+                "r3",
+                "Underperforming WR",
+                PlayerPosition.WR,
+                "NYJ",
+                0,
+                8.2,
+                [6.0, 4.5],
+                0.2,
+                0.15,
+                30,
+            ),  # Bad
         ]
 
     def test_identify_roster_needs(self):
@@ -392,16 +606,40 @@ class TestWaiverRecommender:
         # Should identify injured RB and underperforming WR as needs
         assert PlayerPosition.RB in needs
         assert PlayerPosition.WR in needs
-        assert needs[PlayerPosition.RB]["urgency"] > 0.7  # High urgency for injured player
+        assert (
+            needs[PlayerPosition.RB]["urgency"] > 0.7
+        )  # High urgency for injured player
 
     def test_calculate_player_trend(self):
         """Test calculation of player performance trends."""
         # Trending up player
-        trending_up = MockPlayer("up", "Up", PlayerPosition.WR, "MIA", 0, 12.8, [6.2, 8.1, 15.4], 0.2, 0.08, 18)
+        trending_up = MockPlayer(
+            "up",
+            "Up",
+            PlayerPosition.WR,
+            "MIA",
+            0,
+            12.8,
+            [6.2, 8.1, 15.4],
+            0.2,
+            0.08,
+            18,
+        )
         up_trend = self.recommender.calculate_trend(trending_up.actual_points)
 
         # Trending down player
-        trending_down = MockPlayer("down", "Down", PlayerPosition.WR, "NYJ", 0, 8.2, [15.4, 8.1, 6.2], 0.2, 0.15, 30)
+        trending_down = MockPlayer(
+            "down",
+            "Down",
+            PlayerPosition.WR,
+            "NYJ",
+            0,
+            8.2,
+            [15.4, 8.1, 6.2],
+            0.2,
+            0.15,
+            30,
+        )
         down_trend = self.recommender.calculate_trend(trending_down.actual_points)
 
         assert up_trend > 0.5  # Positive trend
@@ -426,7 +664,7 @@ class TestWaiverRecommender:
         injury_news = {
             "player_id": "starter_rb",
             "severity": "out_2_weeks",
-            "affected_players": ["wa1"]  # Handcuff becomes valuable
+            "affected_players": ["wa1"],  # Handcuff becomes valuable
         }
 
         recommendations = self.recommender.recommend_with_injury_context(
@@ -442,8 +680,14 @@ class TestWaiverRecommender:
         """Test recommendations consider upcoming matchups."""
         # Player with great upcoming matchups
         matchup_data = {
-            "wa2": {"next_3_games": ["vs_worst_def", "vs_bad_def", "@avg_def"], "difficulty": 0.2},
-            "wa4": {"next_3_games": ["@best_def", "vs_good_def", "@good_def"], "difficulty": 0.8}
+            "wa2": {
+                "next_3_games": ["vs_worst_def", "vs_bad_def", "@avg_def"],
+                "difficulty": 0.2,
+            },
+            "wa4": {
+                "next_3_games": ["@best_def", "vs_good_def", "@good_def"],
+                "difficulty": 0.8,
+            },
         }
 
         recommendations = self.recommender.recommend_with_matchup_context(
@@ -460,7 +704,7 @@ class TestWaiverRecommender:
     def test_calculate_waiver_bid_amount(self):
         """Test calculation of appropriate waiver bid amounts."""
         high_value_player = self.waiver_players[0]  # Handcuff with upside
-        low_value_player = self.waiver_players[3]   # Lottery ticket
+        low_value_player = self.waiver_players[3]  # Lottery ticket
 
         high_bid = self.recommender.calculate_bid_amount(
             high_value_player, self.current_roster, budget=100, urgency="high"
@@ -472,7 +716,7 @@ class TestWaiverRecommender:
 
         assert high_bid > low_bid
         assert high_bid <= 100  # Within budget
-        assert low_bid >= 1     # Minimum bid
+        assert low_bid >= 1  # Minimum bid
 
 
 class TestAIService:
@@ -488,20 +732,26 @@ class TestAIService:
         team_id = "team1"
         week = 10
 
-        with patch.object(self.ai_service, '_get_team_roster') as mock_roster:
+        with patch.object(self.ai_service, "_get_team_roster") as mock_roster:
             mock_roster.return_value = []
 
-            with patch.object(self.ai_service, '_get_available_players') as mock_available:
+            with patch.object(
+                self.ai_service, "_get_available_players"
+            ) as mock_available:
                 mock_available.return_value = []
 
-                with patch.object(self.ai_service, 'lineup_optimizer') as mock_optimizer:
+                with patch.object(
+                    self.ai_service, "lineup_optimizer"
+                ) as mock_optimizer:
                     mock_result = Mock()
                     mock_result.success = True
                     mock_result.lineup = []
                     mock_result.projected_points = 150.5
                     mock_optimizer.optimize_lineup.return_value = mock_result
 
-                    recommendations = await self.ai_service.get_lineup_recommendations(team_id, week)
+                    recommendations = await self.ai_service.get_lineup_recommendations(
+                        team_id, week
+                    )
 
                     assert recommendations["success"]
                     assert "lineup" in recommendations
@@ -512,11 +762,14 @@ class TestAIService:
         """Test getting waiver wire recommendations."""
         team_id = "team1"
 
-        with patch.object(self.ai_service, 'waiver_recommender') as mock_recommender:
+        with patch.object(self.ai_service, "waiver_recommender") as mock_recommender:
             mock_recommendations = [
                 WaiverRecommendation(
-                    player_id="wa1", confidence=0.85, priority="high",
-                    reasoning="Handcuff with high upside", bid_amount=25
+                    player_id="wa1",
+                    confidence=0.85,
+                    priority="high",
+                    reasoning="Handcuff with high upside",
+                    bid_amount=25,
                 )
             ]
             mock_recommender.recommend_pickups.return_value = mock_recommendations
@@ -533,13 +786,13 @@ class TestAIService:
             "team1_gives": ["player1"],
             "team1_gets": ["player2"],
             "team2_gives": ["player2"],
-            "team2_gets": ["player1"]
+            "team2_gets": ["player1"],
         }
 
-        with patch.object(self.ai_service, '_get_trade_context') as mock_context:
+        with patch.object(self.ai_service, "_get_trade_context") as mock_context:
             mock_context.return_value = {}
 
-            with patch.object(self.ai_service, 'trade_evaluator') as mock_evaluator:
+            with patch.object(self.ai_service, "trade_evaluator") as mock_evaluator:
                 mock_analysis = Mock()
                 mock_analysis.fairness_rating = "fair"
                 mock_analysis.confidence = 0.82
@@ -556,7 +809,7 @@ class TestAIService:
         player_id = "player1"
         week = 10
 
-        with patch.object(self.ai_service, 'performance_predictor') as mock_predictor:
+        with patch.object(self.ai_service, "performance_predictor") as mock_predictor:
             mock_prediction = Mock()
             mock_prediction.expected_points = 18.5
             mock_prediction.confidence = 0.78
@@ -564,7 +817,9 @@ class TestAIService:
             mock_prediction.range_high = 25.0
             mock_predictor.predict_performance.return_value = mock_prediction
 
-            prediction = await self.ai_service.predict_player_performance(player_id, week)
+            prediction = await self.ai_service.predict_player_performance(
+                player_id, week
+            )
 
             assert prediction["expected_points"] == 18.5
             assert prediction["confidence"] > 0.7
@@ -574,11 +829,11 @@ class TestAIService:
         """Test general AI insights generation."""
         team_id = "team1"
 
-        with patch.object(self.ai_service, '_analyze_team_performance') as mock_analyze:
+        with patch.object(self.ai_service, "_analyze_team_performance") as mock_analyze:
             mock_analyze.return_value = {
                 "strengths": ["Strong QB play"],
                 "weaknesses": ["Inconsistent RB production"],
-                "opportunities": ["Favorable upcoming schedule"]
+                "opportunities": ["Favorable upcoming schedule"],
             }
 
             insights = await self.ai_service.get_team_insights(team_id)
@@ -600,16 +855,33 @@ class TestAnalyticsService:
         """Test calculation of player efficiency metrics."""
         player_id = "player1"
 
-        with patch.object(self.analytics_service, '_get_player_data') as mock_data:
+        with patch.object(self.analytics_service, "_get_player_data") as mock_data:
             mock_data.return_value = {
                 "games": [
-                    {"points": 18.5, "targets": 8, "touches": 15, "snap_percentage": 0.85},
-                    {"points": 22.1, "targets": 10, "touches": 18, "snap_percentage": 0.90},
-                    {"points": 14.2, "targets": 6, "touches": 12, "snap_percentage": 0.75}
+                    {
+                        "points": 18.5,
+                        "targets": 8,
+                        "touches": 15,
+                        "snap_percentage": 0.85,
+                    },
+                    {
+                        "points": 22.1,
+                        "targets": 10,
+                        "touches": 18,
+                        "snap_percentage": 0.90,
+                    },
+                    {
+                        "points": 14.2,
+                        "targets": 6,
+                        "touches": 12,
+                        "snap_percentage": 0.75,
+                    },
                 ]
             }
 
-            metrics = await self.analytics_service.calculate_efficiency_metrics(player_id)
+            metrics = await self.analytics_service.calculate_efficiency_metrics(
+                player_id
+            )
 
             assert "points_per_touch" in metrics
             assert "target_share" in metrics
@@ -621,11 +893,13 @@ class TestAnalyticsService:
         """Test calculation of team strength metrics."""
         team_id = "team1"
 
-        with patch.object(self.analytics_service, '_get_team_schedule') as mock_schedule:
+        with patch.object(
+            self.analytics_service, "_get_team_schedule"
+        ) as mock_schedule:
             mock_schedule.return_value = [
                 {"opponent": "team2", "points_for": 120, "points_against": 95},
                 {"opponent": "team3", "points_for": 135, "points_against": 110},
-                {"opponent": "team4", "points_for": 105, "points_against": 125}
+                {"opponent": "team4", "points_for": 105, "points_against": 125},
             ]
 
             metrics = await self.analytics_service.calculate_team_metrics(team_id)
@@ -638,11 +912,15 @@ class TestAnalyticsService:
         """Test player consistency score calculation."""
         # Consistent performer
         consistent_scores = [18.2, 19.1, 17.8, 18.9, 18.4, 17.6, 19.3]
-        consistent_score = self.analytics_service.calculate_consistency_score(consistent_scores)
+        consistent_score = self.analytics_service.calculate_consistency_score(
+            consistent_scores
+        )
 
         # Volatile performer
         volatile_scores = [8.2, 24.1, 11.8, 28.9, 7.4, 22.6, 13.3]
-        volatile_score = self.analytics_service.calculate_consistency_score(volatile_scores)
+        volatile_score = self.analytics_service.calculate_consistency_score(
+            volatile_scores
+        )
 
         assert consistent_score > volatile_score
         assert 0 <= consistent_score <= 1
@@ -662,13 +940,26 @@ class TestAIPerformance:
 
         # Create 100 mock players
         players = [
-            MockPlayer(f"p{i}", f"Player {i}", PlayerPosition.RB, "SF", 7000, 15.0, [15.0], 0.2, 0.1, 15)
+            MockPlayer(
+                f"p{i}",
+                f"Player {i}",
+                PlayerPosition.RB,
+                "SF",
+                7000,
+                15.0,
+                [15.0],
+                0.2,
+                0.1,
+                15,
+            )
             for i in range(100)
         ]
 
         start_time = time.time()
 
-        with patch.object(self.ai_service.performance_predictor, 'predict_batch') as mock_predict:
+        with patch.object(
+            self.ai_service.performance_predictor, "predict_batch"
+        ) as mock_predict:
             mock_predict.return_value = [Mock() for _ in players]
 
             predictions = self.ai_service.performance_predictor.predict_batch(players)
@@ -685,12 +976,28 @@ class TestAIPerformance:
 
         # Create large player pool (200 players)
         large_pool = []
-        positions = [PlayerPosition.QB, PlayerPosition.RB, PlayerPosition.WR, PlayerPosition.TE]
+        positions = [
+            PlayerPosition.QB,
+            PlayerPosition.RB,
+            PlayerPosition.WR,
+            PlayerPosition.TE,
+        ]
 
         for i in range(200):
             pos = positions[i % len(positions)]
             large_pool.append(
-                MockPlayer(f"p{i}", f"Player {i}", pos, "SF", 5000 + (i * 50), 10.0 + i/10, [10.0], 0.2, 0.1, 15)
+                MockPlayer(
+                    f"p{i}",
+                    f"Player {i}",
+                    pos,
+                    "SF",
+                    5000 + (i * 50),
+                    10.0 + i / 10,
+                    [10.0],
+                    0.2,
+                    0.1,
+                    15,
+                )
             )
 
         constraints = LineupConstraints(
@@ -701,7 +1008,7 @@ class TestAIPerformance:
                 PlayerPosition.WR: {"min": 3, "max": 4},
                 PlayerPosition.TE: {"min": 1, "max": 2},
             },
-            total_players=9
+            total_players=9,
         )
 
         start_time = time.time()

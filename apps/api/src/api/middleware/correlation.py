@@ -9,13 +9,13 @@ Provides comprehensive request tracking and correlation:
 - Error tracking and debugging
 """
 
+import logging
 import time
 import uuid
-import logging
-from datetime import datetime
-from typing import Optional, Dict, Any, List
 from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Optional
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,11 +24,13 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 try:
     from infrastructure.observability.tracing import get_tracer, trace_fantasy_operation
 except ImportError:
+
     class MockSpan:
         def set_attribute(self, key, value):
             pass
@@ -49,34 +51,40 @@ except ImportError:
 
         return mock_trace()
 
+
 logger = get_logger(__name__)
 tracer = get_tracer()
 
 # Context variables for correlation tracking
-correlation_id_context: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
-request_context: ContextVar[Optional['RequestContext']] = ContextVar('request_context', default=None)
+correlation_id_context: ContextVar[str | None] = ContextVar(
+    "correlation_id", default=None
+)
+request_context: ContextVar[Optional["RequestContext"]] = ContextVar(
+    "request_context", default=None
+)
 
 
 @dataclass
 class RequestContext:
     """Request context information."""
+
     correlation_id: str
     trace_id: str
-    user_id: Optional[str]
-    session_id: Optional[str]
+    user_id: str | None
+    session_id: str | None
     client_ip: str
     user_agent: str
     method: str
     path: str
-    query_params: Dict[str, Any]
-    headers: Dict[str, str]
+    query_params: dict[str, Any]
+    headers: dict[str, str]
     start_time: datetime
     request_size: int = 0
     response_size: int = 0
     status_code: int = 0
     duration_ms: float = 0.0
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = None
+    error_message: str | None = None
+    metadata: dict[str, Any] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -95,11 +103,11 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         self,
         app,
         header_name: str = "X-Correlation-ID",
-        include_headers: List[str] = None,
-        exclude_paths: List[str] = None,
+        include_headers: list[str] | None = None,
+        exclude_paths: list[str] | None = None,
         log_requests: bool = True,
         log_responses: bool = True,
-        max_header_size: int = 1024
+        max_header_size: int = 1024,
     ):
         """
         Initialize correlation middleware.
@@ -121,13 +129,11 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
             "content-type",
             "accept",
             "x-forwarded-for",
-            "x-real-ip"
+            "x-real-ip",
         ]
-        self.exclude_paths = set(exclude_paths or [
-            "/health",
-            "/metrics",
-            "/favicon.ico"
-        ])
+        self.exclude_paths = set(
+            exclude_paths or ["/health", "/metrics", "/favicon.ico"]
+        )
         self.log_requests = log_requests
         self.log_responses = log_responses
         self.max_header_size = max_header_size
@@ -171,7 +177,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
                 correlation_id=correlation_id,
                 trace_id=trace_id,
                 method=request.method,
-                path=request.url.path
+                path=request.url.path,
             ) as span:
                 span.set_attribute("correlation_id", correlation_id)
                 span.set_attribute("trace_id", trace_id)
@@ -190,7 +196,9 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
                 # Add correlation headers to response
                 response.headers[self.header_name] = correlation_id
                 response.headers["X-Trace-ID"] = trace_id
-                response.headers["X-Request-Duration-Ms"] = str(int(context.duration_ms))
+                response.headers["X-Request-Duration-Ms"] = str(
+                    int(context.duration_ms)
+                )
 
                 # Update span with response info
                 span.set_attribute("status_code", response.status_code)
@@ -244,11 +252,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
             return correlation_id.replace("-", "").isalnum()
 
     def _build_request_context(
-        self,
-        request: Request,
-        correlation_id: str,
-        trace_id: str,
-        start_time: float
+        self, request: Request, correlation_id: str, trace_id: str, start_time: float
     ) -> RequestContext:
         """Build request context from request data."""
         # Extract user information
@@ -259,14 +263,14 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
 
         # Get user agent
-        user_agent = request.headers.get("user-agent", "")[:self.max_header_size]
+        user_agent = request.headers.get("user-agent", "")[: self.max_header_size]
 
         # Extract relevant headers
         headers = {}
         for header_name in self.include_headers:
             header_value = request.headers.get(header_name)
             if header_value:
-                headers[header_name] = header_value[:self.max_header_size]
+                headers[header_name] = header_value[: self.max_header_size]
 
         # Get query parameters
         query_params = dict(request.query_params)
@@ -286,7 +290,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
             query_params=query_params,
             headers=headers,
             start_time=datetime.fromtimestamp(start_time),
-            request_size=request_size
+            request_size=request_size,
         )
 
     def _get_client_ip(self, request: Request) -> str:
@@ -326,7 +330,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
     def _log_request(self, context: RequestContext):
         """Log request details."""
         logger.info(
-            f"Request started",
+            "Request started",
             extra={
                 "correlation_id": context.correlation_id,
                 "trace_id": context.trace_id,
@@ -337,8 +341,8 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
                 "user_agent": context.user_agent,
                 "request_size": context.request_size,
                 "query_params": context.query_params,
-                "timestamp": context.start_time.isoformat()
-            }
+                "timestamp": context.start_time.isoformat(),
+            },
         )
 
     def _log_response(self, context: RequestContext):
@@ -351,7 +355,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
 
         logger.log(
             log_level,
-            f"Request completed",
+            "Request completed",
             extra={
                 "correlation_id": context.correlation_id,
                 "trace_id": context.trace_id,
@@ -361,14 +365,14 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
                 "status_code": context.status_code,
                 "duration_ms": context.duration_ms,
                 "response_size": context.response_size,
-                "client_ip": context.client_ip
-            }
+                "client_ip": context.client_ip,
+            },
         )
 
     def _log_error(self, context: RequestContext, error: Exception):
         """Log error details."""
         logger.error(
-            f"Request failed",
+            "Request failed",
             extra={
                 "correlation_id": context.correlation_id,
                 "trace_id": context.trace_id,
@@ -378,20 +382,21 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
                 "error": str(error),
                 "error_type": type(error).__name__,
                 "duration_ms": context.duration_ms,
-                "client_ip": context.client_ip
+                "client_ip": context.client_ip,
             },
-            exc_info=True
+            exc_info=True,
         )
 
 
 # Utility functions for accessing correlation context
 
-def get_correlation_id() -> Optional[str]:
+
+def get_correlation_id() -> str | None:
     """Get current correlation ID from context."""
     return correlation_id_context.get()
 
 
-def get_request_context() -> Optional[RequestContext]:
+def get_request_context() -> RequestContext | None:
     """Get current request context."""
     return request_context.get()
 
@@ -417,7 +422,7 @@ class CorrelatedLogger:
     def __init__(self, logger_name: str):
         self.logger = get_logger(logger_name)
 
-    def _add_correlation_info(self, extra: Dict[str, Any]) -> Dict[str, Any]:
+    def _add_correlation_info(self, extra: dict[str, Any]) -> dict[str, Any]:
         """Add correlation information to log extra data."""
         correlation_id = get_correlation_id()
         context = get_request_context()
@@ -426,12 +431,14 @@ class CorrelatedLogger:
             extra["correlation_id"] = correlation_id
 
         if context:
-            extra.update({
-                "trace_id": context.trace_id,
-                "user_id": context.user_id,
-                "method": context.method,
-                "path": context.path
-            })
+            extra.update(
+                {
+                    "trace_id": context.trace_id,
+                    "user_id": context.user_id,
+                    "method": context.method,
+                    "path": context.path,
+                }
+            )
 
         return extra
 
@@ -463,13 +470,15 @@ def get_correlated_logger(name: str) -> CorrelatedLogger:
 
 # Decorators for correlation tracking
 
-def correlate_function(func_name: Optional[str] = None):
+
+def correlate_function(func_name: str | None = None):
     """
     Decorator to add correlation tracking to functions.
 
     Args:
         func_name: Optional custom function name for logging
     """
+
     def decorator(func):
         import functools
 
@@ -480,9 +489,7 @@ def correlate_function(func_name: Optional[str] = None):
 
             if correlation_id:
                 with trace_fantasy_operation(
-                    tracer,
-                    name,
-                    correlation_id=correlation_id
+                    tracer, name, correlation_id=correlation_id
                 ) as span:
                     span.set_attribute("function_name", name)
                     return await func(*args, **kwargs)
@@ -502,6 +509,7 @@ def correlate_function(func_name: Optional[str] = None):
 
         # Return appropriate wrapper based on function type
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:

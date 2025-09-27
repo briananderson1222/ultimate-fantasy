@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
-from typing import Any
 from enum import Enum
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -23,6 +23,7 @@ from domains.shared.models.base import Base
 
 class DraftStatus(Enum):
     """Draft status enumeration."""
+
     SCHEDULED = "scheduled"
     ACTIVE = "active"
     PAUSED = "paused"

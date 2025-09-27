@@ -12,9 +12,9 @@ Provides trade status management and decision functionality including:
 """
 
 from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from domains.teams.models.team import Team
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,6 @@ from api.models.response import StandardResponse
 from domains.leagues.models.league import League
 from domains.notifications.services.notification_service import get_notification_service
 from domains.sports.services.sports_data_service import get_sports_data_service
-from domains.teams.models.team import Team
 from domains.trading.models.trade import Trade
 from domains.users.models.user import User
 
@@ -31,6 +30,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -44,15 +44,12 @@ class TradeActionRequest(BaseModel):
     action: str = Field(
         ...,
         regex="^(accept|reject|cancel|veto|approve|expire)$",
-        description="Action to take on the trade"
+        description="Action to take on the trade",
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         None, max_length=500, description="Optional reason for the action"
     )
-    force: bool = Field(
-        default=False,
-        description="Force action (commissioner only)"
-    )
+    force: bool = Field(default=False, description="Force action (commissioner only)")
 
 
 class TradeActionResponse(BaseModel):
@@ -64,18 +61,20 @@ class TradeActionResponse(BaseModel):
     action_taken: str
     action_by: str
     action_at: str
-    reason: Optional[str]
+    reason: str | None
     roster_updated: bool
     notifications_sent: int
     trade_details: dict
 
 
-@router.patch("/trades/{trade_id}", response_model=StandardResponse[TradeActionResponse])
+@router.patch(
+    "/trades/{trade_id}", response_model=StandardResponse[TradeActionResponse]
+)
 async def update_trade_status(
     trade_id: str = Path(..., description="Trade ID to update"),
-    request: TradeActionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    request: TradeActionRequest = Body(...),
 ) -> StandardResponse[TradeActionResponse]:
     """
     Update trade status with the specified action.
@@ -107,22 +106,19 @@ async def update_trade_status(
     """
     try:
         logger.info(
-            f"Trade action request",
+            "Trade action request",
             extra={
                 "user_id": str(current_user.user_id),
                 "trade_id": trade_id,
                 "action": request.action,
                 "force": request.force,
-            }
+            },
         )
 
         # Get trade
         trade = db.query(Trade).filter(Trade.trade_id == trade_id).first()
         if not trade:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Trade {trade_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found")
 
         # Get league and teams
         league = db.query(League).filter(League.league_id == trade.league_id).first()
@@ -131,8 +127,7 @@ async def update_trade_status(
 
         if not league or not from_team or not to_team:
             raise HTTPException(
-                status_code=404,
-                detail="Required league or team data not found"
+                status_code=404, detail="Required league or team data not found"
             )
 
         # Store previous status
@@ -147,54 +142,52 @@ async def update_trade_status(
             if not is_to_team_owner and not (is_commissioner and request.force):
                 raise HTTPException(
                     status_code=403,
-                    detail="Only the recipient team can accept this trade"
+                    detail="Only the recipient team can accept this trade",
                 )
             if trade.status != "pending":
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot accept trade with status '{trade.status}'"
+                    detail=f"Cannot accept trade with status '{trade.status}'",
                 )
             if trade.expires_at and datetime.utcnow() > trade.expires_at:
                 raise HTTPException(
-                    status_code=400,
-                    detail="Trade has expired and cannot be accepted"
+                    status_code=400, detail="Trade has expired and cannot be accepted"
                 )
 
         elif request.action == "reject":
             if not is_to_team_owner and not (is_commissioner and request.force):
                 raise HTTPException(
                     status_code=403,
-                    detail="Only the recipient team can reject this trade"
+                    detail="Only the recipient team can reject this trade",
                 )
             if trade.status not in ["pending", "under_review"]:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot reject trade with status '{trade.status}'"
+                    detail=f"Cannot reject trade with status '{trade.status}'",
                 )
 
         elif request.action == "cancel":
             if not is_from_team_owner and not (is_commissioner and request.force):
                 raise HTTPException(
                     status_code=403,
-                    detail="Only the proposing team can cancel this trade"
+                    detail="Only the proposing team can cancel this trade",
                 )
             if trade.status not in ["pending", "under_review"]:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot cancel trade with status '{trade.status}'"
+                    detail=f"Cannot cancel trade with status '{trade.status}'",
                 )
 
         elif request.action in ["veto", "approve", "expire"]:
             if not is_commissioner:
                 raise HTTPException(
                     status_code=403,
-                    detail="Only the league commissioner can perform this action"
+                    detail="Only the league commissioner can perform this action",
                 )
 
         else:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid action: {request.action}"
+                status_code=400, detail=f"Invalid action: {request.action}"
             )
 
         # Execute the action
@@ -240,13 +233,20 @@ async def update_trade_status(
         # Send notifications
         notification_service = get_notification_service()
         notifications_sent = await _send_trade_notifications(
-            notification_service, trade, request.action, from_team, to_team,
-            current_user, request.reason
+            notification_service,
+            trade,
+            request.action,
+            from_team,
+            to_team,
+            current_user,
+            request.reason,
         )
 
         # Get player details for response
         sports_service = await get_sports_data_service()
-        trade_details = await _get_trade_details(sports_service, trade, from_team, to_team)
+        trade_details = await _get_trade_details(
+            sports_service, trade, from_team, to_team
+        )
 
         # Create response
         response_data = TradeActionResponse(
@@ -263,7 +263,7 @@ async def update_trade_status(
         )
 
         logger.info(
-            f"Trade action completed",
+            "Trade action completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "trade_id": trade_id,
@@ -271,40 +271,42 @@ async def update_trade_status(
                 "previous_status": previous_status,
                 "new_status": trade.status,
                 "roster_updated": roster_updated,
-            }
+            },
         )
 
         action_messages = {
-            "accept": f"Trade accepted and executed",
-            "reject": f"Trade rejected",
-            "cancel": f"Trade cancelled",
-            "veto": f"Trade vetoed by commissioner",
-            "approve": f"Trade approved by commissioner",
-            "expire": f"Trade marked as expired",
+            "accept": "Trade accepted and executed",
+            "reject": "Trade rejected",
+            "cancel": "Trade cancelled",
+            "veto": "Trade vetoed by commissioner",
+            "approve": "Trade approved by commissioner",
+            "expire": "Trade marked as expired",
         }
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=action_messages.get(request.action, f"Trade {request.action} completed")
+            message=action_messages.get(
+                request.action, f"Trade {request.action} completed"
+            ),
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to update trade status",
+            "Failed to update trade status",
             extra={
                 "user_id": str(current_user.user_id),
                 "trade_id": trade_id,
                 "action": request.action,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to update trade status. Please try again later."
+            detail="Failed to update trade status. Please try again later.",
         )
 
 
@@ -334,20 +336,17 @@ async def get_trade_details(
     """
     try:
         logger.info(
-            f"Trade details request",
+            "Trade details request",
             extra={
                 "user_id": str(current_user.user_id),
                 "trade_id": trade_id,
-            }
+            },
         )
 
         # Get trade
         trade = db.query(Trade).filter(Trade.trade_id == trade_id).first()
         if not trade:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Trade {trade_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found")
 
         # Check permissions
         user_teams = db.query(Team).filter(Team.owner_id == current_user.user_id).all()
@@ -355,14 +354,15 @@ async def get_trade_details(
 
         league = db.query(League).filter(League.league_id == trade.league_id).first()
         is_commissioner = league and league.commissioner_id == current_user.user_id
-        has_access = (trade.from_team_id in user_team_ids or
-                     trade.to_team_id in user_team_ids or
-                     is_commissioner)
+        has_access = (
+            trade.from_team_id in user_team_ids
+            or trade.to_team_id in user_team_ids
+            or is_commissioner
+        )
 
         if not has_access:
             raise HTTPException(
-                status_code=403,
-                detail="You don't have permission to view this trade"
+                status_code=403, detail="You don't have permission to view this trade"
             )
 
         # Get teams
@@ -371,42 +371,45 @@ async def get_trade_details(
 
         # Get complete trade details
         sports_service = await get_sports_data_service()
-        trade_details = await _get_trade_details(sports_service, trade, from_team, to_team)
+        trade_details = await _get_trade_details(
+            sports_service, trade, from_team, to_team
+        )
 
         logger.info(
-            f"Trade details retrieved",
+            "Trade details retrieved",
             extra={
                 "user_id": str(current_user.user_id),
                 "trade_id": trade_id,
                 "status": trade.status,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=trade_details,
-            message="Trade details retrieved successfully"
+            message="Trade details retrieved successfully",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Failed to get trade details",
+            "Failed to get trade details",
             extra={
                 "user_id": str(current_user.user_id),
                 "trade_id": trade_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve trade details. Please try again later."
+            detail="Failed to retrieve trade details. Please try again later.",
         )
 
 
 # Helper functions
+
 
 async def _execute_trade(
     db: Session,
@@ -422,12 +425,10 @@ async def _execute_trade(
 
         # Remove traded players from each team
         from_roster_updated = [
-            p for p in from_roster
-            if p.get("player_id") not in trade.proposed_players
+            p for p in from_roster if p.get("player_id") not in trade.proposed_players
         ]
         to_roster_updated = [
-            p for p in to_roster
-            if p.get("player_id") not in trade.requested_players
+            p for p in to_roster if p.get("player_id") not in trade.requested_players
         ]
 
         # Add received players to each team
@@ -437,25 +438,29 @@ async def _execute_trade(
         for player_id in trade.requested_players:
             player_data = await sports_service.get_player_details(player_id)
             if player_data:
-                from_roster_updated.append({
-                    "player_id": player_id,
-                    "name": player_data.get("name"),
-                    "position": player_data.get("position"),
-                    "acquired_via": "trade",
-                    "acquired_date": datetime.utcnow().isoformat(),
-                })
+                from_roster_updated.append(
+                    {
+                        "player_id": player_id,
+                        "name": player_data.get("name"),
+                        "position": player_data.get("position"),
+                        "acquired_via": "trade",
+                        "acquired_date": datetime.utcnow().isoformat(),
+                    }
+                )
 
         # Add proposed players to to_team
         for player_id in trade.proposed_players:
             player_data = await sports_service.get_player_details(player_id)
             if player_data:
-                to_roster_updated.append({
-                    "player_id": player_id,
-                    "name": player_data.get("name"),
-                    "position": player_data.get("position"),
-                    "acquired_via": "trade",
-                    "acquired_date": datetime.utcnow().isoformat(),
-                })
+                to_roster_updated.append(
+                    {
+                        "player_id": player_id,
+                        "name": player_data.get("name"),
+                        "position": player_data.get("position"),
+                        "acquired_via": "trade",
+                        "acquired_date": datetime.utcnow().isoformat(),
+                    }
+                )
 
         # Update team rosters
         from_team.roster = from_roster_updated
@@ -480,7 +485,9 @@ async def _reverse_trade(
     try:
         # This would require tracking original roster state
         # For now, we'll implement a simplified version
-        logger.warning(f"Trade reversal not fully implemented for trade {trade.trade_id}")
+        logger.warning(
+            f"Trade reversal not fully implemented for trade {trade.trade_id}"
+        )
         return False
 
     except Exception as e:
@@ -495,7 +502,7 @@ async def _send_trade_notifications(
     from_team: Team,
     to_team: Team,
     action_user: User,
-    reason: Optional[str],
+    reason: str | None,
 ) -> int:
     """Send notifications for trade status changes."""
     try:
@@ -509,7 +516,9 @@ async def _send_trade_notifications(
         if action == "accept":
             recipients = [str(from_team.owner_id)]
             title = "Trade Accepted"
-            message = f"Your trade with {to_team.team_name} has been accepted and executed"
+            message = (
+                f"Your trade with {to_team.team_name} has been accepted and executed"
+            )
 
         elif action == "reject":
             recipients = [str(from_team.owner_id)]
@@ -521,7 +530,9 @@ async def _send_trade_notifications(
         elif action == "cancel":
             recipients = [str(to_team.owner_id)]
             title = "Trade Cancelled"
-            message = f"The trade proposal from {from_team.team_name} has been cancelled"
+            message = (
+                f"The trade proposal from {from_team.team_name} has been cancelled"
+            )
 
         elif action in ["veto", "approve"]:
             recipients = [str(from_team.owner_id), str(to_team.owner_id)]
@@ -569,29 +580,33 @@ async def _get_trade_details(
         for player_id in trade.proposed_players:
             player_data = await sports_service.get_player_details(player_id)
             if player_data:
-                offering_players.append({
-                    "player_id": player_id,
-                    "name": player_data.get("name"),
-                    "position": player_data.get("position"),
-                    "team": player_data.get("team"),
-                    "sport": player_data.get("sport"),
-                    "injury_status": player_data.get("injury_status", "healthy"),
-                    "stats": player_data.get("season_stats", {}),
-                })
+                offering_players.append(
+                    {
+                        "player_id": player_id,
+                        "name": player_data.get("name"),
+                        "position": player_data.get("position"),
+                        "team": player_data.get("team"),
+                        "sport": player_data.get("sport"),
+                        "injury_status": player_data.get("injury_status", "healthy"),
+                        "stats": player_data.get("season_stats", {}),
+                    }
+                )
 
         requesting_players = []
         for player_id in trade.requested_players:
             player_data = await sports_service.get_player_details(player_id)
             if player_data:
-                requesting_players.append({
-                    "player_id": player_id,
-                    "name": player_data.get("name"),
-                    "position": player_data.get("position"),
-                    "team": player_data.get("team"),
-                    "sport": player_data.get("sport"),
-                    "injury_status": player_data.get("injury_status", "healthy"),
-                    "stats": player_data.get("season_stats", {}),
-                })
+                requesting_players.append(
+                    {
+                        "player_id": player_id,
+                        "name": player_data.get("name"),
+                        "position": player_data.get("position"),
+                        "team": player_data.get("team"),
+                        "sport": player_data.get("sport"),
+                        "injury_status": player_data.get("injury_status", "healthy"),
+                        "stats": player_data.get("season_stats", {}),
+                    }
+                )
 
         return {
             "trade_id": trade.trade_id,
@@ -609,7 +624,9 @@ async def _get_trade_details(
             "created_at": trade.created_at.isoformat(),
             "updated_at": trade.updated_at.isoformat() if trade.updated_at else None,
             "executed_at": trade.executed_at.isoformat() if trade.executed_at else None,
-            "is_expired": trade.expires_at < datetime.utcnow() if trade.expires_at else False,
+            "is_expired": (
+                trade.expires_at < datetime.utcnow() if trade.expires_at else False
+            ),
         }
 
     except Exception as e:

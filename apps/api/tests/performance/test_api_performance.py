@@ -29,8 +29,9 @@ PERFORMANCE_CONFIG = {
     "concurrent_users": [1, 10, 50, 100],
     "test_duration": 30,  # seconds
     "warmup_requests": 5,
-    "base_url": "http://localhost:8000"
+    "base_url": "http://localhost:8000",
 }
+
 
 class PerformanceMetrics:
     """Container for performance test metrics."""
@@ -94,7 +95,7 @@ class APIPerformanceTester:
             limit=100,  # Total connection pool size
             limit_per_host=50,  # Per-host connection limit
             keepalive_timeout=60,
-            enable_cleanup_closed=True
+            enable_cleanup_closed=True,
         )
 
         timeout = aiohttp.ClientTimeout(total=10)  # 10s timeout
@@ -102,7 +103,7 @@ class APIPerformanceTester:
         self.session = aiohttp.ClientSession(
             connector=connector,
             timeout=timeout,
-            headers={'User-Agent': 'PerformanceTest/1.0'}
+            headers={"User-Agent": "PerformanceTest/1.0"},
         )
 
     async def cleanup_session(self):
@@ -110,7 +111,9 @@ class APIPerformanceTester:
         if self.session:
             await self.session.close()
 
-    async def make_request(self, method: str, endpoint: str, **kwargs) -> tuple[float, bool, int]:
+    async def make_request(
+        self, method: str, endpoint: str, **kwargs
+    ) -> tuple[float, bool, int]:
         """Make a single HTTP request and measure performance."""
         url = f"{self.base_url}{endpoint}"
         start_time = time.time()
@@ -129,9 +132,14 @@ class APIPerformanceTester:
             response_time = end_time - start_time
             return response_time, False, 0
 
-    async def load_test_endpoint(self, method: str, endpoint: str,
-                               concurrent_users: int, duration: int,
-                               **request_kwargs) -> PerformanceMetrics:
+    async def load_test_endpoint(
+        self,
+        method: str,
+        endpoint: str,
+        concurrent_users: int,
+        duration: int,
+        **request_kwargs,
+    ) -> PerformanceMetrics:
         """Run load test against a specific endpoint."""
         metrics = PerformanceMetrics()
         start_time = time.time()
@@ -192,26 +200,34 @@ class TestSportsDataAPIPerformance:
 
         # Warmup requests
         for _ in range(PERFORMANCE_CONFIG["warmup_requests"]):
-            await performance_tester.make_request("GET", endpoint, params=params, headers=auth_headers)
+            await performance_tester.make_request(
+                "GET", endpoint, params=params, headers=auth_headers
+            )
 
         # Performance test
         metrics = await performance_tester.load_test_endpoint(
-            "GET", endpoint,
+            "GET",
+            endpoint,
             concurrent_users=10,
             duration=10,
             params=params,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
         # Assertions
-        assert metrics.average_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"], \
-            f"Average response time {metrics.average_response_time:.3f}s exceeds 300ms target"
+        assert (
+            metrics.average_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"]
+        ), f"Average response time {metrics.average_response_time:.3f}s exceeds 300ms target"
 
-        assert metrics.p95_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"] * 1.5, \
-            f"95th percentile {metrics.p95_response_time:.3f}s exceeds acceptable threshold"
+        assert (
+            metrics.p95_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"] * 1.5
+        ), f"95th percentile {metrics.p95_response_time:.3f}s exceeds acceptable threshold"
 
-        assert metrics.success_rate > 99.0, \
-            f"Success rate {metrics.success_rate:.1f}% below 99% requirement"
+        assert (
+            metrics.success_rate > 99.0
+        ), f"Success rate {metrics.success_rate:.1f}% below 99% requirement"
 
     @pytest.mark.asyncio
     async def test_player_details_performance(self, performance_tester, auth_headers):
@@ -224,14 +240,17 @@ class TestSportsDataAPIPerformance:
 
         # Performance test
         metrics = await performance_tester.load_test_endpoint(
-            "GET", endpoint,
-            concurrent_users=20,
-            duration=10,
-            headers=auth_headers
+            "GET", endpoint, concurrent_users=20, duration=10, headers=auth_headers
         )
 
-        assert metrics.average_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"]
-        assert metrics.p99_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"] * 2
+        assert (
+            metrics.average_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"]
+        )
+        assert (
+            metrics.p99_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"] * 2
+        )
         assert metrics.success_rate > 99.0
 
     @pytest.mark.asyncio
@@ -241,14 +260,18 @@ class TestSportsDataAPIPerformance:
         params = {"sport": "nfl"}
 
         metrics = await performance_tester.load_test_endpoint(
-            "GET", endpoint,
+            "GET",
+            endpoint,
             concurrent_users=15,
             duration=10,
             params=params,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert metrics.average_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"]
+        assert (
+            metrics.average_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"]
+        )
         assert metrics.success_rate > 99.0
 
     @pytest.mark.asyncio
@@ -258,15 +281,22 @@ class TestSportsDataAPIPerformance:
         params = {"sport": "nfl", "week": 10, "season": 2024}
 
         metrics = await performance_tester.load_test_endpoint(
-            "GET", endpoint,
+            "GET",
+            endpoint,
             concurrent_users=25,
             duration=15,
             params=params,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert metrics.average_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"]
-        assert metrics.p95_response_time < PERFORMANCE_CONFIG["sports_endpoints_target"] * 1.3
+        assert (
+            metrics.average_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"]
+        )
+        assert (
+            metrics.p95_response_time
+            < PERFORMANCE_CONFIG["sports_endpoints_target"] * 1.3
+        )
 
 
 class TestFantasyAPIPerformance:
@@ -277,73 +307,92 @@ class TestFantasyAPIPerformance:
         """Test draft-related endpoint performance."""
         # Test draft status
         draft_status_metrics = await performance_tester.load_test_endpoint(
-            "GET", "/api/v1/draft/test-league-id",
+            "GET",
+            "/api/v1/draft/test-league-id",
             concurrent_users=10,
             duration=10,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert draft_status_metrics.average_response_time < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        assert (
+            draft_status_metrics.average_response_time
+            < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        )
 
         # Test making picks (POST requests)
-        pick_data = {
-            "player_id": "test-player-id",
-            "team_id": "test-team-id"
-        }
+        pick_data = {"player_id": "test-player-id", "team_id": "test-team-id"}
 
         pick_metrics = await performance_tester.load_test_endpoint(
-            "POST", "/api/v1/draft/test-league-id/pick",
+            "POST",
+            "/api/v1/draft/test-league-id/pick",
             concurrent_users=5,  # Lower concurrency for writes
             duration=5,
             json=pick_data,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert pick_metrics.average_response_time < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        assert (
+            pick_metrics.average_response_time
+            < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        )
 
     @pytest.mark.asyncio
     async def test_trades_performance(self, performance_tester, auth_headers):
         """Test trade-related endpoint performance."""
         # GET trades
         get_metrics = await performance_tester.load_test_endpoint(
-            "GET", "/api/v1/trades",
+            "GET",
+            "/api/v1/trades",
             concurrent_users=15,
             duration=10,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert get_metrics.average_response_time < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        assert (
+            get_metrics.average_response_time
+            < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        )
 
         # POST new trade
         trade_data = {
             "proposing_team_id": "team1",
             "receiving_team_id": "team2",
             "proposed_players": ["player1", "player2"],
-            "requested_players": ["player3"]
+            "requested_players": ["player3"],
         }
 
         post_metrics = await performance_tester.load_test_endpoint(
-            "POST", "/api/v1/trades",
+            "POST",
+            "/api/v1/trades",
             concurrent_users=3,
             duration=5,
             json=trade_data,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert post_metrics.average_response_time < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        assert (
+            post_metrics.average_response_time
+            < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        )
 
     @pytest.mark.asyncio
-    async def test_lineup_operations_performance(self, performance_tester, auth_headers):
+    async def test_lineup_operations_performance(
+        self, performance_tester, auth_headers
+    ):
         """Test lineup management performance."""
         # GET lineup
         get_metrics = await performance_tester.load_test_endpoint(
-            "GET", "/api/v1/lineups/test-team-id",
+            "GET",
+            "/api/v1/lineups/test-team-id",
             concurrent_users=20,
             duration=10,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert get_metrics.average_response_time < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        assert (
+            get_metrics.average_response_time
+            < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        )
 
         # PUT lineup update
         lineup_data = {
@@ -355,19 +404,23 @@ class TestFantasyAPIPerformance:
                 {"player_id": "wr2", "position": "WR"},
                 {"player_id": "te1", "position": "TE"},
                 {"player_id": "k1", "position": "K"},
-                {"player_id": "def1", "position": "DEF"}
+                {"player_id": "def1", "position": "DEF"},
             ]
         }
 
         put_metrics = await performance_tester.load_test_endpoint(
-            "PUT", "/api/v1/lineups/test-team-id",
+            "PUT",
+            "/api/v1/lineups/test-team-id",
             concurrent_users=5,
             duration=5,
             json=lineup_data,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert put_metrics.average_response_time < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        assert (
+            put_metrics.average_response_time
+            < PERFORMANCE_CONFIG["fantasy_endpoints_target"]
+        )
 
 
 class TestAnalyticsAPIPerformance:
@@ -380,17 +433,23 @@ class TestAnalyticsAPIPerformance:
         params = {"team_id": "test-team-id", "type": "lineup"}
 
         metrics = await performance_tester.load_test_endpoint(
-            "GET", endpoint,
+            "GET",
+            endpoint,
             concurrent_users=5,  # Lower concurrency for complex operations
             duration=15,
             params=params,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert metrics.average_response_time < PERFORMANCE_CONFIG["analytics_endpoints_target"], \
-            f"Analytics recommendations average time {metrics.average_response_time:.3f}s exceeds 600ms target"
+        assert (
+            metrics.average_response_time
+            < PERFORMANCE_CONFIG["analytics_endpoints_target"]
+        ), f"Analytics recommendations average time {metrics.average_response_time:.3f}s exceeds 600ms target"
 
-        assert metrics.p95_response_time < PERFORMANCE_CONFIG["analytics_endpoints_target"] * 1.5
+        assert (
+            metrics.p95_response_time
+            < PERFORMANCE_CONFIG["analytics_endpoints_target"] * 1.5
+        )
         assert metrics.success_rate > 95.0  # Slightly lower for complex operations
 
     @pytest.mark.asyncio
@@ -400,14 +459,18 @@ class TestAnalyticsAPIPerformance:
         params = {"team_id": "test-team-id", "timeframe": "season"}
 
         metrics = await performance_tester.load_test_endpoint(
-            "GET", endpoint,
+            "GET",
+            endpoint,
             concurrent_users=3,
             duration=10,
             params=params,
-            headers=auth_headers
+            headers=auth_headers,
         )
 
-        assert metrics.average_response_time < PERFORMANCE_CONFIG["analytics_endpoints_target"]
+        assert (
+            metrics.average_response_time
+            < PERFORMANCE_CONFIG["analytics_endpoints_target"]
+        )
         assert metrics.success_rate > 95.0
 
 
@@ -423,17 +486,18 @@ class TestConcurrencyPerformance:
 
         for concurrent_users in PERFORMANCE_CONFIG["concurrent_users"]:
             metrics = await performance_tester.load_test_endpoint(
-                "GET", endpoint,
+                "GET",
+                endpoint,
                 concurrent_users=concurrent_users,
                 duration=10,
                 params=params,
-                headers=auth_headers
+                headers=auth_headers,
             )
 
             results[concurrent_users] = {
                 "avg_time": metrics.average_response_time,
                 "p95_time": metrics.p95_response_time,
-                "success_rate": metrics.success_rate
+                "success_rate": metrics.success_rate,
             }
 
         # Verify performance doesn't degrade significantly
@@ -441,12 +505,14 @@ class TestConcurrencyPerformance:
         for users, result in results.items():
             if users > 1:
                 # Response time shouldn't increase more than 3x baseline
-                assert result["avg_time"] < baseline * 3, \
-                    f"Response time degraded too much at {users} users: {result['avg_time']:.3f}s"
+                assert (
+                    result["avg_time"] < baseline * 3
+                ), f"Response time degraded too much at {users} users: {result['avg_time']:.3f}s"
 
                 # Success rate should remain high
-                assert result["success_rate"] > 95.0, \
-                    f"Success rate too low at {users} users: {result['success_rate']:.1f}%"
+                assert (
+                    result["success_rate"] > 95.0
+                ), f"Success rate too low at {users} users: {result['success_rate']:.1f}%"
 
     @pytest.mark.asyncio
     async def test_mixed_workload_performance(self, performance_tester, auth_headers):
@@ -455,15 +521,33 @@ class TestConcurrencyPerformance:
         operations = [
             ("GET", "/api/v1/sports/players", {"params": {"sport": "nfl"}}),
             ("GET", "/api/v1/trades", {}),
-            ("POST", "/api/v1/trades", {"json": {"proposing_team_id": "team1", "receiving_team_id": "team2", "proposed_players": ["p1"], "requested_players": ["p2"]}}),
+            (
+                "POST",
+                "/api/v1/trades",
+                {
+                    "json": {
+                        "proposing_team_id": "team1",
+                        "receiving_team_id": "team2",
+                        "proposed_players": ["p1"],
+                        "requested_players": ["p2"],
+                    }
+                },
+            ),
             ("GET", "/api/v1/lineups/test-team", {}),
-            ("GET", "/api/v1/analytics/recommendations", {"params": {"team_id": "test-team"}}),
+            (
+                "GET",
+                "/api/v1/analytics/recommendations",
+                {"params": {"team_id": "test-team"}},
+            ),
         ]
 
         async def run_mixed_operation():
             import random
+
             method, endpoint, kwargs = random.choice(operations)
-            return await performance_tester.make_request(method, endpoint, headers=auth_headers, **kwargs)
+            return await performance_tester.make_request(
+                method, endpoint, headers=auth_headers, **kwargs
+            )
 
         # Run mixed workload
         start_time = time.time()
@@ -485,8 +569,12 @@ class TestConcurrencyPerformance:
             avg_time = statistics.mean(response_times)
             success_rate = (len(successful_results) / len(results)) * 100
 
-            assert avg_time < 0.8, f"Mixed workload average time {avg_time:.3f}s too high"
-            assert success_rate > 95.0, f"Mixed workload success rate {success_rate:.1f}% too low"
+            assert (
+                avg_time < 0.8
+            ), f"Mixed workload average time {avg_time:.3f}s too high"
+            assert (
+                success_rate > 95.0
+            ), f"Mixed workload success rate {success_rate:.1f}% too low"
 
 
 class TestResourceUtilization:
@@ -496,6 +584,7 @@ class TestResourceUtilization:
     async def test_memory_usage_under_load(self, performance_tester, auth_headers):
         """Monitor memory usage during load testing."""
         import psutil
+
         process = psutil.Process()
 
         # Get baseline memory
@@ -503,11 +592,12 @@ class TestResourceUtilization:
 
         # Run load test
         await performance_tester.load_test_endpoint(
-            "GET", "/api/v1/sports/players",
+            "GET",
+            "/api/v1/sports/players",
             concurrent_users=50,
             duration=15,
             params={"sport": "nfl"},
-            headers=auth_headers
+            headers=auth_headers,
         )
 
         # Check memory after load test
@@ -515,7 +605,9 @@ class TestResourceUtilization:
         memory_increase = final_memory - baseline_memory
 
         # Memory shouldn't increase by more than 100MB during test
-        assert memory_increase < 100, f"Memory increased by {memory_increase:.1f}MB during load test"
+        assert (
+            memory_increase < 100
+        ), f"Memory increased by {memory_increase:.1f}MB during load test"
 
     @pytest.mark.asyncio
     async def test_cpu_utilization(self, performance_tester, auth_headers):
@@ -534,11 +626,12 @@ class TestResourceUtilization:
 
         load_task = asyncio.create_task(
             performance_tester.load_test_endpoint(
-                "GET", "/api/v1/sports/players",
+                "GET",
+                "/api/v1/sports/players",
                 concurrent_users=30,
                 duration=15,
                 params={"sport": "nfl"},
-                headers=auth_headers
+                headers=auth_headers,
             )
         )
 
@@ -560,6 +653,7 @@ async def test_performance_test_environment():
     # Check if uvloop is available for better async performance
     try:
         import uvloop
+
         uvloop.install()
     except ImportError:
         pytest.skip("uvloop not available - consider installing for better performance")
@@ -569,7 +663,9 @@ async def test_performance_test_environment():
 
     # Verify sufficient memory
     memory = psutil.virtual_memory()
-    assert memory.available > 1024 * 1024 * 1024, "Insufficient memory for performance testing"
+    assert (
+        memory.available > 1024 * 1024 * 1024
+    ), "Insufficient memory for performance testing"
 
     # Verify CPU cores
     cpu_count = psutil.cpu_count()
@@ -578,10 +674,13 @@ async def test_performance_test_environment():
 
 if __name__ == "__main__":
     # Run performance tests with detailed output
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--durations=10",
-        "-m", "not slow"  # Skip slow tests in normal runs
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--durations=10",
+            "-m",
+            "not slow",  # Skip slow tests in normal runs
+        ]
+    )

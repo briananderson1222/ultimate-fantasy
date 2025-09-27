@@ -9,17 +9,16 @@ Provides comprehensive content moderation including:
 - Manual review queue and admin tools
 """
 
-import asyncio
-import re
+import contextlib
 import hashlib
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set, Tuple
+import re
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc, func, update
 
 try:
     from infrastructure.cache.redis_pool import get_redis_pool
@@ -30,6 +29,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 logger = get_logger(__name__)
@@ -37,6 +37,7 @@ logger = get_logger(__name__)
 
 class ModerationAction(Enum):
     """Content moderation actions."""
+
     ALLOW = "allow"
     FLAG = "flag"
     WARN = "warn"
@@ -47,6 +48,7 @@ class ModerationAction(Enum):
 
 class ViolationType(Enum):
     """Content violation types."""
+
     PROFANITY = "profanity"
     SPAM = "spam"
     HARASSMENT = "harassment"
@@ -59,6 +61,7 @@ class ViolationType(Enum):
 
 class UserStatus(Enum):
     """User moderation status."""
+
     GOOD_STANDING = "good_standing"
     WARNING = "warning"
     RESTRICTED = "restricted"
@@ -69,11 +72,12 @@ class UserStatus(Enum):
 @dataclass
 class ModerationRule:
     """Content moderation rule."""
+
     rule_id: str
     name: str
     violation_type: ViolationType
-    pattern: Optional[str] = None
-    keywords: List[str] = field(default_factory=list)
+    pattern: str | None = None
+    keywords: list[str] = field(default_factory=list)
     action: ModerationAction = ModerationAction.FLAG
     severity: int = 1  # 1-10 scale
     enabled: bool = True
@@ -83,32 +87,35 @@ class ModerationRule:
 @dataclass
 class ModerationResult:
     """Result of content moderation."""
+
     action: ModerationAction
     confidence: float
-    violations: List[ViolationType]
+    violations: list[ViolationType]
     severity_score: int
-    message: Optional[str] = None
-    suggested_action: Optional[ModerationAction] = None
+    message: str | None = None
+    suggested_action: ModerationAction | None = None
     requires_review: bool = False
 
 
 @dataclass
 class UserReputation:
     """User reputation and behavior metrics."""
+
     user_id: str
     reputation_score: int = 100
     total_messages: int = 0
     flagged_messages: int = 0
     warnings_received: int = 0
     status: UserStatus = UserStatus.GOOD_STANDING
-    last_violation: Optional[datetime] = None
-    suspension_until: Optional[datetime] = None
+    last_violation: datetime | None = None
+    suspension_until: datetime | None = None
     trust_level: int = 1  # 1-5 scale
 
 
 @dataclass
 class ModerationCase:
     """Moderation case for review."""
+
     case_id: str
     user_id: str
     content: str
@@ -117,10 +124,10 @@ class ModerationCase:
     auto_action: ModerationAction
     status: str = "pending"  # pending, reviewed, resolved
     created_at: datetime = field(default_factory=datetime.utcnow)
-    reviewed_at: Optional[datetime] = None
-    reviewer_id: Optional[str] = None
-    final_action: Optional[ModerationAction] = None
-    notes: Optional[str] = None
+    reviewed_at: datetime | None = None
+    reviewer_id: str | None = None
+    final_action: ModerationAction | None = None
+    notes: str | None = None
 
 
 class ContentModerationService:
@@ -140,21 +147,21 @@ class ContentModerationService:
         self.redis_pool = redis_pool
 
         # Moderation rules
-        self.rules: List[ModerationRule] = []
+        self.rules: list[ModerationRule] = []
 
         # Built-in profanity filter
         self.profanity_words = self._load_profanity_list()
         self.spam_patterns = self._load_spam_patterns()
 
         # User reputation tracking
-        self.user_reputations: Dict[str, UserReputation] = {}
+        self.user_reputations: dict[str, UserReputation] = {}
 
         # Rate limiting thresholds
         self.rate_limits = {
             "messages_per_minute": 10,
             "messages_per_hour": 100,
             "duplicate_threshold": 3,
-            "caps_percentage": 70
+            "caps_percentage": 70,
         }
 
         self._initialized = False
@@ -174,10 +181,7 @@ class ContentModerationService:
         logger.info("Content moderation service initialized")
 
     async def moderate_content(
-        self,
-        content: str,
-        user_id: str,
-        context: Optional[Dict[str, Any]] = None
+        self, content: str, user_id: str, context: dict[str, Any] | None = None
     ) -> ModerationResult:
         """
         Moderate content and determine appropriate action.
@@ -242,7 +246,8 @@ class ContentModerationService:
             confidence=confidence,
             violations=violations,
             severity_score=severity_score,
-            requires_review=severity_score >= 7 or user_rep.status != UserStatus.GOOD_STANDING
+            requires_review=severity_score >= 7
+            or user_rep.status != UserStatus.GOOD_STANDING,
         )
 
         # Update user reputation
@@ -250,7 +255,9 @@ class ContentModerationService:
 
         # Create moderation case if needed
         if result.requires_review:
-            await self._create_moderation_case(user_id, content, violations, severity_score, action)
+            await self._create_moderation_case(
+                user_id, content, violations, severity_score, action
+            )
 
         # Log moderation action
         logger.info(
@@ -261,12 +268,12 @@ class ContentModerationService:
 
         return result
 
-    def _check_profanity(self, content: str) -> Dict[str, Any]:
+    def _check_profanity(self, content: str) -> dict[str, Any]:
         """Check content for profanity."""
         content_lower = content.lower()
 
         # Remove special characters for better detection
-        clean_content = re.sub(r'[^a-z0-9\s]', '', content_lower)
+        clean_content = re.sub(r"[^a-z0-9\s]", "", content_lower)
 
         profanity_count = 0
         detected_words = []
@@ -287,22 +294,24 @@ class ContentModerationService:
             "has_profanity": has_profanity,
             "count": profanity_count,
             "detected_words": detected_words,
-            "severity": severity
+            "severity": severity,
         }
 
     async def _check_spam(
-        self,
-        content: str,
-        user_id: str,
-        context: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, content: str, user_id: str, context: dict[str, Any] | None
+    ) -> dict[str, Any]:
         """Check content for spam patterns."""
         is_spam = False
         severity = 0
         reasons = []
 
         # Check for URL spam
-        url_count = len(re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', content))
+        url_count = len(
+            re.findall(
+                r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",
+                content,
+            )
+        )
         if url_count > 2:
             is_spam = True
             severity += url_count
@@ -320,9 +329,9 @@ class ContentModerationService:
 
         # Check for promotional patterns
         promo_patterns = [
-            r'\b(buy|sell|cheap|discount|free|win|prize|money)\b',
-            r'\b(click|visit|check out|limited time)\b',
-            r'\b(\$|€|£|\d+\s*(dollars?|euros?|pounds?))\b'
+            r"\b(buy|sell|cheap|discount|free|win|prize|money)\b",
+            r"\b(click|visit|check out|limited time)\b",
+            r"\b(\$|€|£|\d+\s*(dollars?|euros?|pounds?))\b",
         ]
 
         promo_matches = 0
@@ -335,13 +344,9 @@ class ContentModerationService:
             severity += promo_matches
             reasons.append("promotional_content")
 
-        return {
-            "is_spam": is_spam,
-            "severity": severity,
-            "reasons": reasons
-        }
+        return {"is_spam": is_spam, "severity": severity, "reasons": reasons}
 
-    def _check_excessive_caps(self, content: str) -> Dict[str, Any]:
+    def _check_excessive_caps(self, content: str) -> dict[str, Any]:
         """Check for excessive capital letters."""
         if len(content) < 10:
             return {"excessive": False, "severity": 0}
@@ -355,10 +360,12 @@ class ContentModerationService:
         return {
             "excessive": excessive,
             "percentage": caps_percentage,
-            "severity": severity
+            "severity": severity,
         }
 
-    async def _check_repeated_content(self, content: str, user_id: str) -> Dict[str, Any]:
+    async def _check_repeated_content(
+        self, content: str, user_id: str
+    ) -> dict[str, Any]:
         """Check for repeated content from the same user."""
         if not self.redis_pool:
             return {"is_repeated": False, "severity": 0}
@@ -368,7 +375,9 @@ class ContentModerationService:
         user_content_key = f"moderation:user_content:{user_id}"
 
         # Check recent content
-        recent_hashes = await self.redis_pool.redis_client.lrange(user_content_key, 0, 10)
+        recent_hashes = await self.redis_pool.redis_client.lrange(
+            user_content_key, 0, 10
+        )
         repeat_count = recent_hashes.count(content_hash.encode())
 
         # Store current content hash
@@ -382,10 +391,10 @@ class ContentModerationService:
         return {
             "is_repeated": is_repeated,
             "repeat_count": repeat_count,
-            "severity": severity
+            "severity": severity,
         }
 
-    async def _check_rate_limiting(self, user_id: str) -> Dict[str, Any]:
+    async def _check_rate_limiting(self, user_id: str) -> dict[str, Any]:
         """Check if user is exceeding rate limits."""
         if not self.redis_pool:
             return {"rate_limited": False, "severity": 0}
@@ -403,8 +412,8 @@ class ContentModerationService:
         await self.redis_pool.redis_client.expire(hour_key, 3600)
 
         rate_limited = (
-            minute_count > self.rate_limits["messages_per_minute"] or
-            hour_count > self.rate_limits["messages_per_hour"]
+            minute_count > self.rate_limits["messages_per_minute"]
+            or hour_count > self.rate_limits["messages_per_hour"]
         )
 
         severity = 0
@@ -417,14 +426,12 @@ class ContentModerationService:
             "rate_limited": rate_limited,
             "minute_count": minute_count,
             "hour_count": hour_count,
-            "severity": severity
+            "severity": severity,
         }
 
     async def _apply_custom_rules(
-        self,
-        content: str,
-        context: Optional[Dict[str, Any]]
-    ) -> List[ViolationType]:
+        self, content: str, context: dict[str, Any] | None
+    ) -> list[ViolationType]:
         """Apply custom moderation rules."""
         violations = []
 
@@ -447,9 +454,9 @@ class ContentModerationService:
 
     def _determine_action(
         self,
-        violations: List[ViolationType],
+        violations: list[ViolationType],
         severity_score: int,
-        user_rep: UserReputation
+        user_rep: UserReputation,
     ) -> ModerationAction:
         """Determine moderation action based on violations and user reputation."""
         if not violations:
@@ -494,12 +501,14 @@ class ContentModerationService:
             if rep_data:
                 reputation = UserReputation(
                     user_id=user_id,
-                    reputation_score=int(rep_data.get(b'reputation_score', 100)),
-                    total_messages=int(rep_data.get(b'total_messages', 0)),
-                    flagged_messages=int(rep_data.get(b'flagged_messages', 0)),
-                    warnings_received=int(rep_data.get(b'warnings_received', 0)),
-                    status=UserStatus(rep_data.get(b'status', b'good_standing').decode()),
-                    trust_level=int(rep_data.get(b'trust_level', 1))
+                    reputation_score=int(rep_data.get(b"reputation_score", 100)),
+                    total_messages=int(rep_data.get(b"total_messages", 0)),
+                    flagged_messages=int(rep_data.get(b"flagged_messages", 0)),
+                    warnings_received=int(rep_data.get(b"warnings_received", 0)),
+                    status=UserStatus(
+                        rep_data.get(b"status", b"good_standing").decode()
+                    ),
+                    trust_level=int(rep_data.get(b"trust_level", 1)),
                 )
                 self.user_reputations[user_id] = reputation
                 return reputation
@@ -510,10 +519,7 @@ class ContentModerationService:
         return reputation
 
     async def _update_user_reputation(
-        self,
-        user_id: str,
-        violations: List[ViolationType],
-        severity_score: int
+        self, user_id: str, violations: list[ViolationType], severity_score: int
     ):
         """Update user reputation based on violations."""
         reputation = await self._get_user_reputation(user_id)
@@ -552,7 +558,7 @@ class ContentModerationService:
                 "flagged_messages": reputation.flagged_messages,
                 "warnings_received": reputation.warnings_received,
                 "status": reputation.status.value,
-                "trust_level": reputation.trust_level
+                "trust_level": reputation.trust_level,
             }
             await self.redis_pool.redis_client.hset(rep_key, mapping=rep_data)
             await self.redis_pool.redis_client.expire(rep_key, 86400)  # 24 hours
@@ -561,9 +567,9 @@ class ContentModerationService:
         self,
         user_id: str,
         content: str,
-        violations: List[ViolationType],
+        violations: list[ViolationType],
         severity_score: int,
-        auto_action: ModerationAction
+        auto_action: ModerationAction,
     ):
         """Create moderation case for manual review."""
         case_id = f"case_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{user_id}"
@@ -574,7 +580,7 @@ class ContentModerationService:
             content=content,
             violation_type=violations[0] if violations else ViolationType.SPAM,
             severity_score=severity_score,
-            auto_action=auto_action
+            auto_action=auto_action,
         )
 
         # Store case in Redis for review queue
@@ -588,7 +594,7 @@ class ContentModerationService:
                 "severity_score": case.severity_score,
                 "auto_action": case.auto_action.value,
                 "status": case.status,
-                "created_at": case.created_at.isoformat()
+                "created_at": case.created_at.isoformat(),
             }
 
             await self.redis_pool.redis_client.hset(case_key, mapping=case_data)
@@ -597,28 +603,46 @@ class ContentModerationService:
             # Add to review queue
             await self.redis_pool.redis_client.lpush("moderation:review_queue", case_id)
 
-    def _load_profanity_list(self) -> Set[str]:
+    def _load_profanity_list(self) -> set[str]:
         """Load profanity word list."""
         # Basic profanity list - in production, this would be loaded from a comprehensive database
         return {
-            "damn", "hell", "crap", "stupid", "idiot", "moron", "dumb",
-            "hate", "kill", "die", "murder", "threat", "violence"
+            "damn",
+            "hell",
+            "crap",
+            "stupid",
+            "idiot",
+            "moron",
+            "dumb",
+            "hate",
+            "kill",
+            "die",
+            "murder",
+            "threat",
+            "violence",
         }
 
-    def _load_spam_patterns(self) -> List[str]:
+    def _load_spam_patterns(self) -> list[str]:
         """Load spam detection patterns."""
         return [
-            r'\b(viagra|cialis|lottery|winner|congratulations)\b',
-            r'\b(make money|work from home|get rich|easy money)\b',
-            r'\b(click here|visit now|limited time|act now)\b'
+            r"\b(viagra|cialis|lottery|winner|congratulations)\b",
+            r"\b(make money|work from home|get rich|easy money)\b",
+            r"\b(click here|visit now|limited time|act now)\b",
         ]
 
     def _check_obfuscated_profanity(self, content: str) -> int:
         """Check for obfuscated profanity (leetspeak, special characters)."""
         # Simple leetspeak detection
         leetspeak_map = {
-            '4': 'a', '3': 'e', '1': 'i', '0': 'o', '5': 's',
-            '7': 't', '@': 'a', '$': 's', '!': 'i'
+            "4": "a",
+            "3": "e",
+            "1": "i",
+            "0": "o",
+            "5": "s",
+            "7": "t",
+            "@": "a",
+            "$": "s",
+            "!": "i",
         }
 
         decoded_content = content
@@ -641,9 +665,9 @@ class ContentModerationService:
                 rule_id="no_personal_info",
                 name="No Personal Information",
                 violation_type=ViolationType.PERSONAL_INFO,
-                pattern=r'\b(\d{3}-\d{2}-\d{4}|\d{3}\.\d{2}\.\d{4})\b',  # SSN pattern
+                pattern=r"\b(\d{3}-\d{2}-\d{4}|\d{3}\.\d{2}\.\d{4})\b",  # SSN pattern
                 action=ModerationAction.BLOCK,
-                severity=8
+                severity=8,
             ),
             ModerationRule(
                 rule_id="no_hate_speech",
@@ -651,7 +675,7 @@ class ContentModerationService:
                 violation_type=ViolationType.HATE_SPEECH,
                 keywords=["racist", "sexist", "homophobic", "bigot"],
                 action=ModerationAction.BLOCK,
-                severity=9
+                severity=9,
             ),
             ModerationRule(
                 rule_id="no_harassment",
@@ -659,16 +683,15 @@ class ContentModerationService:
                 violation_type=ViolationType.HARASSMENT,
                 keywords=["kill yourself", "kys", "neck yourself"],
                 action=ModerationAction.BAN_USER,
-                severity=10
-            )
+                severity=10,
+            ),
         ]
 
     async def _load_user_reputations(self):
         """Load user reputations from cache."""
         # This would load frequently accessed user reputations from Redis
-        pass
 
-    async def get_user_status(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_status(self, user_id: str) -> dict[str, Any]:
         """Get user moderation status and reputation."""
         reputation = await self._get_user_reputation(user_id)
 
@@ -680,17 +703,27 @@ class ContentModerationService:
             "total_messages": reputation.total_messages,
             "flagged_messages": reputation.flagged_messages,
             "warnings_received": reputation.warnings_received,
-            "last_violation": reputation.last_violation.isoformat() if reputation.last_violation else None,
-            "suspension_until": reputation.suspension_until.isoformat() if reputation.suspension_until else None
+            "last_violation": (
+                reputation.last_violation.isoformat()
+                if reputation.last_violation
+                else None
+            ),
+            "suspension_until": (
+                reputation.suspension_until.isoformat()
+                if reputation.suspension_until
+                else None
+            ),
         }
 
-    async def get_moderation_stats(self) -> Dict[str, Any]:
+    async def get_moderation_stats(self) -> dict[str, Any]:
         """Get overall moderation statistics."""
         if not self.redis_pool:
             return {"error": "Statistics not available without Redis"}
 
         # Get queue length
-        queue_length = await self.redis_pool.redis_client.llen("moderation:review_queue")
+        queue_length = await self.redis_pool.redis_client.llen(
+            "moderation:review_queue"
+        )
 
         # Get today's stats
         today = datetime.utcnow().date().isoformat()
@@ -700,17 +733,17 @@ class ContentModerationService:
         return {
             "review_queue_length": queue_length,
             "daily_stats": {
-                "total_moderated": int(daily_stats.get(b'total_moderated', 0)),
-                "blocked_content": int(daily_stats.get(b'blocked_content', 0)),
-                "flagged_content": int(daily_stats.get(b'flagged_content', 0)),
-                "user_warnings": int(daily_stats.get(b'user_warnings', 0)),
-                "user_bans": int(daily_stats.get(b'user_bans', 0))
-            }
+                "total_moderated": int(daily_stats.get(b"total_moderated", 0)),
+                "blocked_content": int(daily_stats.get(b"blocked_content", 0)),
+                "flagged_content": int(daily_stats.get(b"flagged_content", 0)),
+                "user_warnings": int(daily_stats.get(b"user_warnings", 0)),
+                "user_bans": int(daily_stats.get(b"user_bans", 0)),
+            },
         }
 
 
 # Global service instance
-_moderation_service: Optional[ContentModerationService] = None
+_moderation_service: ContentModerationService | None = None
 
 
 async def get_moderation_service(db_session: AsyncSession) -> ContentModerationService:
@@ -720,10 +753,8 @@ async def get_moderation_service(db_session: AsyncSession) -> ContentModerationS
     if _moderation_service is None:
         redis_pool = None
         if get_redis_pool:
-            try:
+            with contextlib.suppress(Exception):
                 redis_pool = await get_redis_pool()
-            except Exception:
-                pass
 
         _moderation_service = ContentModerationService(db_session, redis_pool)
         await _moderation_service.initialize()

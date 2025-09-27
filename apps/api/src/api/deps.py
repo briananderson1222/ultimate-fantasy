@@ -14,6 +14,7 @@ from domains.scoring.services.scoring_service import ScoringService
 from domains.shared.models.base import Base as DomainBase
 
 # Removed legacy PlayerService import
+from domains.sports.services.player_service import PlayerService
 from domains.sports.services.sports_data_service import SportsDataService
 from domains.trading.services.trading_service import TradingService
 from domains.users.services.user_service import UserService
@@ -101,6 +102,12 @@ def get_waitlist_service(db: Session = Depends(get_db)) -> WaitlistService:
     """FastAPI dependency that returns a per-request waitlist service."""
 
     return WaitlistService(db)
+
+
+def get_player_service(db: Session = Depends(get_db)) -> PlayerService:
+    """FastAPI dependency that returns a per-request player service."""
+
+    return PlayerService(db)
 
 
 _sports_data_service: SportsDataService | None = None

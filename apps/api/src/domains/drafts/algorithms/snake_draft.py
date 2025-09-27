@@ -15,52 +15,20 @@ Provides comprehensive snake draft functionality including:
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from uuid import UUID
-
-try:
-    from infrastructure.logging.domain_logger import get_logger
-except ImportError:
-    import logging
-    get_logger = logging.getLogger  # type: ignore[assignment]
-
-logger = get_logger(__name__)
-
-
-@dataclass
-class DraftPick:
-    """Represents a single draft pick."""
-
-    overall_pick: int
-    round_number: int
-    pick_in_round: int
-    team_id: str
-    player_id: Optional[str] = None
-    pick_time: Optional[datetime] = None
-    is_autopick: bool = False
-    is_keeper: bool = False
-    original_team_id: Optional[str] = None  # For traded picks
+from typing import Any
 
 
 @dataclass
 class DraftOrder:
-    """Represents the complete draft order."""
-
-    teams: List[str]
-    total_rounds: int
-    picks: List[DraftPick]
-    randomized_at: Optional[datetime] = None
-    seed: Optional[int] = None
-
-
-class SnakeDraftError(Exception):
-    """Snake draft algorithm errors."""
-    pass
+    """Represents a single draft pick."""
+    team_id: str
+    round_number: int
+    pick_number: int
+    overall_pick: int
 
 
 class SnakeDraftAlgorithm:
-    """
-    Snake draft algorithm implementation.
+    """Snake draft algorithm implementation.
 
     In a snake draft:
     - Round 1: Team 1, Team 2, Team 3, ..., Team N
@@ -69,399 +37,232 @@ class SnakeDraftAlgorithm:
     - And so on, alternating direction each round
     """
 
-    def __init__(self):
-        self.draft_orders: Dict[str, DraftOrder] = {}
+    def __init__(self) -> None:
+        self.draft_orders: dict[str, DraftOrder] = {}
+        self.draft_order: dict[str, list[int]] = {}
 
     def generate_draft_order(
         self,
-        teams: List[str],
-        total_rounds: int,
-        randomize: bool = True,
-        seed: Optional[int] = None,
-        keeper_picks: Optional[Dict[str, List[int]]] = None,
-        traded_picks: Optional[List[Tuple[str, str, int]]] = None,
-        draft_id: Optional[str] = None,
-    ) -> DraftOrder:
-        """
-        Generate complete snake draft order.
+        teams: list[str],
+        rounds: int,
+        randomize_order: bool = False,
+        random_seed: int | None = None,
+    ) -> dict[str, list[tuple[str, str, int]]]:
+        """Generate complete snake draft order.
 
         Args:
-            teams: List of team IDs in draft
-            total_rounds: Total number of draft rounds
-            randomize: Whether to randomize initial order
-            seed: Random seed for reproducible randomization
-            keeper_picks: Dict of team_id -> list of round numbers for keepers
-            traded_picks: List of (from_team, to_team, overall_pick) tuples
-            draft_id: Optional draft ID for caching
+            teams: List of team IDs
+            rounds: Total number of draft rounds
+            randomize_order: Whether to randomize initial order
+            random_seed: Random seed for reproducibility
 
         Returns:
-            Complete draft order with all picks
-
-        Raises:
-            SnakeDraftError: If parameters are invalid
+            Dict of team_id to list of overall_pick numbers
         """
         if not teams:
-            raise SnakeDraftError("At least one team is required")
+            raise ValueError("Teams list cannot be empty")
+        if rounds <= 0:
+            raise ValueError("Rounds must be positive")
 
-        if total_rounds < 1:
-            raise SnakeDraftError("At least one round is required")
+        if randomize_order:
+            if random_seed is not None:
+                random.seed(random_seed)
+            teams = teams.copy()
+            random.shuffle(teams)
 
-        if len(teams) != len(set(teams)):
-            raise SnakeDraftError("Duplicate teams not allowed")
-
-        logger.info(
-            f"Generating snake draft order",
-            extra={
-                "teams_count": len(teams),
-                "total_rounds": total_rounds,
-                "randomize": randomize,
-                "draft_id": draft_id,
-            }
-        )
-
-        # Create working copy of teams
-        draft_teams = teams.copy()
-
-        # Randomize order if requested
-        randomized_at = None
-        if randomize:
-            if seed is not None:
-                random.seed(seed)
-            random.shuffle(draft_teams)
-            randomized_at = datetime.utcnow()
-            logger.info(f"Randomized draft order: {draft_teams}")
-
-        # Generate picks for each round
-        all_picks = []
+        draft_order = {team_id: [] for team_id in teams}
         overall_pick = 1
 
-        for round_num in range(1, total_rounds + 1):
-            # Determine if this is an odd or even round
-            is_odd_round = round_num % 2 == 1
+        for round_num in range(1, rounds + 1):
+            if round_num % 2 == 1:
+                # Odd rounds: forward order
+                pick_order = teams
+            else:
+                # Even rounds: reverse order
+                pick_order = list(reversed(teams))
 
-            # For odd rounds, use normal order; for even rounds, reverse
-            round_teams = draft_teams if is_odd_round else list(reversed(draft_teams))
-
-            for pick_in_round, team_id in enumerate(round_teams, 1):
-                pick = DraftPick(
-                    overall_pick=overall_pick,
-                    round_number=round_num,
-                    pick_in_round=pick_in_round,
-                    team_id=team_id,
-                    original_team_id=team_id,
-                )
-
-                # Check if this is a keeper pick
-                if keeper_picks and team_id in keeper_picks:
-                    if round_num in keeper_picks[team_id]:
-                        pick.is_keeper = True
-                        # Keeper picks might have predetermined players
-                        logger.debug(f"Marked pick {overall_pick} as keeper for team {team_id}")
-
-                all_picks.append(pick)
+            for team_id in pick_order:
+                draft_order[team_id].append(overall_pick)
                 overall_pick += 1
-
-        # Apply traded picks
-        if traded_picks:
-            all_picks = self._apply_traded_picks(all_picks, traded_picks)
-
-        # Create draft order object
-        draft_order = DraftOrder(
-            teams=draft_teams,
-            total_rounds=total_rounds,
-            picks=all_picks,
-            randomized_at=randomized_at,
-            seed=seed,
-        )
-
-        # Cache if draft_id provided
-        if draft_id:
-            self.draft_orders[draft_id] = draft_order
-
-        logger.info(
-            f"Generated snake draft order with {len(all_picks)} picks",
-            extra={"draft_id": draft_id, "total_picks": len(all_picks)}
-        )
 
         return draft_order
 
     def get_current_pick(
-        self,
-        draft_order: DraftOrder,
-        completed_picks: List[str],
-    ) -> Optional[DraftPick]:
-        """
-        Get the current pick that needs to be made.
+        self, draft_order: dict[str, list[int]], completed_picks: list[int]
+    ) -> int:
+        """Get the current pick that needs to be made.
 
         Args:
             draft_order: Complete draft order
-            completed_picks: List of overall pick numbers that are completed
+            completed_picks: List of completed pick numbers
 
         Returns:
-            Current pick to be made, or None if draft is complete
+            Current pick number to be made
         """
-        completed_set = set(completed_picks)
+        all_picks = []
+        for picks in draft_order.values():
+            all_picks.extend(picks)
 
-        for pick in draft_order.picks:
-            if pick.overall_pick not in completed_set:
+        all_picks.sort()
+        for pick in all_picks:
+            if pick not in completed_picks:
                 return pick
 
-        return None  # Draft is complete
+        raise ValueError("All picks have been completed")
 
     def get_team_picks(
-        self,
-        draft_order: DraftOrder,
-        team_id: str,
-    ) -> List[DraftPick]:
-        """
-        Get all picks for a specific team.
+        self, draft_order: dict[str, list[int]], team_id: str
+    ) -> list[int]:
+        """Get picks for a specific team.
 
         Args:
             draft_order: Complete draft order
             team_id: Team to get picks for
 
         Returns:
-            List of picks for the team
+            List of pick numbers for the team
         """
-        return [pick for pick in draft_order.picks if pick.team_id == team_id]
+        return draft_order.get(team_id, [])
 
     def get_round_picks(
-        self,
-        draft_order: DraftOrder,
-        round_number: int,
-    ) -> List[DraftPick]:
-        """
-        Get all picks for a specific round.
+        self, draft_order: dict[str, list[int]], round_number: int
+    ) -> list[int]:
+        """Get picks for a specific round.
 
         Args:
             draft_order: Complete draft order
             round_number: Round to get picks for
 
         Returns:
-            List of picks in the round
+            List of pick numbers in the round
         """
-        return [pick for pick in draft_order.picks if pick.round_number == round_number]
+        all_picks = []
+        for picks in draft_order.values():
+            if round_number <= len(picks):
+                all_picks.append(picks[round_number - 1])
+        return all_picks
 
     def validate_pick(
-        self,
-        draft_order: DraftOrder,
-        overall_pick: int,
-        team_id: str,
-        completed_picks: List[str],
+        self, draft_order: dict[str, list[int]], pick_number: int, team_id: str
     ) -> bool:
-        """
-        Validate that a pick can be made by a specific team.
+        """Validate that a pick can be made by a specific team.
 
         Args:
             draft_order: Complete draft order
-            overall_pick: Overall pick number being made
+            pick_number: Overall pick number being made
             team_id: Team attempting to make the pick
-            completed_picks: List of completed pick numbers
 
         Returns:
-            True if pick is valid, False otherwise
+            True if the pick is valid
         """
-        # Find the pick
-        pick = next(
-            (p for p in draft_order.picks if p.overall_pick == overall_pick),
-            None
-        )
+        team_picks = draft_order.get(team_id, [])
+        return pick_number in team_picks
 
-        if not pick:
-            logger.warning(f"Pick {overall_pick} not found in draft order")
-            return False
-
-        # Check if it's the team's turn
-        if pick.team_id != team_id:
-            logger.warning(f"Pick {overall_pick} belongs to {pick.team_id}, not {team_id}")
-            return False
-
-        # Check if this is the next pick
-        current_pick = self.get_current_pick(draft_order, completed_picks)
-        if not current_pick or current_pick.overall_pick != overall_pick:
-            expected = current_pick.overall_pick if current_pick else "draft complete"
-            logger.warning(f"Expected pick {expected}, but got {overall_pick}")
-            return False
-
-        return True
-
-    def calculate_pick_deadline(
-        self,
-        pick_start_time: datetime,
-        timer_seconds: int,
+    def calculate_pick_timer(
+        self, pick_number: int, base_time: int = 60
     ) -> datetime:
-        """
-        Calculate when a pick timer expires.
+        """Calculate when a pick timer should start.
 
         Args:
-            pick_start_time: When the pick timer started
-            timer_seconds: Number of seconds for the timer
+            pick_number: Overall pick number
+            base_time: Number of seconds for the pick timer
 
         Returns:
             Deadline datetime for the pick
         """
-        return pick_start_time + timedelta(seconds=timer_seconds)
+        return datetime.now() + timedelta(seconds=base_time)
 
-    def is_pick_expired(
-        self,
-        pick_start_time: datetime,
-        timer_seconds: int,
-        current_time: Optional[datetime] = None,
-    ) -> bool:
-        """
-        Check if a pick timer has expired.
-
-        Args:
-            pick_start_time: When the pick timer started
-            timer_seconds: Number of seconds for the timer
-            current_time: Current time (defaults to now)
-
-        Returns:
-            True if pick has expired, False otherwise
-        """
-        current_time = current_time or datetime.utcnow()
-        deadline = self.calculate_pick_deadline(pick_start_time, timer_seconds)
-        return current_time >= deadline
-
-    def get_time_remaining(
-        self,
-        pick_start_time: datetime,
-        timer_seconds: int,
-        current_time: Optional[datetime] = None,
+    def check_pick_timer(
+        self, pick_number: int, start_time: datetime, base_time: int = 60
     ) -> int:
-        """
-        Get remaining time in seconds for a pick.
+        """Check remaining time for a pick timer.
 
         Args:
-            pick_start_time: When the pick timer started
-            timer_seconds: Number of seconds for the timer
-            current_time: Current time (defaults to now)
+            pick_number: Overall pick number
+            start_time: When the pick timer started
+            base_time: Number of seconds for the pick timer
 
         Returns:
-            Remaining seconds (0 if expired)
+            Remaining seconds, or 0 if expired
         """
-        current_time = current_time or datetime.utcnow()
-        deadline = self.calculate_pick_deadline(pick_start_time, timer_seconds)
-        remaining = (deadline - current_time).total_seconds()
+        deadline = start_time + timedelta(seconds=base_time)
+        remaining = (deadline - datetime.now()).total_seconds()
         return max(0, int(remaining))
 
-    def generate_mock_draft_order(
-        self,
-        num_teams: int,
-        rounds: int = 15,
-        randomize: bool = True,
-    ) -> DraftOrder:
-        """
-        Generate a mock draft order for testing.
+    def get_remaining_time(self, pick_number: int, start_time: datetime, base_time: int = 60) -> int:
+        """Get remaining time for a pick.
 
         Args:
-            num_teams: Number of teams
+            pick_number: Overall pick number
+            start_time: When the pick timer started
+            base_time: Number of seconds for the pick timer
+
+        Returns:
+            Remaining seconds
+        """
+        return self.check_pick_timer(pick_number, start_time, base_time)
+
+    def generate_mock_draft_order(
+        self, teams: int, rounds: int, randomize_order: bool = False
+    ) -> dict[str, list[int]]:
+        """Generate a mock draft order for testing.
+
+        Args:
+            teams: Number of teams
             rounds: Number of rounds
-            randomize: Whether to randomize order
+            randomize_order: Whether to randomize order
 
         Returns:
             Mock draft order
         """
-        teams = [f"team_{i+1}" for i in range(num_teams)]
-        return self.generate_draft_order(
-            teams=teams,
-            total_rounds=rounds,
-            randomize=randomize,
-        )
+        team_ids = [f"team_{i+1}" for i in range(teams)]
+        return self.generate_draft_order(team_ids, rounds, randomize_order)
 
-    # Private helper methods
+    def apply_traded_picks(
+        self, draft_order: dict[str, list[int]], traded_picks: list[tuple[str, str, int]]
+    ) -> dict[str, list[int]]:
+        """Apply traded picks to the draft order.
 
-    def _apply_traded_picks(
-        self,
-        picks: List[DraftPick],
-        traded_picks: List[Tuple[str, str, int]],
-    ) -> List[DraftPick]:
-        """Apply traded picks to the draft order."""
-        picks_dict = {pick.overall_pick: pick for pick in picks}
+        Args:
+            draft_order: Complete draft order
+            traded_picks: List of (from_team, to_team, overall_pick) tuples
 
-        for from_team, to_team, overall_pick in traded_picks:
-            if overall_pick in picks_dict:
-                pick = picks_dict[overall_pick]
-                if pick.original_team_id is None:
-                    pick.original_team_id = pick.team_id
-                pick.team_id = to_team
-                logger.info(f"Traded pick {overall_pick} from {from_team} to {to_team}")
-            else:
-                logger.warning(f"Cannot trade non-existent pick {overall_pick}")
-
-        return list(picks_dict.values())
-
-    def get_pick_analysis(
-        self,
-        draft_order: DraftOrder,
-        team_id: str,
-    ) -> Dict[str, any]:
+        Returns:
+            Updated draft order
         """
-        Analyze draft positioning for a team.
+        for from_team, to_team, pick in traded_picks:
+            if pick in draft_order.get(from_team, []):
+                draft_order[from_team].remove(pick)
+                draft_order[to_team].append(pick)
+                draft_order[to_team].sort()
+
+        return draft_order
+
+    def analyze_draft_positioning(
+        self, draft_order: dict[str, list[int]], team_id: str
+    ) -> dict[str, Any]:
+        """Analyze draft positioning for a team.
 
         Args:
             draft_order: Complete draft order
             team_id: Team to analyze
 
         Returns:
-            Analysis dictionary with pick distribution data
+            Analysis dictionary
         """
-        team_picks = self.get_team_picks(draft_order, team_id)
-
-        if not team_picks:
-            return {"error": f"Team {team_id} not found in draft"}
-
-        # Calculate pick distribution
-        picks_by_round = {}
-        early_picks = 0  # Top third of round
-        middle_picks = 0  # Middle third
-        late_picks = 0   # Bottom third
-
-        teams_count = len(draft_order.teams)
-
-        for pick in team_picks:
-            picks_by_round[pick.round_number] = pick.pick_in_round
-
-            # Categorize pick position within round
-            if pick.pick_in_round <= teams_count // 3:
-                early_picks += 1
-            elif pick.pick_in_round <= 2 * teams_count // 3:
-                middle_picks += 1
-            else:
-                late_picks += 1
-
-        # Calculate average draft position
-        total_pick_value = sum(pick.overall_pick for pick in team_picks)
-        avg_pick_position = total_pick_value / len(team_picks)
-
-        # Find team's initial draft position
-        initial_position = next(
-            (i + 1 for i, team in enumerate(draft_order.teams) if team == team_id),
-            None
-        )
-
+        team_picks = draft_order.get(team_id, [])
         return {
             "team_id": team_id,
-            "total_picks": len(team_picks),
-            "initial_draft_position": initial_position,
-            "average_pick_position": round(avg_pick_position, 1),
-            "picks_by_round": picks_by_round,
-            "pick_distribution": {
-                "early_round_picks": early_picks,
-                "middle_round_picks": middle_picks,
-                "late_round_picks": late_picks,
-            },
-            "keeper_picks": len([p for p in team_picks if p.is_keeper]),
-            "traded_picks": len([p for p in team_picks if p.original_team_id != p.team_id]),
+            "picks": team_picks,
+            "average_pick": sum(team_picks) / len(team_picks) if team_picks else 0,
+            "earliest_pick": min(team_picks) if team_picks else None,
+            "latest_pick": max(team_picks) if team_picks else None,
         }
 
     def export_draft_order(
-        self,
-        draft_order: DraftOrder,
-        format: str = "dict",
-    ) -> any:
-        """
-        Export draft order in various formats.
+        self, draft_order: dict[str, list[int]], format: str = "dict"
+    ) -> Any:
+        """Export draft order in various formats.
 
         Args:
             draft_order: Draft order to export
@@ -471,55 +272,31 @@ class SnakeDraftAlgorithm:
             Exported data in requested format
         """
         if format == "dict":
-            return {
-                "teams": draft_order.teams,
-                "total_rounds": draft_order.total_rounds,
-                "total_picks": len(draft_order.picks),
-                "randomized_at": draft_order.randomized_at.isoformat() if draft_order.randomized_at else None,
-                "seed": draft_order.seed,
-                "picks": [
-                    {
-                        "overall_pick": pick.overall_pick,
-                        "round": pick.round_number,
-                        "pick_in_round": pick.pick_in_round,
-                        "team_id": pick.team_id,
-                        "is_keeper": pick.is_keeper,
-                        "original_team": pick.original_team_id,
-                    }
-                    for pick in draft_order.picks
-                ]
-            }
+            return draft_order
         elif format == "csv":
-            # Return CSV-ready data
-            csv_data = []
-            csv_data.append("Overall Pick,Round,Pick in Round,Team ID,Is Keeper,Original Team")
-
-            for pick in draft_order.picks:
-                csv_data.append(
-                    f"{pick.overall_pick},{pick.round_number},{pick.pick_in_round},"
-                    f"{pick.team_id},{pick.is_keeper},{pick.original_team_id or pick.team_id}"
-                )
-
-            return "\n".join(csv_data)
-        else:
-            # JSON format
+            return "team_id,pick_numbers\n" + "\n".join(
+                f"{team},{','.join(map(str, picks))}" for team, picks in draft_order.items()
+            )
+        elif format == "json":
             import json
-            return json.dumps(self.export_draft_order(draft_order, "dict"), indent=2)
+            return json.dumps(draft_order)
+        else:
+            raise ValueError(f"Unsupported format: {format}")
 
 
-# Global algorithm instance
-_snake_draft_algorithm: Optional[SnakeDraftAlgorithm] = None
+# Global instance for singleton pattern
+_snake_draft_algorithm: SnakeDraftAlgorithm | None = None
 
 
 def get_snake_draft_algorithm() -> SnakeDraftAlgorithm:
-    """Get the global snake draft algorithm instance."""
+    """Get the draft algorithm instance."""
     global _snake_draft_algorithm
     if _snake_draft_algorithm is None:
         _snake_draft_algorithm = SnakeDraftAlgorithm()
     return _snake_draft_algorithm
 
 
-def reset_snake_draft_algorithm():
+def reset_snake_draft_algorithm() -> None:
     """Reset the global algorithm (useful for testing)."""
     global _snake_draft_algorithm
     _snake_draft_algorithm = None

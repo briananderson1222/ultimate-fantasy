@@ -43,34 +43,28 @@ def upgrade() -> None:
     # Notification table indexes (if not already exists)
     try:
         op.create_index(
-            "idx_notification_user_id",
-            "notifications",
-            ["user_id"],
-            if_not_exists=True
+            "idx_notification_user_id", "notifications", ["user_id"], if_not_exists=True
         )
         op.create_index(
             "idx_notification_league_id",
             "notifications",
             ["league_id"],
-            if_not_exists=True
+            if_not_exists=True,
         )
         op.create_index(
             "idx_notification_type",
             "notifications",
             ["notification_type"],
-            if_not_exists=True
+            if_not_exists=True,
         )
         op.create_index(
-            "idx_notification_is_read",
-            "notifications",
-            ["is_read"],
-            if_not_exists=True
+            "idx_notification_is_read", "notifications", ["is_read"], if_not_exists=True
         )
         op.create_index(
             "idx_user_unread_notifications",
             "notifications",
             ["user_id", "is_read", "created_at"],
-            if_not_exists=True
+            if_not_exists=True,
         )
     except Exception:
         # Indexes may already exist

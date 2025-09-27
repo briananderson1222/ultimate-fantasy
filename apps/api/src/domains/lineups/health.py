@@ -95,9 +95,7 @@ async def lineups_detailed_health_check(
         }
 
         # Check for recent lineup changes
-        recent_changes = db.execute(
-            text(HEALTH_QUERIES["recent_lineups"]())
-        ).scalar()
+        recent_changes = db.execute(text(HEALTH_QUERIES["recent_lineups"]())).scalar()
 
         detailed_status["checks"]["recent_activity"] = {
             "status": "healthy",

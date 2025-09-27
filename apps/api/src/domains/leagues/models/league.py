@@ -33,21 +33,11 @@ class League(Base):
     invite_code: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)
 
     scoring_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    roster_settings: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
-    draft_settings: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
-    waiver_settings: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
-    trade_settings: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
-    playoff_settings: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
+    roster_settings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    draft_settings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    waiver_settings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    trade_settings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    playoff_settings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

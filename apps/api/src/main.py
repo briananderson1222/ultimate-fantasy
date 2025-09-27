@@ -6,13 +6,24 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Middleware and security
 from api.middleware.auth import AuthContextMiddleware
 from api.middleware.logging import RequestLoggingMiddleware
 from api.routes.auth import router as auth_router
+from api.routes.draft import router as draft_simple_router
 from api.routes.sports import router as sports_router
 from api.security import configure_security
+from domains.analytics.api.insights_simple import router as analytics_insights_router
+
+# Analytics
+from domains.analytics.api.recommendations_simple import (
+    router as analytics_recommendations_router,
+)
+
+# Drafts
+from domains.drafts.api.draft_actions import router as draft_actions_router
 
 # Domain API routers
 from domains.leagues.api.leagues_branding import router as leagues_branding_router
@@ -29,6 +40,9 @@ from domains.lineups.api.lineups import router as lineups_router
 from domains.lineups.health import router as lineups_health_router
 from domains.scoring.api.scoreboard import router as scoreboard_router
 from domains.scoring.health import router as scoring_health_router
+
+# Trading
+from domains.trading.api.trades_simple import router as trades_simple_router
 from domains.trading.api.waivers import router as waivers_router
 from domains.trading.health import router as trading_health_router
 
@@ -37,16 +51,6 @@ from domains.users.api.me_preferences import router as me_preferences_router
 from domains.users.health import router as users_health_router
 from domains.waitlist.api.waitlist import router as waitlist_router
 from domains.waitlist.health import router as waitlist_health_router
-
-# Analytics
-from domains.analytics.api.recommendations_simple import router as analytics_recommendations_router
-from domains.analytics.api.insights_simple import router as analytics_insights_router
-
-# Drafts
-from domains.drafts.api.draft_actions import router as draft_actions_router
-
-# Trading
-from domains.trading.api.trades_simple import router as trades_simple_router
 
 # Infrastructure
 from infrastructure.container import (
@@ -111,6 +115,7 @@ app.include_router(analytics_insights_router, tags=["analytics"])
 
 # Draft routers
 app.include_router(draft_actions_router, tags=["drafts"])
+app.include_router(draft_simple_router, tags=["draft"])
 
 # Trade routers
 app.include_router(trades_simple_router, tags=["trades"])
@@ -134,6 +139,15 @@ app.include_router(
 )
 app.include_router(
     waitlist_health_router, prefix="/api/domains/waitlist", tags=["health", "waitlist"]
+)
+
+# CORS middleware (must be added FIRST - before other middleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Domain-specific middleware (order matters!)

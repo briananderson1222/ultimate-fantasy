@@ -41,7 +41,7 @@ def test_database_url():
     import os
 
     # Create a temporary database file that both test and app can access
-    db_fd, db_path = tempfile.mkstemp(suffix='.db')
+    db_fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(db_fd)  # Close the file descriptor, but keep the file
 
     # Set environment variable so the app uses the same database
@@ -141,7 +141,7 @@ def test_user(test_session):
         "email": "test@example.com",
         "name": "Test User",
         "given_name": "Test",
-        "family_name": "User"
+        "family_name": "User",
     }
 
     # Use the ensure_user_from_claims method (the lazy-loaded method you mentioned)
@@ -168,7 +168,7 @@ def test_jwt_token(test_user):
         "permissions": [],
         "iat": datetime.utcnow(),
         "exp": datetime.utcnow() + timedelta(hours=24),  # Valid for 24 hours
-        "type": "access"  # Required by auth middleware
+        "type": "access",  # Required by auth middleware
     }
 
     # Generate token
@@ -196,7 +196,7 @@ def expired_jwt_token(test_user):
         "roles": ["user"],
         "permissions": [],
         "iat": datetime.utcnow() - timedelta(hours=25),
-        "exp": datetime.utcnow() - timedelta(hours=1)  # Expired 1 hour ago
+        "exp": datetime.utcnow() - timedelta(hours=1),  # Expired 1 hour ago
     }
 
     token = jwt.encode(payload, secret_key, algorithm=algorithm)

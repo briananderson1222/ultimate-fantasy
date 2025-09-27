@@ -11,8 +11,6 @@ Provides comprehensive team information with:
 - Conference and division data
 """
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -26,6 +24,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -41,32 +40,32 @@ class TeamResponse(BaseModel):
     city: str
     abbreviation: str
     sport: str
-    conference: Optional[str] = None
-    division: Optional[str] = None
-    logo_url: Optional[str] = None
-    colors: List[str] = Field(default_factory=list)
-    founded_year: Optional[int] = None
-    stadium: Optional[str] = None
-    stadium_capacity: Optional[int] = None
-    coach: Optional[str] = None
-    website: Optional[str] = None
+    conference: str | None = None
+    division: str | None = None
+    logo_url: str | None = None
+    colors: list[str] = Field(default_factory=list)
+    founded_year: int | None = None
+    stadium: str | None = None
+    stadium_capacity: int | None = None
+    coach: str | None = None
+    website: str | None = None
 
 
 class TeamsResponse(BaseModel):
     """Teams list response model."""
 
-    items: List[TeamResponse]
+    items: list[TeamResponse]
     total: int
     sport: str
-    conferences: List[str] = Field(default_factory=list)
-    divisions: List[str] = Field(default_factory=list)
+    conferences: list[str] = Field(default_factory=list)
+    divisions: list[str] = Field(default_factory=list)
 
 
 @router.get("/teams", response_model=StandardResponse[TeamsResponse])
 async def get_teams(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
-    conference: Optional[str] = Query(None, description="Filter by conference"),
-    division: Optional[str] = Query(None, description="Filter by division"),
+    conference: str | None = Query(None, description="Filter by conference"),
+    division: str | None = Query(None, description="Filter by division"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StandardResponse[TeamsResponse]:
@@ -81,23 +80,20 @@ async def get_teams(
     """
     try:
         logger.info(
-            f"Teams request",
+            "Teams request",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
                 "conference": conference,
                 "division": division,
-            }
+            },
         )
 
         # Get sports data service
         sports_service = await get_sports_data_service()
 
         # Fetch teams data
-        teams_data = await sports_service.get_teams(
-            sport=sport.upper(),
-            use_cache=True
-        )
+        teams_data = await sports_service.get_teams(sport=sport.upper(), use_cache=True)
 
         if not teams_data:
             logger.warning(f"No teams found for sport: {sport}")
@@ -110,20 +106,22 @@ async def get_teams(
                     conferences=[],
                     divisions=[],
                 ),
-                message=f"No teams found for {sport.upper()}"
+                message=f"No teams found for {sport.upper()}",
             )
 
         # Apply filters
         filtered_teams = teams_data
         if conference:
             filtered_teams = [
-                team for team in filtered_teams
+                team
+                for team in filtered_teams
                 if team.get("conference", "").lower() == conference.lower()
             ]
 
         if division:
             filtered_teams = [
-                team for team in filtered_teams
+                team
+                for team in filtered_teams
                 if team.get("division", "").lower() == division.lower()
             ]
 
@@ -138,7 +136,9 @@ async def get_teams(
                     team_id=team_data.get("team_id", ""),
                     name=team_data.get("name", ""),
                     city=team_data.get("city", ""),
-                    abbreviation=team_data.get("abbreviation", team_data.get("team_id", "")),
+                    abbreviation=team_data.get(
+                        "abbreviation", team_data.get("team_id", "")
+                    ),
                     sport=sport.lower(),
                     conference=team_data.get("conference"),
                     division=team_data.get("division"),
@@ -169,40 +169,39 @@ async def get_teams(
             items=team_responses,
             total=len(team_responses),
             sport=sport,
-            conferences=sorted(list(all_conferences)),
-            divisions=sorted(list(all_divisions)),
+            conferences=sorted(all_conferences),
+            divisions=sorted(all_divisions),
         )
 
         logger.info(
-            f"Teams request completed",
+            "Teams request completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
                 "teams_count": len(team_responses),
                 "conferences_count": len(all_conferences),
                 "divisions_count": len(all_divisions),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Found {len(team_responses)} teams for {sport.upper()}"
+            message=f"Found {len(team_responses)} teams for {sport.upper()}",
         )
 
     except Exception as e:
         logger.error(
-            f"Teams request failed",
+            "Teams request failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve teams. Please try again later."
+            status_code=500, detail="Failed to retrieve teams. Please try again later."
         )
 
 
@@ -221,11 +220,11 @@ async def get_team_details(
     """
     try:
         logger.info(
-            f"Team details request",
+            "Team details request",
             extra={
                 "user_id": str(current_user.user_id),
                 "team_id": team_id,
-            }
+            },
         )
 
         # Get sports data service
@@ -236,8 +235,7 @@ async def get_team_details(
         for sport in ["nfl", "mlb", "wnba"]:
             teams = await sports_service.get_teams(sport=sport.upper(), use_cache=True)
             team_data = next(
-                (team for team in teams if team.get("team_id") == team_id.upper()),
-                None
+                (team for team in teams if team.get("team_id") == team_id.upper()), None
             )
             if team_data:
                 team_data["sport"] = sport
@@ -245,8 +243,7 @@ async def get_team_details(
 
         if not team_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"Team with ID {team_id} not found"
+                status_code=404, detail=f"Team with ID {team_id} not found"
             )
 
         # Convert to response model
@@ -268,47 +265,47 @@ async def get_team_details(
         )
 
         logger.info(
-            f"Team details completed",
+            "Team details completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "team_id": team_id,
                 "team_name": team_response.name,
                 "sport": team_response.sport,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=team_response,
-            message=f"Team details for {team_response.name}"
+            message=f"Team details for {team_response.name}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Team details failed",
+            "Team details failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "team_id": team_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve team details. Please try again later."
+            detail="Failed to retrieve team details. Please try again later.",
         )
 
 
-@router.get("/teams/{team_id}/roster", response_model=StandardResponse[List[dict]])
+@router.get("/teams/{team_id}/roster", response_model=StandardResponse[list[dict]])
 async def get_team_roster(
     team_id: str,
-    position: Optional[str] = Query(None, description="Filter by position"),
+    position: str | None = Query(None, description="Filter by position"),
     active_only: bool = Query(True, description="Only active players"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[dict]]:
+) -> StandardResponse[list[dict]]:
     """
     Get roster for a specific team.
 
@@ -320,13 +317,13 @@ async def get_team_roster(
     """
     try:
         logger.info(
-            f"Team roster request",
+            "Team roster request",
             extra={
                 "user_id": str(current_user.user_id),
                 "team_id": team_id,
                 "position": position,
                 "active_only": active_only,
-            }
+            },
         )
 
         # Get sports data service
@@ -342,8 +339,7 @@ async def get_team_roster(
 
         if not team_sport:
             raise HTTPException(
-                status_code=404,
-                detail=f"Team with ID {team_id} not found"
+                status_code=404, detail=f"Team with ID {team_id} not found"
             )
 
         # Get team roster
@@ -352,48 +348,48 @@ async def get_team_roster(
             team=team_id.upper(),
             position=position,
             active_only=active_only,
-            use_cache=True
+            use_cache=True,
         )
 
         logger.info(
-            f"Team roster completed",
+            "Team roster completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "team_id": team_id,
                 "roster_size": len(roster_data),
                 "sport": team_sport,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=roster_data,
-            message=f"Found {len(roster_data)} players on {team_id} roster"
+            message=f"Found {len(roster_data)} players on {team_id} roster",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Team roster failed",
+            "Team roster failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "team_id": team_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve team roster. Please try again later."
+            detail="Failed to retrieve team roster. Please try again later.",
         )
 
 
-@router.get("/conferences/{sport}", response_model=StandardResponse[List[str]])
+@router.get("/conferences/{sport}", response_model=StandardResponse[list[str]])
 async def get_sport_conferences(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[str]]:
+) -> StandardResponse[list[str]]:
     """
     Get available conferences for a sport.
 
@@ -406,38 +402,33 @@ async def get_sport_conferences(
         sports_service = await get_sports_data_service()
 
         # Get all teams for sport
-        teams_data = await sports_service.get_teams(
-            sport=sport.upper(),
-            use_cache=True
-        )
+        teams_data = await sports_service.get_teams(sport=sport.upper(), use_cache=True)
 
         # Extract unique conferences
-        conferences = list(set(
-            team.get("conference") for team in teams_data
-            if team.get("conference")
-        ))
+        conferences = list(
+            {team.get("conference") for team in teams_data if team.get("conference")}
+        )
         conferences.sort()
 
         return StandardResponse(
             success=True,
             data=conferences,
-            message=f"Available conferences for {sport.upper()}"
+            message=f"Available conferences for {sport.upper()}",
         )
 
     except Exception as e:
         logger.error(f"Failed to get sport conferences: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve sport conferences."
+            status_code=500, detail="Failed to retrieve sport conferences."
         )
 
 
-@router.get("/divisions/{sport}", response_model=StandardResponse[List[str]])
+@router.get("/divisions/{sport}", response_model=StandardResponse[list[str]])
 async def get_sport_divisions(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
-    conference: Optional[str] = Query(None, description="Filter by conference"),
+    conference: str | None = Query(None, description="Filter by conference"),
     current_user: User = Depends(get_current_user),
-) -> StandardResponse[List[str]]:
+) -> StandardResponse[list[str]]:
     """
     Get available divisions for a sport.
 
@@ -451,35 +442,31 @@ async def get_sport_divisions(
         sports_service = await get_sports_data_service()
 
         # Get all teams for sport
-        teams_data = await sports_service.get_teams(
-            sport=sport.upper(),
-            use_cache=True
-        )
+        teams_data = await sports_service.get_teams(sport=sport.upper(), use_cache=True)
 
         # Apply conference filter if specified
         if conference:
             teams_data = [
-                team for team in teams_data
+                team
+                for team in teams_data
                 if team.get("conference", "").lower() == conference.lower()
             ]
 
         # Extract unique divisions
-        divisions = list(set(
-            team.get("division") for team in teams_data
-            if team.get("division")
-        ))
+        divisions = list(
+            {team.get("division") for team in teams_data if team.get("division")}
+        )
         divisions.sort()
 
         return StandardResponse(
             success=True,
             data=divisions,
-            message=f"Available divisions for {sport.upper()}" +
-                   (f" in {conference}" if conference else "")
+            message=f"Available divisions for {sport.upper()}"
+            + (f" in {conference}" if conference else ""),
         )
 
     except Exception as e:
         logger.error(f"Failed to get sport divisions: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve sport divisions."
+            status_code=500, detail="Failed to retrieve sport divisions."
         )

@@ -39,7 +39,9 @@ def make_app() -> TestClient:
     importlib.import_module("domains.scoring.models.score")
     importlib.import_module("domains.shared.models.achievement")
     importlib.import_module("domains.sports.models.player")
-    importlib.import_module("domains.shared.models.notification")  # Central models still exist
+    importlib.import_module(
+        "domains.shared.models.notification"
+    )  # Central models still exist
     importlib.import_module("domains.shared.models.preset")
     importlib.import_module("domains.shared.models.roster")
     importlib.import_module("domains.shared.models.rule")

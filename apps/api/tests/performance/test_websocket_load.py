@@ -36,12 +36,14 @@ WEBSOCKET_CONFIG = {
     "test_duration": 60,  # seconds
     "heartbeat_interval": 30,
     "max_memory_usage_mb": 500,
-    "target_throughput_messages_per_second": 10000
+    "target_throughput_messages_per_second": 10000,
 }
+
 
 @dataclass
 class WebSocketMetrics:
     """Container for WebSocket performance metrics."""
+
     connection_times: List[float] = field(default_factory=list)
     message_latencies: List[float] = field(default_factory=list)
     failed_connections: int = 0
@@ -96,7 +98,9 @@ class WebSocketLoadTester:
         self.active_connections: List[websockets.WebSocketServerProtocol] = []
         self.running = False
 
-    async def create_connection(self, endpoint: str, headers: Optional[Dict] = None) -> tuple[Optional[websockets.WebSocketServerProtocol], float]:
+    async def create_connection(
+        self, endpoint: str, headers: Optional[Dict] = None
+    ) -> tuple[Optional[websockets.WebSocketServerProtocol], float]:
         """Create a single WebSocket connection and measure time."""
         uri = f"{self.base_url}{endpoint}"
         start_time = time.time()
@@ -109,7 +113,7 @@ class WebSocketLoadTester:
                 ping_timeout=10,
                 close_timeout=5,
                 max_size=2**20,  # 1MB max message size
-                max_queue=100    # Message queue size
+                max_queue=100,  # Message queue size
             )
 
             connection_time = time.time() - start_time
@@ -125,7 +129,9 @@ class WebSocketLoadTester:
             logger.error(f"Connection failed: {e}")
             return None, connection_time
 
-    async def send_message_and_measure(self, websocket: websockets.WebSocketServerProtocol, message: dict) -> float:
+    async def send_message_and_measure(
+        self, websocket: websockets.WebSocketServerProtocol, message: dict
+    ) -> float:
         """Send message and measure response latency."""
         start_time = time.time()
 
@@ -135,8 +141,7 @@ class WebSocketLoadTester:
 
             # Wait for response
             response = await asyncio.wait_for(
-                websocket.recv(),
-                timeout=WEBSOCKET_CONFIG["message_response_timeout"]
+                websocket.recv(), timeout=WEBSOCKET_CONFIG["message_response_timeout"]
             )
 
             latency = time.time() - start_time
@@ -157,8 +162,12 @@ class WebSocketLoadTester:
             logger.error(f"Message send failed: {e}")
             return latency
 
-    async def maintain_connection(self, websocket: websockets.WebSocketServerProtocol,
-                                connection_id: int, duration: int):
+    async def maintain_connection(
+        self,
+        websocket: websockets.WebSocketServerProtocol,
+        connection_id: int,
+        duration: int,
+    ):
         """Maintain a WebSocket connection and simulate realistic usage."""
         try:
             end_time = time.time() + duration
@@ -166,14 +175,30 @@ class WebSocketLoadTester:
             while time.time() < end_time and self.running:
                 # Simulate different types of messages
                 message_types = [
-                    {"type": "draft_update", "data": {"pick": connection_id, "player": f"player_{connection_id}"}},
-                    {"type": "trade_notification", "data": {"trade_id": f"trade_{connection_id}"}},
-                    {"type": "score_update", "data": {"player_id": f"player_{connection_id}", "points": 15.5}},
-                    {"type": "heartbeat", "timestamp": time.time()}
+                    {
+                        "type": "draft_update",
+                        "data": {
+                            "pick": connection_id,
+                            "player": f"player_{connection_id}",
+                        },
+                    },
+                    {
+                        "type": "trade_notification",
+                        "data": {"trade_id": f"trade_{connection_id}"},
+                    },
+                    {
+                        "type": "score_update",
+                        "data": {
+                            "player_id": f"player_{connection_id}",
+                            "points": 15.5,
+                        },
+                    },
+                    {"type": "heartbeat", "timestamp": time.time()},
                 ]
 
                 # Send a random message
                 import random
+
                 message = random.choice(message_types)
                 await self.send_message_and_measure(websocket, message)
 
@@ -204,10 +229,17 @@ class WebSocketLoadTester:
 
             await asyncio.sleep(1)  # Sample every second
 
-    async def run_connection_load_test(self, endpoint: str, target_connections: int,
-                                     duration: int, headers: Optional[Dict] = None):
+    async def run_connection_load_test(
+        self,
+        endpoint: str,
+        target_connections: int,
+        duration: int,
+        headers: Optional[Dict] = None,
+    ):
         """Run load test with specified number of concurrent connections."""
-        logger.info(f"Starting WebSocket load test: {target_connections} connections for {duration}s")
+        logger.info(
+            f"Starting WebSocket load test: {target_connections} connections for {duration}s"
+        )
 
         self.running = True
         tasks = []
@@ -238,7 +270,9 @@ class WebSocketLoadTester:
             # Small delay between batches
             await asyncio.sleep(0.1)
 
-            logger.info(f"Established {len(batch_connections)} connections (total: {len(connection_tasks)})")
+            logger.info(
+                f"Established {len(batch_connections)} connections (total: {len(connection_tasks)})"
+            )
 
         # Wait for test duration
         await asyncio.sleep(duration)
@@ -280,27 +314,33 @@ class TestWebSocketConnectionLoad:
         # Establish connections rapidly
         tasks = []
         for i in range(target_connections):
-            task = asyncio.create_task(
-                websocket_tester.create_connection(endpoint)
-            )
+            task = asyncio.create_task(websocket_tester.create_connection(endpoint))
             tasks.append(task)
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
         total_time = time.time() - start_time
 
         # Analyze results
-        successful_connections = sum(1 for result in results if isinstance(result, tuple) and result[0] is not None)
+        successful_connections = sum(
+            1
+            for result in results
+            if isinstance(result, tuple) and result[0] is not None
+        )
         connection_rate = successful_connections / total_time
 
         # Assertions
-        assert websocket_tester.metrics.connection_success_rate > 95.0, \
-            f"Connection success rate {websocket_tester.metrics.connection_success_rate:.1f}% too low"
+        assert (
+            websocket_tester.metrics.connection_success_rate > 95.0
+        ), f"Connection success rate {websocket_tester.metrics.connection_success_rate:.1f}% too low"
 
-        assert websocket_tester.metrics.average_connection_time < WEBSOCKET_CONFIG["connection_establishment_timeout"], \
-            f"Average connection time {websocket_tester.metrics.average_connection_time:.3f}s too high"
+        assert (
+            websocket_tester.metrics.average_connection_time
+            < WEBSOCKET_CONFIG["connection_establishment_timeout"]
+        ), f"Average connection time {websocket_tester.metrics.average_connection_time:.3f}s too high"
 
-        assert connection_rate > 20, \
-            f"Connection establishment rate {connection_rate:.1f} connections/sec too low"
+        assert (
+            connection_rate > 20
+        ), f"Connection establishment rate {connection_rate:.1f} connections/sec too low"
 
         # Close connections
         for result in results:
@@ -318,18 +358,21 @@ class TestWebSocketConnectionLoad:
         )
 
         # Verify high connection success rate
-        assert websocket_tester.metrics.connection_success_rate > 90.0, \
-            f"Failed to maintain high success rate with {target_connections} connections"
+        assert (
+            websocket_tester.metrics.connection_success_rate > 90.0
+        ), f"Failed to maintain high success rate with {target_connections} connections"
 
         # Verify acceptable connection times
-        assert websocket_tester.metrics.average_connection_time < 2.0, \
-            f"Connection time {websocket_tester.metrics.average_connection_time:.3f}s too high under load"
+        assert (
+            websocket_tester.metrics.average_connection_time < 2.0
+        ), f"Connection time {websocket_tester.metrics.average_connection_time:.3f}s too high under load"
 
         # Verify memory usage is reasonable
         if websocket_tester.metrics.memory_samples:
             max_memory = max(websocket_tester.metrics.memory_samples)
-            assert max_memory < WEBSOCKET_CONFIG["max_memory_usage_mb"], \
-                f"Memory usage {max_memory:.1f}MB exceeded limit"
+            assert (
+                max_memory < WEBSOCKET_CONFIG["max_memory_usage_mb"]
+            ), f"Memory usage {max_memory:.1f}MB exceeded limit"
 
 
 class TestWebSocketMessageThroughput:
@@ -359,8 +402,8 @@ class TestWebSocketMessageThroughput:
                 "team_id": "team1",
                 "player_id": "player123",
                 "player_name": "Test Player",
-                "timestamp": time.time()
-            }
+                "timestamp": time.time(),
+            },
         }
 
         # Send broadcast message and measure response times
@@ -378,14 +421,17 @@ class TestWebSocketMessageThroughput:
         successful_latencies = [l for l in latencies if isinstance(l, float)]
         throughput = len(successful_latencies) / total_time
 
-        assert len(successful_latencies) > num_connections * 0.9, \
-            f"Too many failed message deliveries: {len(successful_latencies)}/{num_connections}"
+        assert (
+            len(successful_latencies) > num_connections * 0.9
+        ), f"Too many failed message deliveries: {len(successful_latencies)}/{num_connections}"
 
-        assert statistics.mean(successful_latencies) < 1.0, \
-            f"Average broadcast latency {statistics.mean(successful_latencies):.3f}s too high"
+        assert (
+            statistics.mean(successful_latencies) < 1.0
+        ), f"Average broadcast latency {statistics.mean(successful_latencies):.3f}s too high"
 
-        assert throughput > 100, \
-            f"Broadcast throughput {throughput:.1f} messages/sec too low"
+        assert (
+            throughput > 100
+        ), f"Broadcast throughput {throughput:.1f} messages/sec too low"
 
         # Close connections
         for websocket in connections:
@@ -415,8 +461,8 @@ class TestWebSocketMessageThroughput:
                     "player_id": f"player_{i % 100}",
                     "points": round(15.5 + (i % 20), 1),
                     "game_id": f"game_{i % 10}",
-                    "timestamp": time.time()
-                }
+                    "timestamp": time.time(),
+                },
             }
             score_updates.append(update)
 
@@ -427,6 +473,7 @@ class TestWebSocketMessageThroughput:
         for update in score_updates:
             # Send to random subset of connections
             import random
+
             target_connections = random.sample(connections, min(50, len(connections)))
 
             for websocket in target_connections:
@@ -442,8 +489,10 @@ class TestWebSocketMessageThroughput:
         successful_updates = sum(1 for r in results if isinstance(r, float))
         update_rate = successful_updates / total_time
 
-        assert update_rate > WEBSOCKET_CONFIG["target_throughput_messages_per_second"] * 0.5, \
-            f"Score update rate {update_rate:.1f} messages/sec below target"
+        assert (
+            update_rate
+            > WEBSOCKET_CONFIG["target_throughput_messages_per_second"] * 0.5
+        ), f"Score update rate {update_rate:.1f} messages/sec below target"
 
         # Close connections
         for websocket in connections:
@@ -469,23 +518,29 @@ class TestWebSocketMessageThroughput:
                     "to_team": "team2",
                     "proposed_players": [f"player_{i}"],
                     "requested_players": [f"player_{i+100}"],
-                    "timestamp": time.time()
-                }
+                    "timestamp": time.time(),
+                },
             }
             notifications.append(notification)
 
         # Send notifications
         latencies = []
         for notification in notifications:
-            latency = await websocket_tester.send_message_and_measure(websocket, notification)
+            latency = await websocket_tester.send_message_and_measure(
+                websocket, notification
+            )
             latencies.append(latency)
 
         # Verify notification delivery performance
         avg_latency = statistics.mean(latencies)
         p95_latency = sorted(latencies)[int(0.95 * len(latencies))]
 
-        assert avg_latency < 0.1, f"Average notification latency {avg_latency:.3f}s too high"
-        assert p95_latency < 0.2, f"P95 notification latency {p95_latency:.3f}s too high"
+        assert (
+            avg_latency < 0.1
+        ), f"Average notification latency {avg_latency:.3f}s too high"
+        assert (
+            p95_latency < 0.2
+        ), f"P95 notification latency {p95_latency:.3f}s too high"
 
         await websocket.close()
 
@@ -506,13 +561,18 @@ class TestWebSocketStabilityAndResilience:
         )
 
         # Verify connection stability
-        disconnection_rate = websocket_tester.metrics.disconnections / websocket_tester.metrics.successful_connections
+        disconnection_rate = (
+            websocket_tester.metrics.disconnections
+            / websocket_tester.metrics.successful_connections
+        )
 
-        assert disconnection_rate < 0.05, \
-            f"Disconnection rate {disconnection_rate:.2%} too high for long-running test"
+        assert (
+            disconnection_rate < 0.05
+        ), f"Disconnection rate {disconnection_rate:.2%} too high for long-running test"
 
-        assert websocket_tester.metrics.average_message_latency < 0.5, \
-            f"Message latency degraded over time: {websocket_tester.metrics.average_message_latency:.3f}s"
+        assert (
+            websocket_tester.metrics.average_message_latency < 0.5
+        ), f"Message latency degraded over time: {websocket_tester.metrics.average_message_latency:.3f}s"
 
     @pytest.mark.asyncio
     async def test_reconnection_handling(self, websocket_tester):
@@ -535,13 +595,19 @@ class TestWebSocketStabilityAndResilience:
         assert websocket2 is not None
 
         # Verify reconnection is fast
-        assert reconnect_time < 2.0, f"Reconnection took too long: {reconnect_time:.3f}s"
+        assert (
+            reconnect_time < 2.0
+        ), f"Reconnection took too long: {reconnect_time:.3f}s"
 
         # Send message on new connection
         reconnect_message = {"type": "rejoin_room", "room_id": "test-league"}
-        latency = await websocket_tester.send_message_and_measure(websocket2, reconnect_message)
+        latency = await websocket_tester.send_message_and_measure(
+            websocket2, reconnect_message
+        )
 
-        assert latency < 0.5, f"Post-reconnection message latency too high: {latency:.3f}s"
+        assert (
+            latency < 0.5
+        ), f"Post-reconnection message latency too high: {latency:.3f}s"
 
         await websocket2.close()
 
@@ -576,7 +642,9 @@ class TestWebSocketStabilityAndResilience:
 
         # Verify connection is still functional
         valid_message = {"type": "heartbeat", "timestamp": time.time()}
-        latency = await websocket_tester.send_message_and_measure(websocket, valid_message)
+        latency = await websocket_tester.send_message_and_measure(
+            websocket, valid_message
+        )
         assert latency < 1.0, "Connection degraded after malformed messages"
 
         await websocket.close()
@@ -601,12 +669,15 @@ class TestWebSocketMemoryAndResourceUsage:
             max_memory = max(websocket_tester.metrics.memory_samples)
             avg_memory = statistics.mean(websocket_tester.metrics.memory_samples)
 
-            assert max_memory < WEBSOCKET_CONFIG["max_memory_usage_mb"], \
-                f"Peak memory usage {max_memory:.1f}MB exceeded limit"
+            assert (
+                max_memory < WEBSOCKET_CONFIG["max_memory_usage_mb"]
+            ), f"Peak memory usage {max_memory:.1f}MB exceeded limit"
 
             # Memory usage should be relatively stable
             memory_variance = statistics.stdev(websocket_tester.metrics.memory_samples)
-            assert memory_variance < 50, f"Memory usage too volatile: {memory_variance:.1f}MB variance"
+            assert (
+                memory_variance < 50
+            ), f"Memory usage too volatile: {memory_variance:.1f}MB variance"
 
     @pytest.mark.asyncio
     async def test_garbage_collection_effectiveness(self, websocket_tester):
@@ -640,16 +711,19 @@ class TestWebSocketMemoryAndResourceUsage:
         memory_increase = final_memory - baseline_memory
 
         # Memory increase should be minimal after cleanup
-        assert memory_increase < 50, \
-            f"Memory leaked {memory_increase:.1f}MB after connection cleanup"
+        assert (
+            memory_increase < 50
+        ), f"Memory leaked {memory_increase:.1f}MB after connection cleanup"
 
 
 if __name__ == "__main__":
     # Run WebSocket load tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--durations=10",
-        "-s"  # Show output for monitoring
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--durations=10",
+            "-s",  # Show output for monitoring
+        ]
+    )

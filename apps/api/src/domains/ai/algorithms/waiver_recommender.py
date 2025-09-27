@@ -12,44 +12,50 @@ Provides intelligent waiver wire analysis including:
 - Multi-week planning and strategy
 """
 
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any, Set
-from dataclasses import dataclass
-from enum import Enum
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+import numpy as np
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
-from domains.ai.models.performance_predictor import get_performance_predictor, Sport, PredictionResult
-from domains.sports.services.sports_data_service import get_sports_data_service
+from domains.ai.models.performance_predictor import (
+    PredictionResult,
+    Sport,
+    get_performance_predictor,
+)
 
 logger = get_logger(__name__)
 
 
 class RecommendationType(Enum):
     """Types of waiver recommendations."""
-    IMMEDIATE_NEED = "immediate_need"      # Fill roster holes
-    UPSIDE_PLAY = "upside_play"           # High ceiling players
+
+    IMMEDIATE_NEED = "immediate_need"  # Fill roster holes
+    UPSIDE_PLAY = "upside_play"  # High ceiling players
     INJURY_REPLACEMENT = "injury_replacement"  # Replace injured players
-    SCHEDULE_STREAM = "schedule_stream"    # Favorable matchups
-    HANDCUFF = "handcuff"                 # Backup to owned players
+    SCHEDULE_STREAM = "schedule_stream"  # Favorable matchups
+    HANDCUFF = "handcuff"  # Backup to owned players
     BREAKOUT_CANDIDATE = "breakout_candidate"  # Emerging players
-    TRADE_ASSET = "trade_asset"           # Players with trade value
+    TRADE_ASSET = "trade_asset"  # Players with trade value
 
 
 class WaiverPriority(Enum):
     """Waiver claim priority levels."""
-    MUST_ADD = "must_add"           # Top priority
-    HIGH = "high"                   # Strong consideration
-    MEDIUM = "medium"               # Decent option
-    LOW = "low"                     # Deep league only
-    WATCH = "watch"                 # Monitor for next week
+
+    MUST_ADD = "must_add"  # Top priority
+    HIGH = "high"  # Strong consideration
+    MEDIUM = "medium"  # Decent option
+    LOW = "low"  # Deep league only
+    WATCH = "watch"  # Monitor for next week
 
 
 @dataclass
@@ -83,9 +89,9 @@ class WaiverTarget:
     schedule_grade: str
 
     # Context
-    reasoning: List[str]
-    risk_factors: List[str]
-    comparable_players: List[str]
+    reasoning: list[str]
+    risk_factors: list[str]
+    comparable_players: list[str]
 
     # Metadata
     generated_at: datetime
@@ -100,16 +106,16 @@ class RosterAnalysis:
     total_projected_points: float
 
     # Position analysis
-    position_strengths: Dict[str, float]  # position -> strength score (0-1)
-    position_weaknesses: Dict[str, float]  # position -> weakness score (0-1)
+    position_strengths: dict[str, float]  # position -> strength score (0-1)
+    position_weaknesses: dict[str, float]  # position -> weakness score (0-1)
 
     # Weekly analysis
-    bye_week_gaps: Dict[int, List[str]]  # week -> positions affected
-    injury_risks: Dict[str, float]  # player_id -> risk score
+    bye_week_gaps: dict[int, list[str]]  # week -> positions affected
+    injury_risks: dict[str, float]  # player_id -> risk score
 
     # Bench analysis
-    bench_depth: Dict[str, int]  # position -> depth count
-    streaming_needs: List[str]  # positions that need streaming
+    bench_depth: dict[str, int]  # position -> depth count
+    streaming_needs: list[str]  # positions that need streaming
 
     # Advanced metrics
     ceiling_potential: float
@@ -126,14 +132,14 @@ class WaiverStrategy:
     week: int
 
     # Targets by priority
-    must_add_targets: List[WaiverTarget]
-    high_priority_targets: List[WaiverTarget]
-    medium_priority_targets: List[WaiverTarget]
-    watch_list: List[WaiverTarget]
+    must_add_targets: list[WaiverTarget]
+    high_priority_targets: list[WaiverTarget]
+    medium_priority_targets: list[WaiverTarget]
+    watch_list: list[WaiverTarget]
 
     # Strategy summary
     total_faab_recommended: float
-    focus_positions: List[str]
+    focus_positions: list[str]
     strategy_type: str  # aggressive, conservative, balanced
 
     # Roster analysis
@@ -148,7 +154,6 @@ class WaiverStrategy:
 
 class WaiverRecommenderError(Exception):
     """Waiver recommender errors."""
-    pass
 
 
 class WaiverRecommendationEngine:
@@ -164,10 +169,10 @@ class WaiverRecommendationEngine:
 
         # FAAB parameters
         self.faab_budget_allocation = {
-            WaiverPriority.MUST_ADD: 0.15,    # 15% of budget
-            WaiverPriority.HIGH: 0.08,        # 8% of budget
-            WaiverPriority.MEDIUM: 0.05,      # 5% of budget
-            WaiverPriority.LOW: 0.02,         # 2% of budget
+            WaiverPriority.MUST_ADD: 0.15,  # 15% of budget
+            WaiverPriority.HIGH: 0.08,  # 8% of budget
+            WaiverPriority.MEDIUM: 0.05,  # 5% of budget
+            WaiverPriority.LOW: 0.02,  # 2% of budget
         }
 
         # Sport-specific configurations
@@ -175,7 +180,7 @@ class WaiverRecommendationEngine:
 
         logger.info(f"Initialized waiver recommender for {sport.value}")
 
-    def _get_position_configs(self, sport: Sport) -> Dict[str, Any]:
+    def _get_position_configs(self, sport: Sport) -> dict[str, Any]:
         """Get sport-specific position configurations."""
         configs = {
             Sport.NFL: {
@@ -198,17 +203,19 @@ class WaiverRecommendationEngine:
                 "streaming_positions": ["C", "PF"],
                 "handcuff_positions": [],
                 "breakout_positions": ["SG", "SF"],
-            }
+            },
         }
         return configs.get(sport, configs[Sport.NFL])
 
-    async def generate_waiver_strategy(self,
-                                     team_id: str,
-                                     league_id: str,
-                                     current_roster: List[Dict[str, Any]],
-                                     available_players: List[Dict[str, Any]],
-                                     league_settings: Dict[str, Any],
-                                     week: Optional[int] = None) -> WaiverStrategy:
+    async def generate_waiver_strategy(
+        self,
+        team_id: str,
+        league_id: str,
+        current_roster: list[dict[str, Any]],
+        available_players: list[dict[str, Any]],
+        league_settings: dict[str, Any],
+        week: int | None = None,
+    ) -> WaiverStrategy:
         """
         Generate comprehensive waiver wire strategy.
 
@@ -228,14 +235,14 @@ class WaiverRecommendationEngine:
                 week = self._get_current_week()
 
             logger.info(
-                f"Generating waiver strategy",
+                "Generating waiver strategy",
                 extra={
                     "team_id": team_id,
                     "league_id": league_id,
                     "sport": self.sport.value,
                     "week": week,
                     "available_players": len(available_players),
-                }
+                },
             )
 
             # Analyze current roster
@@ -252,7 +259,7 @@ class WaiverRecommendationEngine:
             )
 
             # Calculate FAAB strategy
-            faab_strategy = self._calculate_faab_strategy(
+            self._calculate_faab_strategy(
                 recommendations, league_settings
             )
 
@@ -268,13 +275,33 @@ class WaiverRecommendationEngine:
                 team_id=team_id,
                 league_id=league_id,
                 week=week,
-                must_add_targets=[r for r in recommendations if r.priority_level == WaiverPriority.MUST_ADD],
-                high_priority_targets=[r for r in recommendations if r.priority_level == WaiverPriority.HIGH],
-                medium_priority_targets=[r for r in recommendations if r.priority_level == WaiverPriority.MEDIUM],
-                watch_list=[r for r in recommendations if r.priority_level == WaiverPriority.WATCH],
-                total_faab_recommended=sum(r.suggested_bid_percentage for r in recommendations),
+                must_add_targets=[
+                    r
+                    for r in recommendations
+                    if r.priority_level == WaiverPriority.MUST_ADD
+                ],
+                high_priority_targets=[
+                    r
+                    for r in recommendations
+                    if r.priority_level == WaiverPriority.HIGH
+                ],
+                medium_priority_targets=[
+                    r
+                    for r in recommendations
+                    if r.priority_level == WaiverPriority.MEDIUM
+                ],
+                watch_list=[
+                    r
+                    for r in recommendations
+                    if r.priority_level == WaiverPriority.WATCH
+                ],
+                total_faab_recommended=sum(
+                    r.suggested_bid_percentage for r in recommendations
+                ),
                 focus_positions=self._identify_focus_positions(roster_analysis),
-                strategy_type=self._determine_strategy_type(roster_analysis, recommendations),
+                strategy_type=self._determine_strategy_type(
+                    roster_analysis, recommendations
+                ),
                 roster_analysis=roster_analysis,
                 league_competition_level=competition_level,
                 waiver_wire_strength=waiver_wire_strength,
@@ -282,13 +309,13 @@ class WaiverRecommendationEngine:
             )
 
             logger.info(
-                f"Generated waiver strategy",
+                "Generated waiver strategy",
                 extra={
                     "team_id": team_id,
                     "must_add": len(strategy.must_add_targets),
                     "high_priority": len(strategy.high_priority_targets),
                     "total_faab": strategy.total_faab_recommended,
-                }
+                },
             )
 
             return strategy
@@ -297,7 +324,9 @@ class WaiverRecommendationEngine:
             logger.error(f"Waiver strategy generation failed: {e}")
             raise WaiverRecommenderError(f"Strategy generation failed: {e}")
 
-    async def _analyze_roster(self, roster: List[Dict[str, Any]], week: int) -> RosterAnalysis:
+    async def _analyze_roster(
+        self, roster: list[dict[str, Any]], week: int
+    ) -> RosterAnalysis:
         """Analyze current roster strengths and weaknesses."""
         try:
             # Calculate position strengths
@@ -325,7 +354,9 @@ class WaiverRecommendationEngine:
 
                 for player in players:
                     try:
-                        prediction = await self.performance_predictor.predict_performance(player)
+                        prediction = (
+                            await self.performance_predictor.predict_performance(player)
+                        )
                         total_projection += prediction.predicted_points
                         player_count += 1
                     except:
@@ -380,15 +411,19 @@ class WaiverRecommendationEngine:
             all_projections = []
             for player in roster:
                 try:
-                    prediction = await self.performance_predictor.predict_performance(player)
+                    prediction = await self.performance_predictor.predict_performance(
+                        player
+                    )
                     all_projections.append(prediction.predicted_points)
                 except:
                     all_projections.append(player.get("projected_points", 0))
 
             total_projected = sum(all_projections)
             ceiling_potential = sum(p * 1.3 for p in all_projections)  # 30% upside
-            floor_stability = sum(p * 0.7 for p in all_projections)    # 30% downside
-            consistency_score = 1.0 - (np.std(all_projections) / max(np.mean(all_projections), 1))
+            floor_stability = sum(p * 0.7 for p in all_projections)  # 30% downside
+            consistency_score = 1.0 - (
+                np.std(all_projections) / max(np.mean(all_projections), 1)
+            )
 
             return RosterAnalysis(
                 team_id="",  # Will be set by caller
@@ -408,10 +443,12 @@ class WaiverRecommendationEngine:
             logger.error(f"Roster analysis failed: {e}")
             raise WaiverRecommenderError(f"Roster analysis failed: {e}")
 
-    async def _identify_waiver_candidates(self,
-                                        available_players: List[Dict[str, Any]],
-                                        roster_analysis: RosterAnalysis,
-                                        week: int) -> List[Dict[str, Any]]:
+    async def _identify_waiver_candidates(
+        self,
+        available_players: list[dict[str, Any]],
+        roster_analysis: RosterAnalysis,
+        week: int,
+    ) -> list[dict[str, Any]]:
         """Identify potential waiver wire candidates."""
         try:
             candidates = []
@@ -429,7 +466,10 @@ class WaiverRecommendationEngine:
 
                 # Skip players that are out long-term
                 injury_status = player.get("injury_status", "healthy").lower()
-                if injury_status in ["ir", "out"] and player.get("return_timeline", 99) > 4:
+                if (
+                    injury_status in ["ir", "out"]
+                    and player.get("return_timeline", 99) > 4
+                ):
                     continue
 
                 candidates.append(player)
@@ -441,11 +481,13 @@ class WaiverRecommendationEngine:
             logger.error(f"Candidate identification failed: {e}")
             return []
 
-    async def _generate_recommendations(self,
-                                      candidates: List[Dict[str, Any]],
-                                      roster_analysis: RosterAnalysis,
-                                      league_settings: Dict[str, Any],
-                                      week: int) -> List[WaiverTarget]:
+    async def _generate_recommendations(
+        self,
+        candidates: list[dict[str, Any]],
+        roster_analysis: RosterAnalysis,
+        league_settings: dict[str, Any],
+        week: int,
+    ) -> list[WaiverTarget]:
         """Generate waiver recommendations with analysis."""
         try:
             recommendations = []
@@ -453,7 +495,9 @@ class WaiverRecommendationEngine:
             for player in candidates:
                 # Generate prediction
                 try:
-                    prediction = await self.performance_predictor.predict_performance(player)
+                    prediction = await self.performance_predictor.predict_performance(
+                        player
+                    )
                     projected_points = prediction.predicted_points
                     confidence = prediction.confidence_score
                 except:
@@ -469,12 +513,17 @@ class WaiverRecommendationEngine:
                 )
 
                 # Skip if no clear recommendation
-                if priority == WaiverPriority.WATCH and rec_type == RecommendationType.IMMEDIATE_NEED:
+                if (
+                    priority == WaiverPriority.WATCH
+                    and rec_type == RecommendationType.IMMEDIATE_NEED
+                ):
                     continue
 
                 # Calculate scores
                 value_score = self._calculate_value_score(player, projected_points)
-                upside_score = self._calculate_upside_score(player, prediction if 'prediction' in locals() else None)
+                upside_score = self._calculate_upside_score(
+                    player, prediction if "prediction" in locals() else None
+                )
                 safety_score = self._calculate_safety_score(player, confidence)
                 roster_need_score = self._calculate_roster_need_score(
                     player, roster_analysis
@@ -533,7 +582,7 @@ class WaiverRecommendationEngine:
             recommendations.sort(
                 key=lambda r: (
                     list(WaiverPriority).index(r.priority_level),
-                    -r.value_score
+                    -r.value_score,
                 )
             )
 
@@ -561,22 +610,29 @@ class WaiverRecommendationEngine:
         # Sport and position specific baselines
         baselines = {
             Sport.NFL: {
-                "QB": 18.0, "RB": 12.0, "WR": 10.0, "TE": 8.0,
-                "K": 8.0, "DEF": 8.0
+                "QB": 18.0,
+                "RB": 12.0,
+                "WR": 10.0,
+                "TE": 8.0,
+                "K": 8.0,
+                "DEF": 8.0,
             },
             Sport.MLB: {
-                "C": 8.0, "1B": 10.0, "2B": 9.0, "3B": 9.0,
-                "SS": 9.0, "OF": 9.0, "P": 12.0
+                "C": 8.0,
+                "1B": 10.0,
+                "2B": 9.0,
+                "3B": 9.0,
+                "SS": 9.0,
+                "OF": 9.0,
+                "P": 12.0,
             },
-            Sport.WNBA: {
-                "PG": 25.0, "SG": 22.0, "SF": 20.0, "PF": 18.0, "C": 16.0
-            }
+            Sport.WNBA: {"PG": 25.0, "SG": 22.0, "SF": 20.0, "PF": 18.0, "C": 16.0},
         }
 
         sport_baselines = baselines.get(self.sport, baselines[Sport.NFL])
         return sport_baselines.get(position, 10.0)
 
-    def _analyze_bye_weeks(self, roster: List[Dict[str, Any]]) -> Dict[int, List[str]]:
+    def _analyze_bye_weeks(self, roster: list[dict[str, Any]]) -> dict[int, list[str]]:
         """Analyze bye week gaps in roster."""
         bye_week_gaps = defaultdict(list)
 
@@ -589,7 +645,7 @@ class WaiverRecommendationEngine:
 
         return dict(bye_week_gaps)
 
-    def _get_starting_positions(self) -> Dict[str, int]:
+    def _get_starting_positions(self) -> dict[str, int]:
         """Get starting lineup requirements by position."""
         # Simplified starting lineup requirements
         lineups = {
@@ -600,7 +656,7 @@ class WaiverRecommendationEngine:
 
         return lineups.get(self.sport, lineups[Sport.NFL])
 
-    def _calculate_ros_projection(self, player: Dict[str, Any]) -> float:
+    def _calculate_ros_projection(self, player: dict[str, Any]) -> float:
         """Calculate rest of season projection."""
         weekly_projection = player.get("projected_points", 0)
         weeks_remaining = max(1, 18 - self._get_current_week())  # Simplified
@@ -617,10 +673,12 @@ class WaiverRecommendationEngine:
 
         return weekly_projection * weeks_remaining * trend_factor
 
-    def _assess_recommendation_type_and_priority(self,
-                                               player: Dict[str, Any],
-                                               roster_analysis: RosterAnalysis,
-                                               projected_points: float) -> Tuple[RecommendationType, WaiverPriority]:
+    def _assess_recommendation_type_and_priority(
+        self,
+        player: dict[str, Any],
+        roster_analysis: RosterAnalysis,
+        projected_points: float,
+    ) -> tuple[RecommendationType, WaiverPriority]:
         """Assess recommendation type and priority level."""
         position = player.get("position", "")
 
@@ -646,7 +704,9 @@ class WaiverRecommendationEngine:
 
         # Check for streaming candidates
         if position in self.position_configs["streaming_positions"]:
-            schedule_grade = self._grade_upcoming_schedule(player, self._get_current_week())
+            schedule_grade = self._grade_upcoming_schedule(
+                player, self._get_current_week()
+            )
             if schedule_grade in ["A", "B"]:
                 return RecommendationType.SCHEDULE_STREAM, WaiverPriority.MEDIUM
 
@@ -660,7 +720,9 @@ class WaiverRecommendationEngine:
         else:
             return RecommendationType.UPSIDE_PLAY, WaiverPriority.WATCH
 
-    def _calculate_value_score(self, player: Dict[str, Any], projected_points: float) -> float:
+    def _calculate_value_score(
+        self, player: dict[str, Any], projected_points: float
+    ) -> float:
         """Calculate value score for player."""
         ownership = max(player.get("ownership_percentage", 0), 1)
         baseline = self._get_position_baseline(player.get("position", ""))
@@ -670,7 +732,9 @@ class WaiverRecommendationEngine:
 
         return min(1.0, value / 10.0)  # Normalize to 0-1
 
-    def _calculate_upside_score(self, player: Dict[str, Any], prediction: Optional[PredictionResult]) -> float:
+    def _calculate_upside_score(
+        self, player: dict[str, Any], prediction: PredictionResult | None
+    ) -> float:
         """Calculate upside score for player."""
         if prediction:
             ceiling = prediction.prediction_range[1]
@@ -685,7 +749,9 @@ class WaiverRecommendationEngine:
         upside_ratio = ceiling / projected
         return min(1.0, (upside_ratio - 1.0) / 0.5)  # Normalize upside
 
-    def _calculate_safety_score(self, player: Dict[str, Any], confidence: float) -> float:
+    def _calculate_safety_score(
+        self, player: dict[str, Any], confidence: float
+    ) -> float:
         """Calculate safety/floor score for player."""
         # Base safety on confidence and injury status
         injury_risk = 0.0
@@ -699,7 +765,9 @@ class WaiverRecommendationEngine:
         safety = confidence * (1.0 - injury_risk)
         return max(0.0, min(1.0, safety))
 
-    def _calculate_roster_need_score(self, player: Dict[str, Any], roster_analysis: RosterAnalysis) -> float:
+    def _calculate_roster_need_score(
+        self, player: dict[str, Any], roster_analysis: RosterAnalysis
+    ) -> float:
         """Calculate how much the roster needs this player."""
         position = player.get("position", "")
 
@@ -716,10 +784,12 @@ class WaiverRecommendationEngine:
         need_score = (weakness_score * 0.6) + (depth_score * 0.3) + streaming_bonus
         return min(1.0, need_score)
 
-    def _calculate_faab_recommendations(self,
-                                      priority: WaiverPriority,
-                                      value_score: float,
-                                      league_settings: Dict[str, Any]) -> Tuple[float, float]:
+    def _calculate_faab_recommendations(
+        self,
+        priority: WaiverPriority,
+        value_score: float,
+        league_settings: dict[str, Any],
+    ) -> tuple[float, float]:
         """Calculate FAAB bid recommendations."""
         base_percentage = self.faab_budget_allocation.get(priority, 0.02)
 
@@ -735,7 +805,7 @@ class WaiverRecommendationEngine:
 
         return round(suggested_bid, 3), round(max_bid, 3)
 
-    def _calculate_breakout_probability(self, player: Dict[str, Any]) -> float:
+    def _calculate_breakout_probability(self, player: dict[str, Any]) -> float:
         """Calculate probability of player having breakout performance."""
         factors = []
 
@@ -763,7 +833,9 @@ class WaiverRecommendationEngine:
         # Recent performance trends
         recent_games = player.get("recent_games", [])
         if len(recent_games) >= 3:
-            recent_avg = np.mean([g.get("fantasy_points", 0) for g in recent_games[-3:]])
+            recent_avg = np.mean(
+                [g.get("fantasy_points", 0) for g in recent_games[-3:]]
+            )
             season_avg = player.get("season_average", recent_avg)
 
             if recent_avg > season_avg * 1.3:
@@ -775,7 +847,7 @@ class WaiverRecommendationEngine:
 
         return min(1.0, sum(factors))
 
-    def _grade_upcoming_schedule(self, player: Dict[str, Any], week: int) -> str:
+    def _grade_upcoming_schedule(self, player: dict[str, Any], week: int) -> str:
         """Grade player's upcoming schedule strength."""
         # This would integrate with opponent strength data
         # Simplified implementation
@@ -792,37 +864,47 @@ class WaiverRecommendationEngine:
         else:
             return "A"  # Great matchups
 
-    def _generate_reasoning(self,
-                          player: Dict[str, Any],
-                          rec_type: RecommendationType,
-                          projected_points: float,
-                          roster_analysis: RosterAnalysis) -> List[str]:
+    def _generate_reasoning(
+        self,
+        player: dict[str, Any],
+        rec_type: RecommendationType,
+        projected_points: float,
+        roster_analysis: RosterAnalysis,
+    ) -> list[str]:
         """Generate human-readable reasoning for recommendation."""
         reasoning = []
 
         position = player.get("position", "")
-        name = player.get("name", "Unknown")
+        player.get("name", "Unknown")
 
         # Type-specific reasoning
         if rec_type == RecommendationType.IMMEDIATE_NEED:
             weakness = roster_analysis.position_weaknesses.get(position, 0)
-            reasoning.append(f"Addresses significant {position} weakness (weakness score: {weakness:.1f})")
+            reasoning.append(
+                f"Addresses significant {position} weakness (weakness score: {weakness:.1f})"
+            )
 
         elif rec_type == RecommendationType.BREAKOUT_CANDIDATE:
             breakout_prob = self._calculate_breakout_probability(player)
-            reasoning.append(f"High breakout potential ({breakout_prob:.1%} probability)")
+            reasoning.append(
+                f"High breakout potential ({breakout_prob:.1%} probability)"
+            )
 
         elif rec_type == RecommendationType.INJURY_REPLACEMENT:
             reasoning.append("Clear opportunity due to injury ahead of them")
 
         elif rec_type == RecommendationType.SCHEDULE_STREAM:
-            schedule_grade = self._grade_upcoming_schedule(player, self._get_current_week())
+            schedule_grade = self._grade_upcoming_schedule(
+                player, self._get_current_week()
+            )
             reasoning.append(f"Excellent upcoming schedule (Grade: {schedule_grade})")
 
         # Performance reasoning
         baseline = self._get_position_baseline(position)
         if projected_points > baseline * 1.3:
-            reasoning.append(f"Projects well above {position} baseline ({projected_points:.1f} vs {baseline:.1f})")
+            reasoning.append(
+                f"Projects well above {position} baseline ({projected_points:.1f} vs {baseline:.1f})"
+            )
 
         # Opportunity reasoning
         snap_share = player.get("snap_share", 0)
@@ -836,13 +918,15 @@ class WaiverRecommendationEngine:
         # Recent form
         recent_games = player.get("recent_games", [])
         if len(recent_games) >= 2:
-            recent_avg = np.mean([g.get("fantasy_points", 0) for g in recent_games[-2:]])
+            recent_avg = np.mean(
+                [g.get("fantasy_points", 0) for g in recent_games[-2:]]
+            )
             if recent_avg > baseline:
                 reasoning.append(f"Strong recent form ({recent_avg:.1f} points/game)")
 
         return reasoning
 
-    def _identify_risk_factors(self, player: Dict[str, Any]) -> List[str]:
+    def _identify_risk_factors(self, player: dict[str, Any]) -> list[str]:
         """Identify risk factors for the player."""
         risk_factors = []
 
@@ -873,17 +957,20 @@ class WaiverRecommendationEngine:
 
         return risk_factors
 
-    def _find_comparable_players(self, player: Dict[str, Any], candidates: List[Dict[str, Any]]) -> List[str]:
+    def _find_comparable_players(
+        self, player: dict[str, Any], candidates: list[dict[str, Any]]
+    ) -> list[str]:
         """Find comparable players for context."""
         position = player.get("position", "")
-        team = player.get("team", "")
+        player.get("team", "")
         projected_points = player.get("projected_points", 0)
 
         comparables = []
 
         for candidate in candidates:
-            if (candidate.get("position") == position and
-                candidate.get("player_id") != player.get("player_id")):
+            if candidate.get("position") == position and candidate.get(
+                "player_id"
+            ) != player.get("player_id"):
 
                 candidate_points = candidate.get("projected_points", 0)
 
@@ -893,7 +980,9 @@ class WaiverRecommendationEngine:
 
         return comparables[:3]  # Return top 3 comparables
 
-    def _calculate_faab_strategy(self, recommendations: List[WaiverTarget], league_settings: Dict[str, Any]) -> Dict[str, float]:
+    def _calculate_faab_strategy(
+        self, recommendations: list[WaiverTarget], league_settings: dict[str, Any]
+    ) -> dict[str, float]:
         """Calculate overall FAAB strategy."""
         total_recommended = sum(r.suggested_bid_percentage for r in recommendations)
 
@@ -905,13 +994,17 @@ class WaiverRecommendationEngine:
 
         return strategy
 
-    async def _analyze_league_competition(self, league_id: str, available_players: List[Dict[str, Any]]) -> float:
+    async def _analyze_league_competition(
+        self, league_id: str, available_players: list[dict[str, Any]]
+    ) -> float:
         """Analyze level of competition in league."""
         # This would analyze other teams' waiver activity, FAAB spending patterns, etc.
         # Simplified implementation
         return 0.7  # Moderate competition
 
-    def _assess_waiver_wire_strength(self, available_players: List[Dict[str, Any]]) -> float:
+    def _assess_waiver_wire_strength(
+        self, available_players: list[dict[str, Any]]
+    ) -> float:
         """Assess overall strength of waiver wire."""
         if not available_players:
             return 0.0
@@ -929,7 +1022,7 @@ class WaiverRecommendationEngine:
         strength = meaningful_players / len(available_players)
         return min(1.0, strength)
 
-    def _identify_focus_positions(self, roster_analysis: RosterAnalysis) -> List[str]:
+    def _identify_focus_positions(self, roster_analysis: RosterAnalysis) -> list[str]:
         """Identify positions that should be the focus of waiver activity."""
         focus_positions = []
 
@@ -944,10 +1037,16 @@ class WaiverRecommendationEngine:
         # Remove duplicates while preserving order
         return list(dict.fromkeys(focus_positions))
 
-    def _determine_strategy_type(self, roster_analysis: RosterAnalysis, recommendations: List[WaiverTarget]) -> str:
+    def _determine_strategy_type(
+        self, roster_analysis: RosterAnalysis, recommendations: list[WaiverTarget]
+    ) -> str:
         """Determine overall strategy type."""
-        must_adds = len([r for r in recommendations if r.priority_level == WaiverPriority.MUST_ADD])
-        high_priority = len([r for r in recommendations if r.priority_level == WaiverPriority.HIGH])
+        must_adds = len(
+            [r for r in recommendations if r.priority_level == WaiverPriority.MUST_ADD]
+        )
+        high_priority = len(
+            [r for r in recommendations if r.priority_level == WaiverPriority.HIGH]
+        )
 
         total_faab = sum(r.suggested_bid_percentage for r in recommendations)
 
@@ -960,7 +1059,7 @@ class WaiverRecommendationEngine:
 
 
 # Global recommender instances
-_recommenders: Dict[Sport, WaiverRecommendationEngine] = {}
+_recommenders: dict[Sport, WaiverRecommendationEngine] = {}
 
 
 def get_waiver_recommender(sport: Sport) -> WaiverRecommendationEngine:

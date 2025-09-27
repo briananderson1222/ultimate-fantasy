@@ -14,13 +14,17 @@ from main import app
 class TestAnalyticsRecommendationsContract:
     """Contract tests for analytics recommendations endpoint."""
 
-    def test_get_recommendations_returns_200_with_recommendations(self, authenticated_client):
+    def test_get_recommendations_returns_200_with_recommendations(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/analytics/recommendations returns 200 with recommendations.
 
         This test will FAIL until the endpoint is implemented.
         """
-        response = authenticated_client.get("/api/v1/analytics/recommendations?team_id=team_123")
+        response = authenticated_client.get(
+            "/api/v1/analytics/recommendations?team_id=team_123"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -37,7 +41,9 @@ class TestAnalyticsRecommendationsContract:
             assert "confidence_score" in rec
             assert "reasoning" in rec
 
-    def test_get_recommendations_with_invalid_team_returns_404(self, authenticated_client):
+    def test_get_recommendations_with_invalid_team_returns_404(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET recommendations with invalid team returns 404.
 
@@ -59,7 +65,9 @@ class TestAnalyticsRecommendationsContract:
 
         This test will FAIL until recommendation engine is implemented.
         """
-        response = authenticated_client.get("/api/v1/analytics/recommendations?team_id=team_123")
+        response = authenticated_client.get(
+            "/api/v1/analytics/recommendations?team_id=team_123"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -81,7 +89,9 @@ class TestAnalyticsRecommendationsContract:
 
         This test will FAIL until ML scoring is implemented.
         """
-        response = authenticated_client.get("/api/v1/analytics/recommendations?team_id=team_123")
+        response = authenticated_client.get(
+            "/api/v1/analytics/recommendations?team_id=team_123"
+        )
 
         assert response.status_code == 200
         data = response.json()

@@ -10,18 +10,17 @@ Provides comprehensive chat functionality for fantasy leagues including:
 - Presence indicators and typing status
 """
 
-import asyncio
+import contextlib
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
 from uuid import uuid4
 
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc, func
-from sqlalchemy.orm import selectinload
 
 try:
     from infrastructure.websockets.auth_middleware import get_websocket_auth_middleware
@@ -46,15 +45,19 @@ except ImportError:
     # Mock classes for when models aren't available
     class ChatMessage:
         pass
+
     class League:
         pass
+
     class User:
         pass
+
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 logger = get_logger(__name__)
@@ -62,6 +65,7 @@ logger = get_logger(__name__)
 
 class MessageType(Enum):
     """Chat message types."""
+
     TEXT = "text"
     IMAGE = "image"
     GIF = "gif"
@@ -73,6 +77,7 @@ class MessageType(Enum):
 
 class MessageStatus(Enum):
     """Message status types."""
+
     SENT = "sent"
     DELIVERED = "delivered"
     READ = "read"
@@ -83,18 +88,20 @@ class MessageStatus(Enum):
 @dataclass
 class ChatParticipant:
     """Chat participant information."""
+
     user_id: str
     username: str
-    avatar_url: Optional[str] = None
+    avatar_url: str | None = None
     is_online: bool = False
     is_typing: bool = False
-    last_seen: Optional[datetime] = None
+    last_seen: datetime | None = None
     role: str = "member"  # member, admin, owner
 
 
 @dataclass
 class MessageReaction:
     """Message reaction data."""
+
     reaction_id: str
     emoji: str
     user_id: str
@@ -105,6 +112,7 @@ class MessageReaction:
 @dataclass
 class ChatMessage:
     """Chat message data structure."""
+
     message_id: str
     league_id: str
     user_id: str
@@ -113,17 +121,18 @@ class ChatMessage:
     message_type: MessageType
     status: MessageStatus
     created_at: datetime
-    updated_at: Optional[datetime] = None
-    thread_id: Optional[str] = None
-    parent_message_id: Optional[str] = None
-    reactions: List[MessageReaction] = field(default_factory=list)
-    attachments: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    updated_at: datetime | None = None
+    thread_id: str | None = None
+    parent_message_id: str | None = None
+    reactions: list[MessageReaction] = field(default_factory=list)
+    attachments: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class TypingIndicator:
     """Typing indicator data."""
+
     user_id: str
     username: str
     league_id: str
@@ -150,15 +159,11 @@ class ChatService:
         self.ws_middleware = None
 
         # Chat state management
-        self.active_participants: Dict[str, Set[ChatParticipant]] = {}
-        self.typing_indicators: Dict[str, List[TypingIndicator]] = {}
+        self.active_participants: dict[str, set[ChatParticipant]] = {}
+        self.typing_indicators: dict[str, list[TypingIndicator]] = {}
 
         # Rate limiting
-        self.message_rate_limits = {
-            "per_minute": 30,
-            "per_hour": 500,
-            "burst": 5
-        }
+        self.message_rate_limits = {"per_minute": 30, "per_hour": 500, "burst": 5}
 
         # Initialize async components
         self._initialized = False
@@ -177,7 +182,9 @@ class ChatService:
 
         # Initialize moderation service
         if ModerationService:
-            self.moderation_service = ModerationService(self.db_session, self.redis_pool)
+            self.moderation_service = ModerationService(
+                self.db_session, self.redis_pool
+            )
             await self.moderation_service.initialize()
 
         # Initialize WebSocket middleware
@@ -195,9 +202,9 @@ class ChatService:
         user_id: str,
         content: str,
         message_type: MessageType = MessageType.TEXT,
-        thread_id: Optional[str] = None,
-        parent_message_id: Optional[str] = None,
-        attachments: Optional[List[Dict[str, Any]]] = None
+        thread_id: str | None = None,
+        parent_message_id: str | None = None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> ChatMessage:
         """
         Send a chat message to a league.
@@ -255,7 +262,7 @@ class ChatService:
             created_at=datetime.utcnow(),
             thread_id=thread_id,
             parent_message_id=parent_message_id,
-            attachments=attachments or []
+            attachments=attachments or [],
         )
 
         # Store message in database
@@ -275,9 +282,9 @@ class ChatService:
         league_id: str,
         user_id: str,
         limit: int = 50,
-        before_message_id: Optional[str] = None,
-        thread_id: Optional[str] = None
-    ) -> List[ChatMessage]:
+        before_message_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> list[ChatMessage]:
         """
         Get chat history for a league.
 
@@ -301,7 +308,7 @@ class ChatService:
         query = select(ChatMessage).where(
             and_(
                 ChatMessage.league_id == league_id,
-                ChatMessage.status != MessageStatus.DELETED
+                ChatMessage.status != MessageStatus.DELETED,
             )
         )
 
@@ -311,7 +318,9 @@ class ChatService:
         if before_message_id:
             # Get timestamp of the before_message_id
             before_message = await self.db_session.execute(
-                select(ChatMessage.created_at).where(ChatMessage.message_id == before_message_id)
+                select(ChatMessage.created_at).where(
+                    ChatMessage.message_id == before_message_id
+                )
             )
             before_timestamp = before_message.scalar_one_or_none()
             if before_timestamp:
@@ -331,12 +340,8 @@ class ChatService:
         return chat_messages
 
     async def search_messages(
-        self,
-        league_id: str,
-        user_id: str,
-        query: str,
-        limit: int = 20
-    ) -> List[ChatMessage]:
+        self, league_id: str, user_id: str, query: str, limit: int = 20
+    ) -> list[ChatMessage]:
         """
         Search chat messages in a league.
 
@@ -356,13 +361,18 @@ class ChatService:
             raise PermissionError("User is not a member of this league")
 
         # Search in database
-        search_query = select(ChatMessage).where(
-            and_(
-                ChatMessage.league_id == league_id,
-                ChatMessage.status != MessageStatus.DELETED,
-                ChatMessage.content.ilike(f"%{query}%")
+        search_query = (
+            select(ChatMessage)
+            .where(
+                and_(
+                    ChatMessage.league_id == league_id,
+                    ChatMessage.status != MessageStatus.DELETED,
+                    ChatMessage.content.ilike(f"%{query}%"),
+                )
             )
-        ).order_by(desc(ChatMessage.created_at)).limit(limit)
+            .order_by(desc(ChatMessage.created_at))
+            .limit(limit)
+        )
 
         result = await self.db_session.execute(search_query)
         messages = result.scalars().all()
@@ -374,12 +384,7 @@ class ChatService:
 
         return chat_messages
 
-    async def add_reaction(
-        self,
-        message_id: str,
-        user_id: str,
-        emoji: str
-    ) -> bool:
+    async def add_reaction(self, message_id: str, user_id: str, emoji: str) -> bool:
         """
         Add reaction to a message.
 
@@ -409,13 +414,11 @@ class ChatService:
                 "reaction_id": str(uuid4()),
                 "emoji": emoji,
                 "user_id": user_id,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat(),
             }
 
             await self.redis_pool.redis_client.hset(
-                reaction_key,
-                f"{user_id}:{emoji}",
-                json.dumps(reaction_data)
+                reaction_key, f"{user_id}:{emoji}", json.dumps(reaction_data)
             )
 
             # Broadcast reaction update
@@ -423,12 +426,7 @@ class ChatService:
 
         return True
 
-    async def remove_reaction(
-        self,
-        message_id: str,
-        user_id: str,
-        emoji: str
-    ) -> bool:
+    async def remove_reaction(self, message_id: str, user_id: str, emoji: str) -> bool:
         """
         Remove reaction from a message.
 
@@ -453,12 +451,7 @@ class ChatService:
 
         return True
 
-    async def set_typing_indicator(
-        self,
-        league_id: str,
-        user_id: str,
-        is_typing: bool
-    ):
+    async def set_typing_indicator(self, league_id: str, user_id: str, is_typing: bool):
         """
         Set typing indicator for a user in a league.
 
@@ -477,13 +470,11 @@ class ChatService:
                 typing_data = {
                     "user_id": user_id,
                     "username": user_info.get("username", "Unknown"),
-                    "started_at": datetime.utcnow().isoformat()
+                    "started_at": datetime.utcnow().isoformat(),
                 }
 
                 await self.redis_pool.redis_client.hset(
-                    typing_key,
-                    user_id,
-                    json.dumps(typing_data)
+                    typing_key, user_id, json.dumps(typing_data)
                 )
 
                 # Set expiration
@@ -494,7 +485,7 @@ class ChatService:
             # Broadcast typing update
             await self._broadcast_typing_update(league_id)
 
-    async def get_league_participants(self, league_id: str) -> List[ChatParticipant]:
+    async def get_league_participants(self, league_id: str) -> list[ChatParticipant]:
         """
         Get list of league chat participants.
 
@@ -522,19 +513,16 @@ class ChatService:
             participant = ChatParticipant(
                 user_id=user.user_id,
                 username=user.username,
-                avatar_url=getattr(user, 'avatar_url', None),
+                avatar_url=getattr(user, "avatar_url", None),
                 is_online=bool(is_online),
-                role=getattr(user, 'role', 'member')
+                role=getattr(user, "role", "member"),
             )
             participants.append(participant)
 
         return participants
 
     async def delete_message(
-        self,
-        message_id: str,
-        user_id: str,
-        is_admin: bool = False
+        self, message_id: str, user_id: str, is_admin: bool = False
     ) -> bool:
         """
         Delete a chat message.
@@ -573,13 +561,10 @@ class ChatService:
 
     async def _is_league_member(self, league_id: str, user_id: str) -> bool:
         """Check if user is a member of the league."""
-        query = select(func.count()).select_from(
-            League.__table__.join(League.members)
-        ).where(
-            and_(
-                League.league_id == league_id,
-                User.user_id == user_id
-            )
+        query = (
+            select(func.count())
+            .select_from(League.__table__.join(League.members))
+            .where(and_(League.league_id == league_id, User.user_id == user_id))
         )
 
         result = await self.db_session.execute(query)
@@ -607,12 +592,9 @@ class ChatService:
         hour_count = await self.redis_pool.redis_client.incr(hour_key)
         await self.redis_pool.redis_client.expire(hour_key, 3600)
 
-        if hour_count > self.message_rate_limits["per_hour"]:
-            return False
+        return not hour_count > self.message_rate_limits["per_hour"]
 
-        return True
-
-    async def _get_user_info(self, user_id: str) -> Optional[Dict[str, Any]]:
+    async def _get_user_info(self, user_id: str) -> dict[str, Any] | None:
         """Get user information."""
         query = select(User).where(User.user_id == user_id)
         result = await self.db_session.execute(query)
@@ -622,7 +604,7 @@ class ChatService:
             return {
                 "user_id": user.user_id,
                 "username": user.username,
-                "avatar_url": getattr(user, 'avatar_url', None)
+                "avatar_url": getattr(user, "avatar_url", None),
             }
 
         return None
@@ -640,13 +622,13 @@ class ChatService:
             thread_id=message.thread_id,
             parent_message_id=message.parent_message_id,
             attachments=json.dumps(message.attachments),
-            metadata=json.dumps(message.metadata)
+            metadata=json.dumps(message.metadata),
         )
 
         self.db_session.add(db_message)
         await self.db_session.commit()
 
-    async def _get_message(self, message_id: str) -> Optional[ChatMessage]:
+    async def _get_message(self, message_id: str) -> ChatMessage | None:
         """Get message from database."""
         query = select(ChatMessage).where(ChatMessage.message_id == message_id)
         result = await self.db_session.execute(query)
@@ -664,14 +646,14 @@ class ChatService:
             reaction_key = f"chat:reactions:{db_message.message_id}"
             reaction_data = await self.redis_pool.redis_client.hgetall(reaction_key)
 
-            for key, value in reaction_data.items():
+            for _key, value in reaction_data.items():
                 reaction_info = json.loads(value)
                 reaction = MessageReaction(
                     reaction_id=reaction_info["reaction_id"],
                     emoji=reaction_info["emoji"],
                     user_id=reaction_info["user_id"],
                     username=reaction_info.get("username", "Unknown"),
-                    created_at=datetime.fromisoformat(reaction_info["created_at"])
+                    created_at=datetime.fromisoformat(reaction_info["created_at"]),
                 )
                 reactions.append(reaction)
 
@@ -679,7 +661,7 @@ class ChatService:
             message_id=db_message.message_id,
             league_id=db_message.league_id,
             user_id=db_message.user_id,
-            username=getattr(db_message, 'username', 'Unknown'),
+            username=getattr(db_message, "username", "Unknown"),
             content=db_message.content,
             message_type=MessageType(db_message.message_type),
             status=MessageStatus(db_message.status),
@@ -689,7 +671,7 @@ class ChatService:
             parent_message_id=db_message.parent_message_id,
             reactions=reactions,
             attachments=json.loads(db_message.attachments or "[]"),
-            metadata=json.loads(db_message.metadata or "{}")
+            metadata=json.loads(db_message.metadata or "{}"),
         )
 
     async def _broadcast_message(self, message: ChatMessage):
@@ -709,8 +691,8 @@ class ChatService:
                 "created_at": message.created_at.isoformat(),
                 "thread_id": message.thread_id,
                 "parent_message_id": message.parent_message_id,
-                "attachments": message.attachments
-            }
+                "attachments": message.attachments,
+            },
         }
 
         subscription = f"league_chat:{message.league_id}"
@@ -723,10 +705,7 @@ class ChatService:
 
         broadcast_data = {
             "type": "reaction_update",
-            "data": {
-                "message_id": message_id,
-                "league_id": league_id
-            }
+            "data": {"message_id": message_id, "league_id": league_id},
         }
 
         subscription = f"league_chat:{league_id}"
@@ -742,19 +721,18 @@ class ChatService:
             typing_key = f"chat:typing:{league_id}"
             typing_data = await self.redis_pool.redis_client.hgetall(typing_key)
 
-            for user_id, data in typing_data.items():
+            for _user_id, data in typing_data.items():
                 typing_info = json.loads(data)
-                typing_users.append({
-                    "user_id": typing_info["user_id"],
-                    "username": typing_info["username"]
-                })
+                typing_users.append(
+                    {
+                        "user_id": typing_info["user_id"],
+                        "username": typing_info["username"],
+                    }
+                )
 
         broadcast_data = {
             "type": "typing_update",
-            "data": {
-                "league_id": league_id,
-                "typing_users": typing_users
-            }
+            "data": {"league_id": league_id, "typing_users": typing_users},
         }
 
         subscription = f"league_chat:{league_id}"
@@ -767,10 +745,7 @@ class ChatService:
 
         broadcast_data = {
             "type": "message_deleted",
-            "data": {
-                "message_id": message_id,
-                "league_id": league_id
-            }
+            "data": {"message_id": message_id, "league_id": league_id},
         }
 
         subscription = f"league_chat:{league_id}"
@@ -784,7 +759,7 @@ class ChatService:
 
 
 # Global service instance
-_chat_service: Optional[ChatService] = None
+_chat_service: ChatService | None = None
 
 
 async def get_chat_service(db_session: AsyncSession) -> ChatService:
@@ -794,10 +769,8 @@ async def get_chat_service(db_session: AsyncSession) -> ChatService:
     if _chat_service is None:
         redis_pool = None
         if get_redis_pool:
-            try:
+            with contextlib.suppress(Exception):
                 redis_pool = await get_redis_pool()
-            except Exception:
-                pass
 
         _chat_service = ChatService(db_session, redis_pool)
         await _chat_service.initialize()

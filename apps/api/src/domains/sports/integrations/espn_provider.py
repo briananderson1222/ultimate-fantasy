@@ -6,18 +6,22 @@ Handles ESPN-specific data formats, endpoints, and authentication.
 """
 
 import logging
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 from domains.sports.services.sports_data_service import (
-    SportsDataProvider,
-    PlayerStats,
-    PlayerProjection,
     InjuryReport,
-    SportsDataServiceError
+    PlayerProjection,
+    PlayerStats,
+    SportsDataProvider,
+    SportsDataServiceError,
 )
-from .api_client import SportsAPIClient, APIConfig, RateLimitConfig, APIError
-from .data_normalizer import normalize_player_data, normalize_game_data, normalize_stats_data
+
+from .api_client import APIConfig, APIError, RateLimitConfig, SportsAPIClient
+from .data_normalizer import (
+    normalize_game_data,
+    normalize_stats_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +37,7 @@ class ESPNSportsProvider(SportsDataProvider):
     - Injury reports
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """Initialize ESPN provider."""
         self.config = APIConfig(
             base_url="https://site.api.espn.com/apis/site/v2/sports",
@@ -42,16 +46,14 @@ class ESPNSportsProvider(SportsDataProvider):
             max_retries=3,
             retry_delay=1.0,
             rate_limit=RateLimitConfig(
-                requests_per_minute=100,
-                burst_limit=20,
-                window_size=60
+                requests_per_minute=100, burst_limit=20, window_size=60
             ),
             headers={
                 "Accept": "application/json",
-                "User-Agent": "Ultimate Fantasy Platform/1.0"
-            }
+                "User-Agent": "Ultimate Fantasy Platform/1.0",
+            },
         )
-        self.client: Optional[SportsAPIClient] = None
+        self.client: SportsAPIClient | None = None
 
     async def _get_client(self) -> SportsAPIClient:
         """Get or create API client."""
@@ -68,17 +70,17 @@ class ESPNSportsProvider(SportsDataProvider):
             "MLB": "baseball/mlb",
             "NHL": "hockey/nhl",
             "WNBA": "basketball/wnba",
-            "MLS": "soccer/usa.1"
+            "MLS": "soccer/usa.1",
         }
         return sport_mappings.get(sport.upper(), "football/nfl")
 
     async def get_players(
         self,
         sport: str = "NFL",
-        position: Optional[str] = None,
-        team: Optional[str] = None,
+        position: str | None = None,
+        team: str | None = None,
         active_only: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get players data from ESPN API.
 
@@ -118,7 +120,9 @@ class ESPNSportsProvider(SportsDataProvider):
                             items = athlete_group.get("items", [])
 
                             for athlete in items:
-                                player_data = self._normalize_espn_player(athlete, team_abbr, sport)
+                                player_data = self._normalize_espn_player(
+                                    athlete, team_abbr, sport
+                                )
 
                                 # Apply filters
                                 if position and player_data.get("position") != position:
@@ -139,7 +143,9 @@ class ESPNSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get players from ESPN: {e}")
             raise SportsDataServiceError(f"ESPN API error: {e}")
 
-    def _normalize_espn_player(self, athlete: Dict[str, Any], team: str, sport: str) -> Dict[str, Any]:
+    def _normalize_espn_player(
+        self, athlete: dict[str, Any], team: str, sport: str
+    ) -> dict[str, Any]:
         """Normalize ESPN athlete data to standard format."""
         return {
             "player_id": str(athlete.get("id", "")),
@@ -156,15 +162,16 @@ class ESPNSportsProvider(SportsDataProvider):
             "experience": athlete.get("experience"),
             "jersey_number": athlete.get("jersey"),
             "headshot_url": athlete.get("headshot", {}).get("href"),
-            "espn_url": athlete.get("links", [{}])[0].get("href") if athlete.get("links") else None
+            "espn_url": (
+                athlete.get("links", [{}])[0].get("href")
+                if athlete.get("links")
+                else None
+            ),
         }
 
     async def get_player_stats(
-        self,
-        player_id: str,
-        season: str,
-        week: Optional[int] = None
-    ) -> Optional[PlayerStats]:
+        self, player_id: str, season: str, week: int | None = None
+    ) -> PlayerStats | None:
         """
         Get player statistics from ESPN.
 
@@ -196,25 +203,33 @@ class ESPNSportsProvider(SportsDataProvider):
             player_info = response.get("athlete", {})
 
             # Normalize statistics based on sport/position
-            normalized_stats = normalize_stats_data(stats_data, player_info.get("position", {}).get("abbreviation", ""))
+            normalized_stats = normalize_stats_data(
+                stats_data, player_info.get("position", {}).get("abbreviation", "")
+            )
 
             return PlayerStats(
                 player_id=player_id,
                 external_id=player_id,
                 season=season,
                 week=week,
-                games_played=stats_data.get("splits", {}).get("categories", [{}])[0].get("stats", [{}])[0].get("value", 0),
+                games_played=stats_data.get("splits", {})
+                .get("categories", [{}])[0]
+                .get("stats", [{}])[0]
+                .get("value", 0),
                 stats=normalized_stats,
-                fantasy_points=self._calculate_fantasy_points(normalized_stats, player_info.get("position", {}).get("abbreviation", "")),
+                fantasy_points=self._calculate_fantasy_points(
+                    normalized_stats,
+                    player_info.get("position", {}).get("abbreviation", ""),
+                ),
                 position=player_info.get("position", {}).get("abbreviation", ""),
-                team=player_info.get("team", {}).get("abbreviation", "")
+                team=player_info.get("team", {}).get("abbreviation", ""),
             )
 
         except Exception as e:
             logger.error(f"Failed to get player stats from ESPN: {e}")
             return None
 
-    def _calculate_fantasy_points(self, stats: Dict[str, Any], position: str) -> float:
+    def _calculate_fantasy_points(self, stats: dict[str, Any], position: str) -> float:
         """Calculate fantasy points based on stats and position."""
         if not stats:
             return 0.0
@@ -249,11 +264,8 @@ class ESPNSportsProvider(SportsDataProvider):
         return round(points, 2)
 
     async def get_player_projections(
-        self,
-        player_id: str,
-        week: int,
-        season: str
-    ) -> Optional[PlayerProjection]:
+        self, player_id: str, week: int, season: str
+    ) -> PlayerProjection | None:
         """
         Get player projections from ESPN.
 
@@ -276,8 +288,7 @@ class ESPNSportsProvider(SportsDataProvider):
                     projected_stats[stat] = round(value / games_played, 2)
 
             projected_fantasy_points = self._calculate_fantasy_points(
-                projected_stats,
-                recent_stats.position
+                projected_stats, recent_stats.position
             )
 
             return PlayerProjection(
@@ -287,7 +298,7 @@ class ESPNSportsProvider(SportsDataProvider):
                 projected_stats=projected_stats,
                 projected_fantasy_points=projected_fantasy_points,
                 confidence=0.75,  # Medium confidence for ESPN projections
-                last_updated=datetime.utcnow()
+                last_updated=datetime.utcnow(),
             )
 
         except Exception as e:
@@ -295,10 +306,8 @@ class ESPNSportsProvider(SportsDataProvider):
             return None
 
     async def get_injury_report(
-        self,
-        player_id: Optional[str] = None,
-        team: Optional[str] = None
-    ) -> List[InjuryReport]:
+        self, player_id: str | None = None, team: str | None = None
+    ) -> list[InjuryReport]:
         """
         Get injury reports from ESPN.
 
@@ -334,8 +343,16 @@ class ESPNSportsProvider(SportsDataProvider):
 
                 # Parse news for injury-related content
                 for article in response.get("articles", []):
-                    if any(keyword in article.get("headline", "").lower()
-                           for keyword in ["injury", "injured", "out", "questionable", "doubtful"]):
+                    if any(
+                        keyword in article.get("headline", "").lower()
+                        for keyword in [
+                            "injury",
+                            "injured",
+                            "out",
+                            "questionable",
+                            "doubtful",
+                        ]
+                    ):
                         # This is a simplified approach - in practice, you'd need
                         # more sophisticated parsing or a dedicated injury endpoint
                         pass
@@ -346,14 +363,16 @@ class ESPNSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get injury reports from ESPN: {e}")
             return []
 
-    def _normalize_espn_injury(self, injury_data: Dict[str, Any], player_id: str) -> InjuryReport:
+    def _normalize_espn_injury(
+        self, injury_data: dict[str, Any], player_id: str
+    ) -> InjuryReport:
         """Normalize ESPN injury data."""
         status_mapping = {
             "OUT": "out",
             "QUESTIONABLE": "questionable",
             "DOUBTFUL": "doubtful",
             "PROBABLE": "questionable",
-            "HEALTHY": "healthy"
+            "HEALTHY": "healthy",
         }
 
         status = injury_data.get("status", "HEALTHY").upper()
@@ -364,11 +383,15 @@ class ESPNSportsProvider(SportsDataProvider):
             status=normalized_status,
             description=injury_data.get("description"),
             return_date=None,  # ESPN doesn't always provide return dates
-            severity="medium" if normalized_status in ["questionable", "doubtful"] else "high" if normalized_status == "out" else "low",
-            last_updated=datetime.utcnow()
+            severity=(
+                "medium"
+                if normalized_status in ["questionable", "doubtful"]
+                else "high" if normalized_status == "out" else "low"
+            ),
+            last_updated=datetime.utcnow(),
         )
 
-    async def get_teams(self, sport: str = "NFL") -> List[Dict[str, Any]]:
+    async def get_teams(self, sport: str = "NFL") -> list[dict[str, Any]]:
         """
         Get teams data from ESPN.
 
@@ -398,7 +421,7 @@ class ESPNSportsProvider(SportsDataProvider):
             logger.error(f"Failed to get teams from ESPN: {e}")
             raise SportsDataServiceError(f"ESPN teams API error: {e}")
 
-    def _normalize_espn_team(self, team_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_espn_team(self, team_data: dict[str, Any]) -> dict[str, Any]:
         """Normalize ESPN team data."""
         return {
             "team_id": team_data.get("abbreviation", ""),
@@ -406,19 +429,20 @@ class ESPNSportsProvider(SportsDataProvider):
             "city": team_data.get("location", ""),
             "abbreviation": team_data.get("abbreviation", ""),
             "conference": None,  # Would need additional API call
-            "division": None,    # Would need additional API call
-            "sport": "NFL",     # Assume NFL for now
-            "logo_url": team_data.get("logos", [{}])[0].get("href") if team_data.get("logos") else None,
+            "division": None,  # Would need additional API call
+            "sport": "NFL",  # Assume NFL for now
+            "logo_url": (
+                team_data.get("logos", [{}])[0].get("href")
+                if team_data.get("logos")
+                else None
+            ),
             "color": team_data.get("color"),
-            "alternate_color": team_data.get("alternateColor")
+            "alternate_color": team_data.get("alternateColor"),
         }
 
     async def get_schedule(
-        self,
-        season: str,
-        week: Optional[int] = None,
-        team: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, season: str, week: int | None = None, team: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Get schedule data from ESPN.
 
@@ -449,7 +473,9 @@ class ESPNSportsProvider(SportsDataProvider):
                 # Apply team filter if specified
                 if team and not any(
                     comp.get("team", {}).get("abbreviation") == team
-                    for comp in event.get("competitions", [{}])[0].get("competitors", [])
+                    for comp in event.get("competitions", [{}])[0].get(
+                        "competitors", []
+                    )
                 ):
                     continue
 

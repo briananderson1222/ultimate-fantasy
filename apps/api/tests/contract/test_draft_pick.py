@@ -24,7 +24,9 @@ class TestDraftPickContract:
         league_id = "league_123"
         pick_data = {"player_id": "player_456", "team_id": "team_789"}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}/pick", json=pick_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}/pick", json=pick_data
+        )
 
         assert response.status_code == 201
         data = response.json()
@@ -39,7 +41,9 @@ class TestDraftPickContract:
         assert data["player_id"] == pick_data["player_id"]
         assert data["team_id"] == pick_data["team_id"]
 
-    def test_make_draft_pick_with_invalid_league_returns_404(self, authenticated_client):
+    def test_make_draft_pick_with_invalid_league_returns_404(
+        self, authenticated_client
+    ):
         """
         Contract Test: POST /api/v1/draft/invalid_league/pick returns 404.
 
@@ -47,15 +51,19 @@ class TestDraftPickContract:
         """
         pick_data = {"player_id": "player_456", "team_id": "team_789"}
 
-        response = authenticated_client.post("/api/v1/draft/invalid_league/pick", json=pick_data)
+        response = authenticated_client.post(
+            "/api/v1/draft/invalid_league/pick", json=pick_data
+        )
 
         assert response.status_code == 404
         data = response.json()
 
-        assert "error" in data
-        assert "league not found" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "league not found" in data["detail"]["message"].lower()
 
-    def test_make_draft_pick_with_invalid_player_returns_400(self, authenticated_client):
+    def test_make_draft_pick_with_invalid_player_returns_400(
+        self, authenticated_client
+    ):
         """
         Contract Test: Draft pick with invalid player ID returns 400.
 
@@ -64,13 +72,15 @@ class TestDraftPickContract:
         league_id = "league_123"
         pick_data = {"player_id": "invalid_player", "team_id": "team_789"}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}/pick", json=pick_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}/pick", json=pick_data
+        )
 
         assert response.status_code == 400
         data = response.json()
 
-        assert "error" in data
-        assert "player" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "player" in data["detail"]["message"].lower()
 
     def test_make_draft_pick_out_of_turn_returns_400(self, authenticated_client):
         """
@@ -81,15 +91,19 @@ class TestDraftPickContract:
         league_id = "league_123"
         pick_data = {"player_id": "player_456", "team_id": "wrong_team"}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}/pick", json=pick_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}/pick", json=pick_data
+        )
 
         assert response.status_code == 400
         data = response.json()
 
-        assert "error" in data
-        assert "turn" in data["message"].lower()
+        assert "error" in data["detail"]
+        assert "turn" in data["detail"]["message"].lower()
 
-    def test_make_draft_pick_already_drafted_player_returns_400(self, authenticated_client):
+    def test_make_draft_pick_already_drafted_player_returns_400(
+        self, authenticated_client
+    ):
         """
         Contract Test: Picking already drafted player returns 400.
 
@@ -98,15 +112,17 @@ class TestDraftPickContract:
         league_id = "league_123"
         pick_data = {"player_id": "already_drafted_player", "team_id": "team_789"}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}/pick", json=pick_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}/pick", json=pick_data
+        )
 
         assert response.status_code == 400
         data = response.json()
 
-        assert "error" in data
+        assert "error" in data["detail"]
         assert (
-            "already drafted" in data["message"].lower()
-            or "unavailable" in data["message"].lower()
+            "already been drafted" in data["detail"]["message"].lower()
+            or "unavailable" in data["detail"]["message"].lower()
         )
 
     def test_make_draft_pick_triggers_real_time_update(self, authenticated_client):
@@ -118,7 +134,9 @@ class TestDraftPickContract:
         league_id = "league_123"
         pick_data = {"player_id": "player_456", "team_id": "team_789"}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}/pick", json=pick_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}/pick", json=pick_data
+        )
 
         # Should include headers indicating real-time notification was sent
         assert response.status_code == 201
@@ -136,7 +154,9 @@ class TestDraftPickContract:
         league_id = "league_123"
         pick_data = {"player_id": "player_456", "team_id": "team_789"}
 
-        response = authenticated_client.post(f"/api/v1/draft/{league_id}/pick", json=pick_data)
+        response = authenticated_client.post(
+            f"/api/v1/draft/{league_id}/pick", json=pick_data
+        )
 
         assert response.status_code == 201
         data = response.json()

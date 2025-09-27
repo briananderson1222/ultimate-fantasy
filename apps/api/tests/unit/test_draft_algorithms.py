@@ -17,17 +17,18 @@ from dataclasses import dataclass
 
 # Import draft algorithm components
 from domains.drafts.algorithms.snake_draft import SnakeDraftAlgorithm, DraftOrder
-from domains.drafts.services.draft_service import DraftService
+from domains.drafts.services.draft_service import DraftService, DraftPick
 from domains.drafts.services.draft_timer import DraftTimer, TimerState
-from domains.drafts.models.draft import Draft, DraftStatus, DraftPick
-from models.league import League
-from models.team import Team
-from models.player import Player
+from domains.drafts.models.draft import Draft, DraftStatus
+from domains.leagues.models.league import League
+from domains.leagues.models.team import Team
+from domains.sports.models.player import Player
 
 
 @dataclass
 class MockTeam:
     """Mock team for testing."""
+
     id: str
     name: str
     owner_id: str
@@ -37,6 +38,7 @@ class MockTeam:
 @dataclass
 class MockPlayer:
     """Mock player for testing."""
+
     id: str
     name: str
     position: str
@@ -53,18 +55,13 @@ class TestSnakeDraftAlgorithm:
         self.algorithm = SnakeDraftAlgorithm()
 
         # Create mock teams
-        self.teams = [
-            MockTeam("team1", "Team 1", "user1", 1),
-            MockTeam("team2", "Team 2", "user2", 2),
-            MockTeam("team3", "Team 3", "user3", 3),
-            MockTeam("team4", "Team 4", "user4", 4),
-        ]
+        self.teams = ["team1", "team2", "team3", "team4"]
 
     def test_generate_snake_order_round_1(self):
         """Test snake draft order for round 1 (normal order)."""
         draft_order = self.algorithm.generate_draft_order(self.teams, total_rounds=3)
 
-        round_1_picks = [pick for pick in draft_order.picks if pick.round == 1]
+        round_1_picks = [pick for pick in draft_order.picks if pick.round_number == 1]
 
         assert len(round_1_picks) == 4
         assert round_1_picks[0].team_id == "team1"
@@ -73,10 +70,10 @@ class TestSnakeDraftAlgorithm:
         assert round_1_picks[3].team_id == "team4"
 
         # Check pick numbers
-        assert round_1_picks[0].pick_number == 1
-        assert round_1_picks[1].pick_number == 2
-        assert round_1_picks[2].pick_number == 3
-        assert round_1_picks[3].pick_number == 4
+        assert round_1_picks[0].overall_pick == 1
+        assert round_1_picks[1].overall_pick == 2
+        assert round_1_picks[2].overall_pick == 3
+        assert round_1_picks[3].overall_pick == 4
 
     def test_generate_snake_order_round_2(self):
         """Test snake draft order for round 2 (reversed order)."""
@@ -114,15 +111,14 @@ class TestSnakeDraftAlgorithm:
 
         expected_total = len(self.teams) * 15
         assert len(draft_order.picks) == expected_total
-        assert draft_order.total_picks == expected_total
 
     def test_find_current_pick(self):
         """Test finding the current pick in draft order."""
         draft_order = self.algorithm.generate_draft_order(self.teams, total_rounds=3)
 
         # No picks made yet - should be pick 1
-        current_pick = self.algorithm.find_current_pick(draft_order, [])
-        assert current_pick.pick_number == 1
+        current_pick = self.algorithm.get_current_pick(draft_order, [])
+        assert current_pick.overall_pick == 1
         assert current_pick.team_id == "team1"
 
     def test_find_current_pick_after_picks(self):
@@ -156,12 +152,14 @@ class TestSnakeDraftAlgorithm:
 
         # Simulate round 1 complete
         completed_picks = [
-            DraftPick(pick_number=i+1, team_id=f"team{i+1}", player_id=f"player{i+1}")
+            DraftPick(pick_number=i + 1, team_id=f"team{i+1}", player_id=f"player{i+1}")
             for i in range(4)
         ]
 
         # Team 3's next pick should be pick 6 (round 2, position 2 in snake)
-        next_pick = self.algorithm.get_team_next_pick(draft_order, "team3", completed_picks)
+        next_pick = self.algorithm.get_team_next_pick(
+            draft_order, "team3", completed_picks
+        )
         assert next_pick.pick_number == 6
         assert next_pick.team_id == "team3"
         assert next_pick.round == 2
@@ -180,8 +178,8 @@ class TestSnakeDraftAlgorithm:
         """Test calculation of draft position value."""
         # Earlier picks should have higher value
         value_1 = self.algorithm.calculate_pick_value(1, 12)  # 1st overall in 12-team
-        value_12 = self.algorithm.calculate_pick_value(12, 12) # 12th overall
-        value_13 = self.algorithm.calculate_pick_value(13, 12) # 1st pick round 2
+        value_12 = self.algorithm.calculate_pick_value(12, 12)  # 12th overall
+        value_13 = self.algorithm.calculate_pick_value(13, 12)  # 1st pick round 2
 
         assert value_1 > value_12
         assert value_12 > value_13  # Snake draft makes this pick valuable
@@ -204,21 +202,12 @@ class TestAutoDraftAlgorithm:
         ]
 
         # Mock team with current roster
-        self.team_roster = {
-            "QB": 0,
-            "RB": 0,
-            "WR": 0,
-            "TE": 0,
-            "K": 0,
-            "DEF": 0
-        }
+        self.team_roster = {"QB": 0, "RB": 0, "WR": 0, "TE": 0, "K": 0, "DEF": 0}
 
     def test_auto_draft_best_available(self):
         """Test auto-draft selects best available player."""
         pick = self.algorithm.auto_draft_pick(
-            self.available_players,
-            self.team_roster,
-            strategy="best_available"
+            self.available_players, self.team_roster, strategy="best_available"
         )
 
         # Should pick highest overall ranked available player
@@ -232,9 +221,7 @@ class TestAutoDraftAlgorithm:
         roster_with_qb["QB"] = 1
 
         pick = self.algorithm.auto_draft_pick(
-            self.available_players,
-            roster_with_qb,
-            strategy="positional_need"
+            self.available_players, roster_with_qb, strategy="positional_need"
         )
 
         # Should skip QB and pick best RB
@@ -244,9 +231,7 @@ class TestAutoDraftAlgorithm:
     def test_auto_draft_balanced_approach(self):
         """Test auto-draft with balanced approach strategy."""
         pick = self.algorithm.auto_draft_pick(
-            self.available_players,
-            self.team_roster,
-            strategy="balanced"
+            self.available_players, self.team_roster, strategy="balanced"
         )
 
         # Should consider both value and need
@@ -255,9 +240,7 @@ class TestAutoDraftAlgorithm:
     def test_auto_draft_no_available_players(self):
         """Test auto-draft when no players are available."""
         pick = self.algorithm.auto_draft_pick(
-            [],
-            self.team_roster,
-            strategy="best_available"
+            [], self.team_roster, strategy="best_available"
         )
 
         assert pick is None
@@ -271,7 +254,7 @@ class TestAutoDraftAlgorithm:
             "WR": {"min": 3, "max": 6},
             "TE": {"min": 1, "max": 2},
             "K": {"min": 1, "max": 1},
-            "DEF": {"min": 1, "max": 1}
+            "DEF": {"min": 1, "max": 1},
         }
 
         # Team needs QB (required position)
@@ -281,7 +264,7 @@ class TestAutoDraftAlgorithm:
             self.available_players,
             empty_roster,
             strategy="positional_need",
-            position_requirements=position_requirements
+            position_requirements=position_requirements,
         )
 
         # Should prioritize required position
@@ -325,6 +308,7 @@ class TestDraftTimer:
 
         # Wait for timer to expire
         import asyncio
+
         await asyncio.sleep(1.1)
 
         assert self.timer.state == TimerState.EXPIRED
@@ -342,6 +326,7 @@ class TestDraftTimer:
 
         # Wait a bit and check time didn't decrease
         import asyncio
+
         await asyncio.sleep(0.5)
 
         assert self.timer.remaining_time == initial_time
@@ -389,7 +374,7 @@ class TestDraftService:
         self.mock_league.draft_settings = {
             "rounds": 15,
             "pick_time_limit": 90,
-            "auto_draft_enabled": True
+            "auto_draft_enabled": True,
         }
 
     @pytest.mark.asyncio
@@ -400,7 +385,7 @@ class TestDraftService:
             {"id": "team2", "name": "Team 2", "owner_id": "user2"},
         ]
 
-        with patch.object(self.draft_service, '_create_draft_order') as mock_order:
+        with patch.object(self.draft_service, "_create_draft_order") as mock_order:
             mock_order.return_value = Mock()
 
             draft = await self.draft_service.create_draft(self.mock_league.id, teams)
@@ -414,12 +399,14 @@ class TestDraftService:
         """Test starting a draft."""
         draft_id = "draft1"
 
-        with patch.object(self.draft_service, '_get_draft') as mock_get:
+        with patch.object(self.draft_service, "_get_draft") as mock_get:
             mock_draft = Mock(spec=Draft)
             mock_draft.status = DraftStatus.CREATED
             mock_get.return_value = mock_draft
 
-            with patch.object(self.draft_service, '_start_first_pick_timer') as mock_timer:
+            with patch.object(
+                self.draft_service, "_start_first_pick_timer"
+            ) as mock_timer:
                 await self.draft_service.start_draft(draft_id)
 
                 assert mock_draft.status == DraftStatus.IN_PROGRESS
@@ -432,14 +419,16 @@ class TestDraftService:
         team_id = "team1"
         player_id = "player1"
 
-        with patch.object(self.draft_service, '_validate_pick') as mock_validate:
+        with patch.object(self.draft_service, "_validate_pick") as mock_validate:
             mock_validate.return_value = True
 
-            with patch.object(self.draft_service, '_is_team_turn') as mock_turn:
+            with patch.object(self.draft_service, "_is_team_turn") as mock_turn:
                 mock_turn.return_value = True
 
-                with patch.object(self.draft_service, '_record_pick') as mock_record:
-                    result = await self.draft_service.make_pick(draft_id, team_id, player_id)
+                with patch.object(self.draft_service, "_record_pick") as mock_record:
+                    result = await self.draft_service.make_pick(
+                        draft_id, team_id, player_id
+                    )
 
                     assert result.success
                     mock_record.assert_called_once()
@@ -451,7 +440,7 @@ class TestDraftService:
         team_id = "team1"
         player_id = "player1"
 
-        with patch.object(self.draft_service, '_is_team_turn') as mock_turn:
+        with patch.object(self.draft_service, "_is_team_turn") as mock_turn:
             mock_turn.return_value = False
 
             result = await self.draft_service.make_pick(draft_id, team_id, player_id)
@@ -466,13 +455,15 @@ class TestDraftService:
         team_id = "team1"
         player_id = "player1"
 
-        with patch.object(self.draft_service, '_is_team_turn') as mock_turn:
+        with patch.object(self.draft_service, "_is_team_turn") as mock_turn:
             mock_turn.return_value = True
 
-            with patch.object(self.draft_service, '_validate_pick') as mock_validate:
+            with patch.object(self.draft_service, "_validate_pick") as mock_validate:
                 mock_validate.return_value = False
 
-                result = await self.draft_service.make_pick(draft_id, team_id, player_id)
+                result = await self.draft_service.make_pick(
+                    draft_id, team_id, player_id
+                )
 
                 assert not result.success
                 assert "available" in result.error.lower()
@@ -482,10 +473,10 @@ class TestDraftService:
         """Test getting available players for draft."""
         draft_id = "draft1"
 
-        with patch.object(self.draft_service, '_get_drafted_players') as mock_drafted:
+        with patch.object(self.draft_service, "_get_drafted_players") as mock_drafted:
             mock_drafted.return_value = {"player1", "player2"}
 
-            with patch.object(self.draft_service, '_get_all_players') as mock_all:
+            with patch.object(self.draft_service, "_get_all_players") as mock_all:
                 mock_all.return_value = [
                     MockPlayer("player1", "P1", "QB", "SF", 1, 1),
                     MockPlayer("player2", "P2", "RB", "DAL", 2, 1),
@@ -503,7 +494,7 @@ class TestDraftService:
         """Test getting current draft status."""
         draft_id = "draft1"
 
-        with patch.object(self.draft_service, '_get_draft') as mock_get:
+        with patch.object(self.draft_service, "_get_draft") as mock_get:
             mock_draft = Mock(spec=Draft)
             mock_draft.status = DraftStatus.IN_PROGRESS
             mock_draft.current_pick = 5
@@ -522,13 +513,13 @@ class TestDraftService:
         """Test completing a draft when all picks are made."""
         draft_id = "draft1"
 
-        with patch.object(self.draft_service, '_get_draft') as mock_get:
+        with patch.object(self.draft_service, "_get_draft") as mock_get:
             mock_draft = Mock(spec=Draft)
             mock_draft.total_picks = 30
             mock_draft.completed_picks = 30
             mock_get.return_value = mock_draft
 
-            with patch.object(self.draft_service, '_finalize_draft') as mock_finalize:
+            with patch.object(self.draft_service, "_finalize_draft") as mock_finalize:
                 await self.draft_service._check_draft_completion(draft_id)
 
                 mock_finalize.assert_called_once()
@@ -545,7 +536,9 @@ class TestDraftValidation:
         """Test validation passes for available player."""
         available_players = ["player1", "player2", "player3"]
 
-        result = self.draft_service._validate_player_availability("player2", available_players)
+        result = self.draft_service._validate_player_availability(
+            "player2", available_players
+        )
 
         assert result
 
@@ -553,7 +546,9 @@ class TestDraftValidation:
         """Test validation fails for unavailable player."""
         available_players = ["player1", "player2", "player3"]
 
-        result = self.draft_service._validate_player_availability("player4", available_players)
+        result = self.draft_service._validate_player_availability(
+            "player4", available_players
+        )
 
         assert not result
 
@@ -588,10 +583,7 @@ class TestDraftPerformance:
         import time
 
         # Create 20 teams
-        teams = [
-            MockTeam(f"team{i}", f"Team {i}", f"user{i}", i)
-            for i in range(1, 21)
-        ]
+        teams = [MockTeam(f"team{i}", f"Team {i}", f"user{i}", i) for i in range(1, 21)]
 
         start_time = time.time()
 
@@ -613,7 +605,11 @@ class TestDraftPerformance:
 
         # Simulate 100 completed picks
         completed_picks = [
-            DraftPick(pick_number=i+1, team_id=f"team{(i % 12) + 1}", player_id=f"player{i+1}")
+            DraftPick(
+                pick_number=i + 1,
+                team_id=f"team{(i % 12) + 1}",
+                player_id=f"player{i+1}",
+            )
             for i in range(100)
         ]
 

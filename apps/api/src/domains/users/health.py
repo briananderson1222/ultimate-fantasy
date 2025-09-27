@@ -91,9 +91,7 @@ async def users_detailed_health_check(db: Session = Depends(get_db)) -> dict[str
         # Check for users with recent activity
         from infrastructure.database.sql_utils import HEALTH_QUERIES
 
-        recent_users = db.execute(
-            text(HEALTH_QUERIES["recent_users"]())
-        ).scalar()
+        recent_users = db.execute(text(HEALTH_QUERIES["recent_users"]())).scalar()
 
         detailed_status["checks"]["recent_activity"] = {
             "status": "healthy",

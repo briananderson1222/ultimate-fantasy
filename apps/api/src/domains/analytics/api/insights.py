@@ -11,26 +11,26 @@ Provides comprehensive performance insights and analytics for fantasy sports:
 """
 
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any, Union
 from enum import Enum
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, asc
-from pydantic import BaseModel, Field
-
-from api.deps import get_db, get_current_user
-from api.models.response import StandardResponse
-from domains.users.models.user import User
-from domains.leagues.models.league import League
-from domains.users.models.user_team import UserTeam
-from domains.lineups.models.lineup import Lineup
 from domains.scoring.models.scoring import GameScore
+from domains.users.models.user_team import UserTeam
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from api.deps import get_current_user, get_db
+from api.models.response import StandardResponse
+from domains.leagues.models.league import League
+from domains.users.models.user import User
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
 from domains.ai.models.performance_predictor import PlayerPerformancePredictor
@@ -42,6 +42,7 @@ router = APIRouter()
 
 class InsightCategory(str, Enum):
     """Categories of insights available."""
+
     PERFORMANCE = "performance"
     TRENDS = "trends"
     EFFICIENCY = "efficiency"
@@ -52,6 +53,7 @@ class InsightCategory(str, Enum):
 
 class InsightTimeframe(str, Enum):
     """Timeframes for insight analysis."""
+
     LAST_WEEK = "last_week"
     LAST_MONTH = "last_month"
     SEASON = "season"
@@ -60,6 +62,7 @@ class InsightTimeframe(str, Enum):
 
 class InsightSeverity(str, Enum):
     """Severity levels for insights."""
+
     CRITICAL = "critical"
     WARNING = "warning"
     OPPORTUNITY = "opportunity"
@@ -69,6 +72,7 @@ class InsightSeverity(str, Enum):
 
 class PerformanceInsight(BaseModel):
     """Performance-related insight."""
+
     category: str = "performance"
     severity: InsightSeverity
     title: str
@@ -79,12 +83,13 @@ class PerformanceInsight(BaseModel):
     percentile_rank: float
     trend_direction: str  # "up", "down", "stable"
     confidence: float
-    actionable_items: List[str]
-    supporting_data: Dict[str, Any]
+    actionable_items: list[str]
+    supporting_data: dict[str, Any]
 
 
 class TrendInsight(BaseModel):
     """Trend analysis insight."""
+
     category: str = "trends"
     severity: InsightSeverity
     title: str
@@ -92,13 +97,14 @@ class TrendInsight(BaseModel):
     trend_type: str  # "improving", "declining", "volatile", "consistent"
     trend_strength: float
     period_analyzed: str
-    key_drivers: List[str]
+    key_drivers: list[str]
     projected_continuation: float
-    historical_data: List[Dict[str, Any]]
+    historical_data: list[dict[str, Any]]
 
 
 class EfficiencyInsight(BaseModel):
     """Efficiency analysis insight."""
+
     category: str = "efficiency"
     severity: InsightSeverity
     title: str
@@ -107,26 +113,28 @@ class EfficiencyInsight(BaseModel):
     efficiency_score: float
     league_average: float
     improvement_potential: float
-    inefficiency_sources: List[str]
-    optimization_suggestions: List[str]
+    inefficiency_sources: list[str]
+    optimization_suggestions: list[str]
 
 
 class CompetitiveInsight(BaseModel):
     """Competitive positioning insight."""
+
     category: str = "competitive"
     severity: InsightSeverity
     title: str
     description: str
     league_position: int
     position_trend: str
-    competitive_advantages: List[str]
-    competitive_weaknesses: List[str]
+    competitive_advantages: list[str]
+    competitive_weaknesses: list[str]
     threat_level: str
-    opportunities: List[str]
+    opportunities: list[str]
 
 
 class PredictiveInsight(BaseModel):
     """Predictive analysis insight."""
+
     category: str = "predictive"
     severity: InsightSeverity
     title: str
@@ -135,25 +143,27 @@ class PredictiveInsight(BaseModel):
     predicted_outcome: str
     probability: float
     timeframe: str
-    key_factors: List[str]
-    confidence_interval: Dict[str, float]
-    recommended_actions: List[str]
+    key_factors: list[str]
+    confidence_interval: dict[str, float]
+    recommended_actions: list[str]
 
 
 class InsightsSummary(BaseModel):
     """Summary of all insights."""
+
     total_insights: int
-    insights_by_category: Dict[str, int]
-    insights_by_severity: Dict[str, int]
+    insights_by_category: dict[str, int]
+    insights_by_severity: dict[str, int]
     overall_performance_score: float
-    key_strengths: List[str]
-    key_weaknesses: List[str]
-    top_opportunities: List[str]
-    risk_factors: List[str]
+    key_strengths: list[str]
+    key_weaknesses: list[str]
+    top_opportunities: list[str]
+    risk_factors: list[str]
 
 
 class AnalyticsInsightsResponse(BaseModel):
     """Complete analytics insights response."""
+
     user_id: str
     league_id: str
     team_name: str
@@ -161,11 +171,11 @@ class AnalyticsInsightsResponse(BaseModel):
     timeframe: InsightTimeframe
 
     # Categorized insights
-    performance_insights: List[PerformanceInsight]
-    trend_insights: List[TrendInsight]
-    efficiency_insights: List[EfficiencyInsight]
-    competitive_insights: List[CompetitiveInsight]
-    predictive_insights: List[PredictiveInsight]
+    performance_insights: list[PerformanceInsight]
+    trend_insights: list[TrendInsight]
+    efficiency_insights: list[EfficiencyInsight]
+    competitive_insights: list[CompetitiveInsight]
+    predictive_insights: list[PredictiveInsight]
 
     # Summary
     summary: InsightsSummary
@@ -179,26 +189,23 @@ class AnalyticsInsightsResponse(BaseModel):
 @router.get("/insights", response_model=StandardResponse[AnalyticsInsightsResponse])
 async def get_analytics_insights(
     league_id: str,
-    categories: Optional[List[InsightCategory]] = Query(
-        default=[InsightCategory.ALL],
-        description="Categories of insights to include"
+    categories: list[InsightCategory] | None = Query(
+        default=[InsightCategory.ALL], description="Categories of insights to include"
     ),
     timeframe: InsightTimeframe = Query(
-        default=InsightTimeframe.SEASON,
-        description="Timeframe for analysis"
+        default=InsightTimeframe.SEASON, description="Timeframe for analysis"
     ),
     include_predictions: bool = Query(
-        default=True,
-        description="Include predictive insights"
+        default=True, description="Include predictive insights"
     ),
     min_confidence: float = Query(
         default=0.6,
         ge=0.0,
         le=1.0,
-        description="Minimum confidence threshold for insights"
+        description="Minimum confidence threshold for insights",
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get comprehensive analytics insights for fantasy performance.
@@ -228,15 +235,18 @@ async def get_analytics_insights(
     """
     try:
         # Validate league membership
-        user_team = db.query(UserTeam).filter(
-            UserTeam.user_id == current_user.user_id,
-            UserTeam.league_id == league_id
-        ).first()
+        user_team = (
+            db.query(UserTeam)
+            .filter(
+                UserTeam.user_id == current_user.user_id,
+                UserTeam.league_id == league_id,
+            )
+            .first()
+        )
 
         if not user_team:
             raise HTTPException(
-                status_code=404,
-                detail="User not found in specified league"
+                status_code=404, detail="User not found in specified league"
             )
 
         league = db.query(League).filter(League.league_id == league_id).first()
@@ -251,7 +261,7 @@ async def get_analytics_insights(
                 InsightCategory.TRENDS,
                 InsightCategory.EFFICIENCY,
                 InsightCategory.COMPETITIVE,
-                InsightCategory.PREDICTIVE
+                InsightCategory.PREDICTIVE,
             ]
 
         # Initialize predictor for advanced analytics
@@ -291,8 +301,11 @@ async def get_analytics_insights(
 
         # Generate summary
         all_insights = (
-            performance_insights + trend_insights + efficiency_insights +
-            competitive_insights + predictive_insights
+            performance_insights
+            + trend_insights
+            + efficiency_insights
+            + competitive_insights
+            + predictive_insights
         )
 
         summary = _generate_insights_summary(all_insights, user_team, league)
@@ -311,7 +324,7 @@ async def get_analytics_insights(
             summary=summary,
             data_quality_score=0.85,  # Would calculate based on available data
             analysis_depth="comprehensive",
-            next_update=datetime.utcnow() + timedelta(hours=12)
+            next_update=datetime.utcnow() + timedelta(hours=12),
         )
 
         logger.info(
@@ -321,13 +334,13 @@ async def get_analytics_insights(
                 "league_id": league_id,
                 "total_insights": len(all_insights),
                 "timeframe": timeframe.value,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message="Analytics insights generated successfully"
+            message="Analytics insights generated successfully",
         )
 
     except HTTPException:
@@ -335,8 +348,7 @@ async def get_analytics_insights(
     except Exception as e:
         logger.error(f"Failed to generate analytics insights: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to generate analytics insights"
+            status_code=500, detail="Failed to generate analytics insights"
         )
 
 
@@ -345,19 +357,17 @@ async def _generate_performance_insights(
     league: League,
     timeframe: InsightTimeframe,
     min_confidence: float,
-    db: Session
-) -> List[PerformanceInsight]:
+    db: Session,
+) -> list[PerformanceInsight]:
     """Generate performance-related insights."""
     insights = []
 
     try:
         # Calculate scoring performance
         scoring_query = db.query(
-            func.avg(GameScore.total_points).label('avg_points'),
-            func.count(GameScore.game_score_id).label('games_played')
-        ).filter(
-            GameScore.user_team_id == user_team.user_team_id
-        )
+            func.avg(GameScore.total_points).label("avg_points"),
+            func.count(GameScore.game_score_id).label("games_played"),
+        ).filter(GameScore.user_team_id == user_team.user_team_id)
 
         if timeframe == InsightTimeframe.LAST_WEEK:
             scoring_query = scoring_query.filter(
@@ -371,10 +381,10 @@ async def _generate_performance_insights(
         user_stats = scoring_query.first()
 
         # League average
-        league_avg_query = db.query(
-            func.avg(GameScore.total_points).label('league_avg')
-        ).join(UserTeam).filter(
-            UserTeam.league_id == league.league_id
+        league_avg_query = (
+            db.query(func.avg(GameScore.total_points).label("league_avg"))
+            .join(UserTeam)
+            .filter(UserTeam.league_id == league.league_id)
         )
 
         if timeframe == InsightTimeframe.LAST_WEEK:
@@ -388,7 +398,12 @@ async def _generate_performance_insights(
 
         league_stats = league_avg_query.first()
 
-        if user_stats and user_stats.avg_points and league_stats and league_stats.league_avg:
+        if (
+            user_stats
+            and user_stats.avg_points
+            and league_stats
+            and league_stats.league_avg
+        ):
             avg_points = float(user_stats.avg_points)
             league_avg = float(league_stats.league_avg)
 
@@ -406,27 +421,29 @@ async def _generate_performance_insights(
                 severity = InsightSeverity.NEUTRAL
                 description = "Your team is performing close to league average"
 
-            insights.append(PerformanceInsight(
-                severity=severity,
-                title="Scoring Performance Analysis",
-                description=description,
-                metric_name="average_points_per_game",
-                current_value=avg_points,
-                benchmark_value=league_avg,
-                percentile_rank=percentile,
-                trend_direction="stable",  # Would calculate from historical data
-                confidence=0.8,
-                actionable_items=[
-                    "Review lineup optimization strategies",
-                    "Analyze player consistency metrics",
-                    "Consider waiver wire opportunities"
-                ],
-                supporting_data={
-                    "games_analyzed": int(user_stats.games_played or 0),
-                    "performance_ratio": performance_ratio,
-                    "league_teams": 12  # Would get from league data
-                }
-            ))
+            insights.append(
+                PerformanceInsight(
+                    severity=severity,
+                    title="Scoring Performance Analysis",
+                    description=description,
+                    metric_name="average_points_per_game",
+                    current_value=avg_points,
+                    benchmark_value=league_avg,
+                    percentile_rank=percentile,
+                    trend_direction="stable",  # Would calculate from historical data
+                    confidence=0.8,
+                    actionable_items=[
+                        "Review lineup optimization strategies",
+                        "Analyze player consistency metrics",
+                        "Consider waiver wire opportunities",
+                    ],
+                    supporting_data={
+                        "games_analyzed": int(user_stats.games_played or 0),
+                        "performance_ratio": performance_ratio,
+                        "league_teams": 12,  # Would get from league data
+                    },
+                )
+            )
 
         # Add more performance insights (consistency, ceiling, floor, etc.)
         insights.extend(await _analyze_consistency_metrics(user_team, db))
@@ -439,22 +456,20 @@ async def _generate_performance_insights(
 
 
 async def _generate_trend_insights(
-    user_team: UserTeam,
-    timeframe: InsightTimeframe,
-    min_confidence: float,
-    db: Session
-) -> List[TrendInsight]:
+    user_team: UserTeam, timeframe: InsightTimeframe, min_confidence: float, db: Session
+) -> list[TrendInsight]:
     """Generate trend analysis insights."""
     insights = []
 
     try:
         # Analyze scoring trends over time
-        scoring_data = db.query(
-            GameScore.total_points,
-            GameScore.created_at
-        ).filter(
-            GameScore.user_team_id == user_team.user_team_id
-        ).order_by(GameScore.created_at.desc()).limit(10).all()
+        scoring_data = (
+            db.query(GameScore.total_points, GameScore.created_at)
+            .filter(GameScore.user_team_id == user_team.user_team_id)
+            .order_by(GameScore.created_at.desc())
+            .limit(10)
+            .all()
+        )
 
         if len(scoring_data) >= 5:
             # Simple trend analysis
@@ -462,9 +477,15 @@ async def _generate_trend_insights(
             earlier_scores = [float(score.total_points) for score in scoring_data[5:]]
 
             recent_avg = sum(recent_scores) / len(recent_scores)
-            earlier_avg = sum(earlier_scores) / len(earlier_scores) if earlier_scores else recent_avg
+            earlier_avg = (
+                sum(earlier_scores) / len(earlier_scores)
+                if earlier_scores
+                else recent_avg
+            )
 
-            trend_change = (recent_avg - earlier_avg) / earlier_avg if earlier_avg > 0 else 0
+            trend_change = (
+                (recent_avg - earlier_avg) / earlier_avg if earlier_avg > 0 else 0
+            )
 
             if trend_change > 0.1:
                 severity = InsightSeverity.POSITIVE
@@ -479,29 +500,40 @@ async def _generate_trend_insights(
                 trend_type = "consistent"
                 description = "Your team performance has been relatively stable"
 
-            insights.append(TrendInsight(
-                severity=severity,
-                title="Recent Performance Trend",
-                description=description,
-                trend_type=trend_type,
-                trend_strength=abs(trend_change),
-                period_analyzed=f"Last {len(scoring_data)} games",
-                key_drivers=["Lineup decisions", "Player performance", "Matchup strength"],
-                projected_continuation=0.7,  # Would use more sophisticated modeling
-                historical_data=[
-                    {
-                        "week": i + 1,
-                        "points": float(score.total_points),
-                        "date": score.created_at.isoformat()
-                    }
-                    for i, score in enumerate(reversed(scoring_data))
-                ]
-            ))
+            insights.append(
+                TrendInsight(
+                    severity=severity,
+                    title="Recent Performance Trend",
+                    description=description,
+                    trend_type=trend_type,
+                    trend_strength=abs(trend_change),
+                    period_analyzed=f"Last {len(scoring_data)} games",
+                    key_drivers=[
+                        "Lineup decisions",
+                        "Player performance",
+                        "Matchup strength",
+                    ],
+                    projected_continuation=0.7,  # Would use more sophisticated modeling
+                    historical_data=[
+                        {
+                            "week": i + 1,
+                            "points": float(score.total_points),
+                            "date": score.created_at.isoformat(),
+                        }
+                        for i, score in enumerate(reversed(scoring_data))
+                    ],
+                )
+            )
 
     except Exception as e:
         logger.error(f"Failed to generate trend insights: {e}")
 
-    return [i for i in insights if i.confidence >= min_confidence if hasattr(i, 'confidence')]
+    return [
+        i
+        for i in insights
+        if i.confidence >= min_confidence
+        if hasattr(i, "confidence")
+    ]
 
 
 async def _generate_efficiency_insights(
@@ -509,8 +541,8 @@ async def _generate_efficiency_insights(
     league: League,
     timeframe: InsightTimeframe,
     min_confidence: float,
-    db: Session
-) -> List[EfficiencyInsight]:
+    db: Session,
+) -> list[EfficiencyInsight]:
     """Generate efficiency analysis insights."""
     insights = []
 
@@ -518,25 +550,27 @@ async def _generate_efficiency_insights(
         # Analyze lineup utilization efficiency
         # This would examine how well the user utilizes their roster
 
-        insights.append(EfficiencyInsight(
-            severity=InsightSeverity.OPPORTUNITY,
-            title="Roster Utilization Analysis",
-            description="Analysis of how effectively you're using your available players",
-            efficiency_metric="roster_utilization",
-            efficiency_score=0.75,  # Would calculate based on actual data
-            league_average=0.68,
-            improvement_potential=0.15,
-            inefficiency_sources=[
-                "Suboptimal bench player usage",
-                "Missing waiver wire opportunities",
-                "Conservative lineup decisions"
-            ],
-            optimization_suggestions=[
-                "Consider more aggressive waiver claims",
-                "Rotate bench players based on matchups",
-                "Use streaming strategies for defense/kicker"
-            ]
-        ))
+        insights.append(
+            EfficiencyInsight(
+                severity=InsightSeverity.OPPORTUNITY,
+                title="Roster Utilization Analysis",
+                description="Analysis of how effectively you're using your available players",
+                efficiency_metric="roster_utilization",
+                efficiency_score=0.75,  # Would calculate based on actual data
+                league_average=0.68,
+                improvement_potential=0.15,
+                inefficiency_sources=[
+                    "Suboptimal bench player usage",
+                    "Missing waiver wire opportunities",
+                    "Conservative lineup decisions",
+                ],
+                optimization_suggestions=[
+                    "Consider more aggressive waiver claims",
+                    "Rotate bench players based on matchups",
+                    "Use streaming strategies for defense/kicker",
+                ],
+            )
+        )
 
     except Exception as e:
         logger.error(f"Failed to generate efficiency insights: {e}")
@@ -549,8 +583,8 @@ async def _generate_competitive_insights(
     league: League,
     timeframe: InsightTimeframe,
     min_confidence: float,
-    db: Session
-) -> List[CompetitiveInsight]:
+    db: Session,
+) -> list[CompetitiveInsight]:
     """Generate competitive positioning insights."""
     insights = []
 
@@ -558,29 +592,31 @@ async def _generate_competitive_insights(
         # Analyze league standings and competitive position
         # This would examine team's position relative to others
 
-        insights.append(CompetitiveInsight(
-            severity=InsightSeverity.NEUTRAL,
-            title="League Competitive Position",
-            description="Analysis of your team's position in the league landscape",
-            league_position=6,  # Would calculate from actual standings
-            position_trend="stable",
-            competitive_advantages=[
-                "Strong running back depth",
-                "Consistent quarterback play",
-                "Good waiver wire activity"
-            ],
-            competitive_weaknesses=[
-                "Weak wide receiver corps",
-                "Inconsistent defense/special teams",
-                "Below-average kicker performance"
-            ],
-            threat_level="moderate",
-            opportunities=[
-                "Trade surplus RB depth for WR help",
-                "Stream defense matchups",
-                "Target breakout WR candidates"
-            ]
-        ))
+        insights.append(
+            CompetitiveInsight(
+                severity=InsightSeverity.NEUTRAL,
+                title="League Competitive Position",
+                description="Analysis of your team's position in the league landscape",
+                league_position=6,  # Would calculate from actual standings
+                position_trend="stable",
+                competitive_advantages=[
+                    "Strong running back depth",
+                    "Consistent quarterback play",
+                    "Good waiver wire activity",
+                ],
+                competitive_weaknesses=[
+                    "Weak wide receiver corps",
+                    "Inconsistent defense/special teams",
+                    "Below-average kicker performance",
+                ],
+                threat_level="moderate",
+                opportunities=[
+                    "Trade surplus RB depth for WR help",
+                    "Stream defense matchups",
+                    "Target breakout WR candidates",
+                ],
+            )
+        )
 
     except Exception as e:
         logger.error(f"Failed to generate competitive insights: {e}")
@@ -593,34 +629,36 @@ async def _generate_predictive_insights(
     predictor: PlayerPerformancePredictor,
     timeframe: InsightTimeframe,
     min_confidence: float,
-    db: Session
-) -> List[PredictiveInsight]:
+    db: Session,
+) -> list[PredictiveInsight]:
     """Generate predictive analysis insights."""
     insights = []
 
     try:
         # Use the performance predictor for future projections
-        insights.append(PredictiveInsight(
-            severity=InsightSeverity.OPPORTUNITY,
-            title="Playoff Projection Analysis",
-            description="Based on current trends and remaining schedule strength",
-            prediction_type="playoff_probability",
-            predicted_outcome="65% chance of making playoffs",
-            probability=0.65,
-            timeframe="rest_of_season",
-            key_factors=[
-                "Current win percentage",
-                "Remaining schedule strength",
-                "Team performance trends",
-                "League competitive balance"
-            ],
-            confidence_interval={"low": 0.55, "high": 0.75},
-            recommended_actions=[
-                "Focus on consistent lineup decisions",
-                "Consider strategic trades before deadline",
-                "Monitor waiver wire for playoff pushes"
-            ]
-        ))
+        insights.append(
+            PredictiveInsight(
+                severity=InsightSeverity.OPPORTUNITY,
+                title="Playoff Projection Analysis",
+                description="Based on current trends and remaining schedule strength",
+                prediction_type="playoff_probability",
+                predicted_outcome="65% chance of making playoffs",
+                probability=0.65,
+                timeframe="rest_of_season",
+                key_factors=[
+                    "Current win percentage",
+                    "Remaining schedule strength",
+                    "Team performance trends",
+                    "League competitive balance",
+                ],
+                confidence_interval={"low": 0.55, "high": 0.75},
+                recommended_actions=[
+                    "Focus on consistent lineup decisions",
+                    "Consider strategic trades before deadline",
+                    "Monitor waiver wire for playoff pushes",
+                ],
+            )
+        )
 
     except Exception as e:
         logger.error(f"Failed to generate predictive insights: {e}")
@@ -629,9 +667,7 @@ async def _generate_predictive_insights(
 
 
 def _generate_insights_summary(
-    all_insights: List,
-    user_team: UserTeam,
-    league: League
+    all_insights: list, user_team: UserTeam, league: League
 ) -> InsightsSummary:
     """Generate summary of all insights."""
 
@@ -654,13 +690,13 @@ def _generate_insights_summary(
 
     for insight in all_insights:
         if insight.severity == InsightSeverity.POSITIVE:
-            if hasattr(insight, 'competitive_advantages'):
+            if hasattr(insight, "competitive_advantages"):
                 key_strengths.extend(insight.competitive_advantages[:2])
         elif insight.severity == InsightSeverity.WARNING:
-            if hasattr(insight, 'competitive_weaknesses'):
+            if hasattr(insight, "competitive_weaknesses"):
                 key_weaknesses.extend(insight.competitive_weaknesses[:2])
         elif insight.severity == InsightSeverity.OPPORTUNITY:
-            if hasattr(insight, 'opportunities'):
+            if hasattr(insight, "opportunities"):
                 top_opportunities.extend(insight.opportunities[:2])
         elif insight.severity == InsightSeverity.CRITICAL:
             risk_factors.append(insight.title)
@@ -673,13 +709,16 @@ def _generate_insights_summary(
         key_strengths=list(set(key_strengths))[:3],
         key_weaknesses=list(set(key_weaknesses))[:3],
         top_opportunities=list(set(top_opportunities))[:3],
-        risk_factors=list(set(risk_factors))[:3]
+        risk_factors=list(set(risk_factors))[:3],
     )
 
 
 # Helper functions for detailed analysis
 
-async def _analyze_consistency_metrics(user_team: UserTeam, db: Session) -> List[PerformanceInsight]:
+
+async def _analyze_consistency_metrics(
+    user_team: UserTeam, db: Session
+) -> list[PerformanceInsight]:
     """Analyze scoring consistency."""
     insights = []
 
@@ -689,7 +728,9 @@ async def _analyze_consistency_metrics(user_team: UserTeam, db: Session) -> List
     return insights
 
 
-async def _analyze_lineup_efficiency(user_team: UserTeam, db: Session) -> List[PerformanceInsight]:
+async def _analyze_lineup_efficiency(
+    user_team: UserTeam, db: Session
+) -> list[PerformanceInsight]:
     """Analyze lineup decision efficiency."""
     insights = []
 
@@ -701,37 +742,39 @@ async def _analyze_lineup_efficiency(user_team: UserTeam, db: Session) -> List[P
 
 # Specialized insight endpoints
 
-@router.get("/insights/performance", response_model=StandardResponse[List[PerformanceInsight]])
+
+@router.get(
+    "/insights/performance", response_model=StandardResponse[list[PerformanceInsight]]
+)
 async def get_performance_insights(
     league_id: str,
     timeframe: InsightTimeframe = Query(default=InsightTimeframe.SEASON),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get performance-specific insights."""
     # Implementation for performance-only insights
-    pass
 
 
-@router.get("/insights/trends", response_model=StandardResponse[List[TrendInsight]])
+@router.get("/insights/trends", response_model=StandardResponse[list[TrendInsight]])
 async def get_trend_insights(
     league_id: str,
     timeframe: InsightTimeframe = Query(default=InsightTimeframe.SEASON),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get trend analysis insights."""
     # Implementation for trend-only insights
-    pass
 
 
-@router.get("/insights/competitive", response_model=StandardResponse[List[CompetitiveInsight]])
+@router.get(
+    "/insights/competitive", response_model=StandardResponse[list[CompetitiveInsight]]
+)
 async def get_competitive_insights(
     league_id: str,
     include_predictions: bool = Query(default=True),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get competitive positioning insights."""
     # Implementation for competitive-only insights
-    pass

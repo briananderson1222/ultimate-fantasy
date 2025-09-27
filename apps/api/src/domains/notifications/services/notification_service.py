@@ -11,16 +11,16 @@ Provides comprehensive notification management with:
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from domains.shared.models.notification import Notification
-from domains.users.models.user import User
 
 try:
     from infrastructure.websockets.connection_manager import WebSocketConnectionManager
@@ -36,6 +36,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -80,8 +81,8 @@ class NotificationService:
     def __init__(
         self,
         session: Session,
-        websocket_manager: Optional[WebSocketConnectionManager] = None,
-        redis_publisher: Optional[RedisEventPublisher] = None,
+        websocket_manager: WebSocketConnectionManager | None = None,
+        redis_publisher: RedisEventPublisher | None = None,
     ):
         self.session = session
         self.websocket_manager = websocket_manager
@@ -93,7 +94,7 @@ class NotificationService:
         self.retry_delay_seconds = 60
 
         # WebSocket notification queues
-        self.pending_websocket_notifications: Dict[str, List[Dict[str, Any]]] = {}
+        self.pending_websocket_notifications: dict[str, list[dict[str, Any]]] = {}
 
     async def send_notification(
         self,
@@ -101,11 +102,11 @@ class NotificationService:
         notification_type: str,
         title: str,
         message: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
         priority: str = NotificationPriority.NORMAL,
-        channels: Optional[List[str]] = None,
-        league_id: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
+        channels: list[str] | None = None,
+        league_id: str | None = None,
+        expires_at: datetime | None = None,
     ) -> Notification:
         """
         Send a notification to a user via multiple channels.
@@ -133,7 +134,8 @@ class NotificationService:
             message=message,
             data=data or {},
             priority=priority,
-            expires_at=expires_at or datetime.utcnow() + timedelta(hours=self.default_expiry_hours),
+            expires_at=expires_at
+            or datetime.utcnow() + timedelta(hours=self.default_expiry_hours),
         )
 
         self.session.add(notification)
@@ -149,7 +151,9 @@ class NotificationService:
         for channel in channels:
             try:
                 if channel == DeliveryChannel.WEBSOCKET:
-                    success = await self._send_websocket_notification(user_id, notification)
+                    success = await self._send_websocket_notification(
+                        user_id, notification
+                    )
                 elif channel == DeliveryChannel.PUSH:
                     success = await self._send_push_notification(user_id, notification)
                 elif channel == DeliveryChannel.EMAIL:
@@ -168,22 +172,21 @@ class NotificationService:
         self.session.commit()
 
         logger.info(
-            f"Notification sent",
+            "Notification sent",
             extra={
                 "notification_id": str(notification.notification_id),
                 "user_id": user_id,
                 "type": notification_type,
                 "channels": channels,
                 "delivery_results": delivery_results,
-            }
+            },
         )
 
         return notification
 
     async def send_bulk_notifications(
-        self,
-        notifications: List[Dict[str, Any]]
-    ) -> List[Notification]:
+        self, notifications: list[dict[str, Any]]
+    ) -> list[Notification]:
         """
         Send multiple notifications efficiently.
 
@@ -198,7 +201,7 @@ class NotificationService:
         # Process in batches to avoid overwhelming the system
         batch_size = 50
         for i in range(0, len(notifications), batch_size):
-            batch = notifications[i:i + batch_size]
+            batch = notifications[i : i + batch_size]
             batch_results = []
 
             for notif_data in batch:
@@ -224,9 +227,9 @@ class NotificationService:
         notification_type: str,
         title: str,
         message: str,
-        data: Optional[Dict[str, Any]] = None,
-        exclude_user_ids: Optional[Set[str]] = None,
-    ) -> List[Notification]:
+        data: dict[str, Any] | None = None,
+        exclude_user_ids: set[str] | None = None,
+    ) -> list[Notification]:
         """
         Send notification to all users in a league.
 
@@ -253,14 +256,16 @@ class NotificationService:
         # Prepare notification data for bulk sending
         notifications_data = []
         for user_id in user_ids:
-            notifications_data.append({
-                "user_id": user_id,
-                "notification_type": notification_type,
-                "title": title,
-                "message": message,
-                "data": data,
-                "league_id": league_id,
-            })
+            notifications_data.append(
+                {
+                    "user_id": user_id,
+                    "notification_type": notification_type,
+                    "title": title,
+                    "message": message,
+                    "data": data,
+                    "league_id": league_id,
+                }
+            )
 
         return await self.send_bulk_notifications(notifications_data)
 
@@ -279,7 +284,7 @@ class NotificationService:
             self.session.query(Notification)
             .filter(
                 Notification.notification_id == UUID(notification_id),
-                Notification.user_id == UUID(user_id)
+                Notification.user_id == UUID(user_id),
             )
             .first()
         )
@@ -292,14 +297,17 @@ class NotificationService:
 
         # Send WebSocket update
         if self.websocket_manager:
-            await self._send_websocket_message(user_id, {
-                "type": "notification_read",
-                "notification_id": notification_id,
-            })
+            await self._send_websocket_message(
+                user_id,
+                {
+                    "type": "notification_read",
+                    "notification_id": notification_id,
+                },
+            )
 
         return True
 
-    async def mark_all_as_read(self, user_id: str, league_id: Optional[str] = None) -> int:
+    async def mark_all_as_read(self, user_id: str, league_id: str | None = None) -> int:
         """
         Mark all notifications as read for a user.
 
@@ -311,8 +319,7 @@ class NotificationService:
             Number of notifications marked as read
         """
         query = self.session.query(Notification).filter(
-            Notification.user_id == UUID(user_id),
-            Notification.read_at.is_(None)
+            Notification.user_id == UUID(user_id), Notification.read_at.is_(None)
         )
 
         if league_id:
@@ -324,22 +331,25 @@ class NotificationService:
 
         # Send WebSocket update
         if self.websocket_manager:
-            await self._send_websocket_message(user_id, {
-                "type": "notifications_read_all",
-                "count": count,
-                "league_id": league_id,
-            })
+            await self._send_websocket_message(
+                user_id,
+                {
+                    "type": "notifications_read_all",
+                    "count": count,
+                    "league_id": league_id,
+                },
+            )
 
         return count
 
     async def get_user_notifications(
         self,
         user_id: str,
-        league_id: Optional[str] = None,
+        league_id: str | None = None,
         unread_only: bool = False,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Notification]:
+    ) -> list[Notification]:
         """
         Get notifications for a user.
 
@@ -365,19 +375,18 @@ class NotificationService:
 
         # Filter out expired notifications
         query = query.filter(
-            (Notification.expires_at.is_(None)) |
-            (Notification.expires_at > datetime.utcnow())
+            (Notification.expires_at.is_(None))
+            | (Notification.expires_at > datetime.utcnow())
         )
 
         return (
-            query
-            .order_by(Notification.created_at.desc())
+            query.order_by(Notification.created_at.desc())
             .offset(offset)
             .limit(limit)
             .all()
         )
 
-    async def get_unread_count(self, user_id: str, league_id: Optional[str] = None) -> int:
+    async def get_unread_count(self, user_id: str, league_id: str | None = None) -> int:
         """
         Get count of unread notifications for a user.
 
@@ -389,8 +398,7 @@ class NotificationService:
             Number of unread notifications
         """
         query = self.session.query(Notification).filter(
-            Notification.user_id == UUID(user_id),
-            Notification.read_at.is_(None)
+            Notification.user_id == UUID(user_id), Notification.read_at.is_(None)
         )
 
         if league_id:
@@ -398,8 +406,8 @@ class NotificationService:
 
         # Filter out expired notifications
         query = query.filter(
-            (Notification.expires_at.is_(None)) |
-            (Notification.expires_at > datetime.utcnow())
+            (Notification.expires_at.is_(None))
+            | (Notification.expires_at > datetime.utcnow())
         )
 
         return query.count()
@@ -424,7 +432,9 @@ class NotificationService:
 
     # WebSocket Integration Methods
 
-    async def _send_websocket_notification(self, user_id: str, notification: Notification) -> bool:
+    async def _send_websocket_notification(
+        self, user_id: str, notification: Notification
+    ) -> bool:
         """Send notification via WebSocket."""
         if not self.websocket_manager:
             return False
@@ -439,13 +449,17 @@ class NotificationService:
                 "data": notification.data,
                 "priority": notification.priority,
                 "created_at": notification.created_at.isoformat(),
-                "league_id": str(notification.league_id) if notification.league_id else None,
-            }
+                "league_id": (
+                    str(notification.league_id) if notification.league_id else None
+                ),
+            },
         }
 
         return await self._send_websocket_message(user_id, message)
 
-    async def _send_websocket_message(self, user_id: str, message: Dict[str, Any]) -> bool:
+    async def _send_websocket_message(
+        self, user_id: str, message: dict[str, Any]
+    ) -> bool:
         """Send a WebSocket message to a user."""
         if not self.websocket_manager:
             return False
@@ -467,7 +481,9 @@ class NotificationService:
                     await connection.send_text(json.dumps(message))
                     success_count += 1
                 except Exception as e:
-                    logger.warning(f"Failed to send WebSocket message to connection: {e}")
+                    logger.warning(
+                        f"Failed to send WebSocket message to connection: {e}"
+                    )
 
             return success_count > 0
 
@@ -484,32 +500,38 @@ class NotificationService:
 
     # Push Notification Methods
 
-    async def _send_push_notification(self, user_id: str, notification: Notification) -> bool:
+    async def _send_push_notification(
+        self, user_id: str, notification: Notification
+    ) -> bool:
         """Send push notification (stub for future implementation)."""
         # This would integrate with FCM, APNs, etc.
-        logger.debug(f"Push notification would be sent to user {user_id}: {notification.title}")
+        logger.debug(
+            f"Push notification would be sent to user {user_id}: {notification.title}"
+        )
         return True
 
     # Email Notification Methods
 
-    async def _send_email_notification(self, user_id: str, notification: Notification) -> bool:
+    async def _send_email_notification(
+        self, user_id: str, notification: Notification
+    ) -> bool:
         """Send email notification (stub for future implementation)."""
         # This would integrate with email service
-        logger.debug(f"Email notification would be sent to user {user_id}: {notification.title}")
+        logger.debug(
+            f"Email notification would be sent to user {user_id}: {notification.title}"
+        )
         return True
 
     # User Preferences
 
-    async def _get_user_preferred_channels(self, user_id: str) -> List[str]:
+    async def _get_user_preferred_channels(self, user_id: str) -> list[str]:
         """Get user's preferred notification channels."""
         # This would check user preferences from database
         # For now, default to WebSocket only
         return [DeliveryChannel.WEBSOCKET]
 
     async def update_user_notification_preferences(
-        self,
-        user_id: str,
-        preferences: Dict[str, Any]
+        self, user_id: str, preferences: dict[str, Any]
     ) -> bool:
         """Update user notification preferences."""
         # This would update user preferences in database
@@ -518,7 +540,7 @@ class NotificationService:
 
     # Event-Driven Notification Methods
 
-    async def handle_draft_pick_event(self, event_data: Dict[str, Any]) -> None:
+    async def handle_draft_pick_event(self, event_data: dict[str, Any]) -> None:
         """Handle draft pick event and send notifications."""
         league_id = event_data.get("league_id")
         team_id = event_data.get("team_id")
@@ -541,7 +563,7 @@ class NotificationService:
             exclude_user_ids=exclude_users,
         )
 
-    async def handle_trade_proposal_event(self, event_data: Dict[str, Any]) -> None:
+    async def handle_trade_proposal_event(self, event_data: dict[str, Any]) -> None:
         """Handle trade proposal event."""
         receiving_user_id = event_data.get("receiving_user_id")
         proposing_team_name = event_data.get("proposing_team_name", "Another team")
@@ -558,7 +580,7 @@ class NotificationService:
             priority=NotificationPriority.HIGH,
         )
 
-    async def handle_score_update_event(self, event_data: Dict[str, Any]) -> None:
+    async def handle_score_update_event(self, event_data: dict[str, Any]) -> None:
         """Handle player score update event."""
         league_id = event_data.get("league_id")
         player_name = event_data.get("player_name", "A player")
@@ -579,7 +601,7 @@ class NotificationService:
 
 
 # Global service instance
-_notification_service: Optional[NotificationService] = None
+_notification_service: NotificationService | None = None
 
 
 def get_notification_service(session: Session) -> NotificationService:
@@ -592,17 +614,13 @@ def get_notification_service(session: Session) -> NotificationService:
 
         # Try to get WebSocket manager
         if WebSocketConnectionManager:
-            try:
+            with contextlib.suppress(Exception):
                 websocket_manager = WebSocketConnectionManager()
-            except Exception:
-                pass
 
         # Try to get Redis publisher
         if RedisEventPublisher:
-            try:
+            with contextlib.suppress(Exception):
                 redis_publisher = RedisEventPublisher()
-            except Exception:
-                pass
 
         _notification_service = NotificationService(
             session=session,

@@ -11,7 +11,6 @@ Combines legacy functionality with domain architecture:
 - Provider fallback mechanisms
 """
 
-
 try:
     import aiohttp
 except ImportError:  # pragma: no cover - optional dependency not always installed
@@ -164,15 +163,12 @@ class SportsDataServiceError(Exception):
     """Base exception for sports data service errors"""
 
 
-
 class ProviderError(SportsDataServiceError):
     """External provider API errors"""
 
 
-
 class DataValidationError(SportsDataServiceError):
     """Data validation errors"""
-
 
 
 class SportsDataProvider(Protocol):
@@ -391,7 +387,7 @@ class SportsDataService:
     def __init__(
         self,
         primary_provider: DataProvider = DataProvider.ESPN,
-        providers: list[SportsDataProvider] = None,
+        providers: list[SportsDataProvider] | None = None,
         redis_pool: FantasyRedisPool | None = None,
         default_cache_ttl: int = 300,
         use_external_apis: bool = True,
@@ -418,7 +414,10 @@ class SportsDataService:
         elif use_external_apis:
             # Import here to avoid circular imports
             try:
-                from domains.sports.integrations.provider_factory import configure_sports_providers
+                from domains.sports.integrations.provider_factory import (
+                    configure_sports_providers,
+                )
+
                 self.providers = configure_sports_providers()
                 logger.info(f"Initialized {len(self.providers)} external API providers")
             except ImportError as e:
@@ -608,7 +607,7 @@ class SportsDataService:
         """Get player statistics."""
         with trace_fantasy_operation(
             tracer, "get_player_stats", player_id=player_id, season=season, week=week
-        ) as span:
+        ):
             cache_key = f"stats:{player_id}:{season}:{week or 'season'}"
 
             if use_cache and self.redis_pool:
@@ -1171,7 +1170,9 @@ class SportsDataService:
         try:
             from domains.sports.integrations.provider_factory import ProviderFactory
 
-            provider_health = await ProviderFactory.health_check_providers(self.providers)
+            provider_health = await ProviderFactory.health_check_providers(
+                self.providers
+            )
 
             cache_status = "disabled"
             if self.redis_pool:
@@ -1189,7 +1190,7 @@ class SportsDataService:
                 "provider_count": len(self.providers),
                 "primary_provider": self.primary_provider.value,
                 "use_external_apis": self.use_external_apis,
-                "cache_ttl_config": self.cache_ttl
+                "cache_ttl_config": self.cache_ttl,
             }
         except Exception as e:
             logger.error(f"Health check failed: {e}")
@@ -1197,7 +1198,7 @@ class SportsDataService:
                 "service_status": "unhealthy",
                 "error": str(e),
                 "provider_count": len(self.providers),
-                "primary_provider": self.primary_provider.value
+                "primary_provider": self.primary_provider.value,
             }
 
     async def get_provider_info(self) -> dict[str, Any]:
@@ -1213,7 +1214,7 @@ class SportsDataService:
             info = {
                 "index": i,
                 "type": type(provider).__name__,
-                "is_mock": isinstance(provider, MockSportsDataProvider)
+                "is_mock": isinstance(provider, MockSportsDataProvider),
             }
 
             # Add provider-specific info if available
@@ -1226,7 +1227,7 @@ class SportsDataService:
         return {
             "total_providers": len(self.providers),
             "primary_provider": self.primary_provider.value,
-            "providers": provider_info
+            "providers": provider_info,
         }
 
     def validate_player_data(self, data: dict[str, Any]) -> PlayerData:
@@ -1290,9 +1291,12 @@ class SportsDataService:
         base_url = self.provider_configs[DataProvider.ESPN]["base_url"]
         url = f"{base_url}/{sport.value}/athletes/{external_id}"
 
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
-        ) as session, session.get(url) as response:
+        async with (
+            aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+            ) as session,
+            session.get(url) as response,
+        ):
             if response.status == 404:
                 return None
             response.raise_for_status()
@@ -1329,9 +1333,12 @@ class SportsDataService:
         base_url = self.provider_configs[DataProvider.ESPN]["base_url"]
         url = f"{base_url}/{sport.value}/teams/{team_id}/roster"
 
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
-        ) as session, session.get(url) as response:
+        async with (
+            aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+            ) as session,
+            session.get(url) as response,
+        ):
             response.raise_for_status()
             data = await response.json()
 
@@ -1341,9 +1348,7 @@ class SportsDataService:
                     PlayerData(
                         external_id=str(athlete.get("id", "")),
                         name=athlete.get("displayName", ""),
-                        position=athlete.get("position", {}).get(
-                            "abbreviation", ""
-                        ),
+                        position=athlete.get("position", {}).get("abbreviation", ""),
                         team_id=team_id,
                         sport=sport.value,
                     )
@@ -1437,9 +1442,12 @@ class SportsDataService:
         date_str = game_date.strftime("%Y%m%d")
         url = f"{base_url}/{sport.value}/scoreboard?dates={date_str}"
 
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.session_timeout)
-        ) as session, session.get(url) as response:
+        async with (
+            aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.session_timeout)
+            ) as session,
+            session.get(url) as response,
+        ):
             response.raise_for_status()
             data = await response.json()
 

@@ -3,11 +3,11 @@ Generic sports API client with rate limiting and error handling.
 """
 
 import asyncio
+import logging
 import time
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import logging
+from typing import Any
 
 try:
     import httpx
@@ -25,29 +25,28 @@ logger = logging.getLogger(__name__)
 
 class APIError(Exception):
     """Base API error."""
-    pass
 
 
 class RateLimitError(APIError):
     """Rate limit exceeded."""
-    def __init__(self, retry_after: Optional[int] = None):
+
+    def __init__(self, retry_after: int | None = None):
         self.retry_after = retry_after
         super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds")
 
 
 class TimeoutError(APIError):
     """Request timeout."""
-    pass
 
 
 class AuthenticationError(APIError):
     """Authentication failed."""
-    pass
 
 
 @dataclass
 class RateLimitConfig:
     """Rate limiting configuration."""
+
     requests_per_minute: int = 60
     burst_limit: int = 10
     window_size: int = 60  # seconds
@@ -56,13 +55,14 @@ class RateLimitConfig:
 @dataclass
 class APIConfig:
     """API configuration."""
+
     base_url: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     timeout: int = 30
     max_retries: int = 3
     retry_delay: float = 1.0
-    rate_limit: Optional[RateLimitConfig] = None
-    headers: Optional[Dict[str, str]] = None
+    rate_limit: RateLimitConfig | None = None
+    headers: dict[str, str] | None = None
 
 
 class RateLimiter:
@@ -108,8 +108,10 @@ class SportsAPIClient:
 
     def __init__(self, config: APIConfig):
         self.config = config
-        self.rate_limiter = RateLimiter(config.rate_limit) if config.rate_limit else None
-        self.session: Optional[Any] = None
+        self.rate_limiter = (
+            RateLimiter(config.rate_limit) if config.rate_limit else None
+        )
+        self.session: Any | None = None
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -125,7 +127,7 @@ class SportsAPIClient:
         headers = {
             "User-Agent": "Ultimate Fantasy Platform/1.0",
             "Accept": "application/json",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         if self.config.headers:
@@ -138,23 +140,22 @@ class SportsAPIClient:
 
         if httpx:
             self.session = httpx.AsyncClient(
-                timeout=timeout_config,
-                headers=headers,
-                follow_redirects=True
+                timeout=timeout_config, headers=headers, follow_redirects=True
             )
         elif aiohttp:
             timeout = aiohttp.ClientTimeout(total=self.config.timeout)
-            self.session = aiohttp.ClientSession(
-                timeout=timeout,
-                headers=headers
-            )
+            self.session = aiohttp.ClientSession(timeout=timeout, headers=headers)
         else:
             raise RuntimeError("No HTTP client available (install httpx or aiohttp)")
 
     async def _close_session(self):
         """Close HTTP session."""
         if self.session:
-            await self.session.aclose() if hasattr(self.session, 'aclose') else await self.session.close()
+            (
+                await self.session.aclose()
+                if hasattr(self.session, "aclose")
+                else await self.session.close()
+            )
             self.session = None
 
     async def _wait_for_rate_limit(self):
@@ -171,10 +172,10 @@ class SportsAPIClient:
         self,
         method: str,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
         """Make HTTP request with retries and error handling."""
         if not self.session:
             await self._create_session()
@@ -187,17 +188,15 @@ class SportsAPIClient:
 
                 if httpx and isinstance(self.session, httpx.AsyncClient):
                     response = await self.session.request(
-                        method=method,
-                        url=url,
-                        params=params,
-                        json=data,
-                        **kwargs
+                        method=method, url=url, params=params, json=data, **kwargs
                     )
 
                     if response.status_code == 429:
                         retry_after = int(response.headers.get("Retry-After", 60))
                         if attempt < self.config.max_retries:
-                            logger.warning(f"Rate limited, retrying after {retry_after}s")
+                            logger.warning(
+                                f"Rate limited, retrying after {retry_after}s"
+                            )
                             await asyncio.sleep(retry_after)
                             continue
                         raise RateLimitError(retry_after)
@@ -210,17 +209,15 @@ class SportsAPIClient:
 
                 elif aiohttp and isinstance(self.session, aiohttp.ClientSession):
                     async with self.session.request(
-                        method=method,
-                        url=url,
-                        params=params,
-                        json=data,
-                        **kwargs
+                        method=method, url=url, params=params, json=data, **kwargs
                     ) as response:
 
                         if response.status == 429:
                             retry_after = int(response.headers.get("Retry-After", 60))
                             if attempt < self.config.max_retries:
-                                logger.warning(f"Rate limited, retrying after {retry_after}s")
+                                logger.warning(
+                                    f"Rate limited, retrying after {retry_after}s"
+                                )
                                 await asyncio.sleep(retry_after)
                                 continue
                             raise RateLimitError(retry_after)
@@ -231,18 +228,24 @@ class SportsAPIClient:
                         response.raise_for_status()
                         return await response.json()
 
-            except (httpx.TimeoutException if httpx else Exception,
-                    aiohttp.ServerTimeoutError if aiohttp else Exception) as e:
+            except (
+                httpx.TimeoutException if httpx else Exception,
+                aiohttp.ServerTimeoutError if aiohttp else Exception,
+            ) as e:
                 if attempt < self.config.max_retries:
-                    delay = self.config.retry_delay * (2 ** attempt)  # Exponential backoff
+                    delay = self.config.retry_delay * (
+                        2**attempt
+                    )  # Exponential backoff
                     logger.warning(f"Request timeout, retrying in {delay}s: {e}")
                     await asyncio.sleep(delay)
                     continue
-                raise TimeoutError(f"Request timed out after {self.config.max_retries} retries")
+                raise TimeoutError(
+                    f"Request timed out after {self.config.max_retries} retries"
+                )
 
             except Exception as e:
                 if attempt < self.config.max_retries:
-                    delay = self.config.retry_delay * (2 ** attempt)
+                    delay = self.config.retry_delay * (2**attempt)
                     logger.warning(f"Request failed, retrying in {delay}s: {e}")
                     await asyncio.sleep(delay)
                     continue
@@ -251,40 +254,38 @@ class SportsAPIClient:
         raise APIError("Maximum retries exceeded")
 
     async def get(
-        self,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
+        self, endpoint: str, params: dict[str, Any] | None = None, **kwargs
+    ) -> dict[str, Any]:
         """Make GET request."""
         return await self._make_request("GET", endpoint, params=params, **kwargs)
 
     async def post(
         self,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
         """Make POST request."""
-        return await self._make_request("POST", endpoint, params=params, data=data, **kwargs)
+        return await self._make_request(
+            "POST", endpoint, params=params, data=data, **kwargs
+        )
 
     async def put(
         self,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
         """Make PUT request."""
-        return await self._make_request("PUT", endpoint, params=params, data=data, **kwargs)
+        return await self._make_request(
+            "PUT", endpoint, params=params, data=data, **kwargs
+        )
 
     async def delete(
-        self,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
+        self, endpoint: str, params: dict[str, Any] | None = None, **kwargs
+    ) -> dict[str, Any]:
         """Make DELETE request."""
         return await self._make_request("DELETE", endpoint, params=params, **kwargs)
 
@@ -308,10 +309,12 @@ class CachedAPIClient(SportsAPIClient):
 
     def __init__(self, config: APIConfig, cache_ttl: int = 300):
         super().__init__(config)
-        self.cache: Dict[str, Dict[str, Any]] = {}
+        self.cache: dict[str, dict[str, Any]] = {}
         self.cache_ttl = cache_ttl
 
-    def _get_cache_key(self, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None) -> str:
+    def _get_cache_key(
+        self, method: str, endpoint: str, params: dict[str, Any] | None = None
+    ) -> str:
         """Generate cache key for request."""
         key_parts = [method, endpoint]
         if params:
@@ -327,11 +330,11 @@ class CachedAPIClient(SportsAPIClient):
         self,
         method: str,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
         use_cache: bool = True,
-        **kwargs
-    ) -> Dict[str, Any]:
+        **kwargs,
+    ) -> dict[str, Any]:
         """Make request with caching for GET requests."""
 
         # Only cache GET requests
@@ -353,30 +356,30 @@ class CachedAPIClient(SportsAPIClient):
         # Cache GET responses
         if method == "GET" and use_cache:
             cache_key = self._get_cache_key(method, endpoint, params)
-            self.cache[cache_key] = {
-                "data": response,
-                "cached_at": datetime.utcnow()
-            }
+            self.cache[cache_key] = {"data": response, "cached_at": datetime.utcnow()}
             logger.debug(f"Cached response for {cache_key}")
 
         return response
 
-    def clear_cache(self, pattern: Optional[str] = None):
+    def clear_cache(self, pattern: str | None = None):
         """Clear cache entries matching pattern."""
         if pattern is None:
             self.cache.clear()
             logger.info("Cleared all cache entries")
         else:
-            keys_to_remove = [key for key in self.cache.keys() if pattern in key]
+            keys_to_remove = [key for key in self.cache if pattern in key]
             for key in keys_to_remove:
                 del self.cache[key]
-            logger.info(f"Cleared {len(keys_to_remove)} cache entries matching '{pattern}'")
+            logger.info(
+                f"Cleared {len(keys_to_remove)} cache entries matching '{pattern}'"
+            )
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
-        now = datetime.utcnow()
+        datetime.utcnow()
         valid_entries = sum(
-            1 for entry in self.cache.values()
+            1
+            for entry in self.cache.values()
             if self._is_cache_valid(entry["cached_at"])
         )
 
@@ -384,5 +387,5 @@ class CachedAPIClient(SportsAPIClient):
             "total_entries": len(self.cache),
             "valid_entries": valid_entries,
             "expired_entries": len(self.cache) - valid_entries,
-            "cache_ttl": self.cache_ttl
+            "cache_ttl": self.cache_ttl,
         }

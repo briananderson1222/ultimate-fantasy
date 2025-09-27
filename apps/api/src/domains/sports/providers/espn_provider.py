@@ -14,11 +14,11 @@ Provides real ESPN API integration with:
 import asyncio
 import logging
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
+from typing import Any
 
 try:
     import aiohttp
+
     AIOHTTP_AVAILABLE = True
 except ImportError:
     aiohttp = None
@@ -26,6 +26,7 @@ except ImportError:
 
 try:
     import httpx
+
     HTTPX_AVAILABLE = True
 except ImportError:
     httpx = None
@@ -35,6 +36,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -42,12 +44,10 @@ logger = get_logger(__name__)
 
 class ESPNProviderError(Exception):
     """ESPN API provider errors."""
-    pass
 
 
 class RateLimitError(ESPNProviderError):
     """Rate limit exceeded."""
-    pass
 
 
 class ESPNAPIProvider:
@@ -66,7 +66,7 @@ class ESPNAPIProvider:
         self.rate_limit_per_minute = rate_limit_per_minute
 
         # Rate limiting
-        self.request_times: List[datetime] = []
+        self.request_times: list[datetime] = []
 
         # Sport mappings
         self.sport_mappings = {
@@ -79,10 +79,10 @@ class ESPNAPIProvider:
     async def get_players(
         self,
         sport: str = "nfl",
-        position: Optional[str] = None,
-        team: Optional[str] = None,
+        position: str | None = None,
+        team: str | None = None,
         active_only: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get players data from ESPN API.
 
@@ -107,11 +107,8 @@ class ESPNAPIProvider:
             return await self._get_all_players(sport_path, position, active_only)
 
     async def get_player_stats(
-        self,
-        player_id: str,
-        season: str,
-        week: Optional[int] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, player_id: str, season: str, week: int | None = None
+    ) -> dict[str, Any] | None:
         """
         Get player statistics from ESPN.
 
@@ -138,18 +135,17 @@ class ESPNAPIProvider:
                 return None
 
             # Normalize stats format
-            return self._normalize_player_stats(data["statistics"], player_id, season, week)
+            return self._normalize_player_stats(
+                data["statistics"], player_id, season, week
+            )
 
         except Exception as e:
             logger.warning(f"Failed to get player stats for {player_id}: {e}")
             return None
 
     async def get_player_projections(
-        self,
-        player_id: str,
-        week: int,
-        season: str
-    ) -> Optional[Dict[str, Any]]:
+        self, player_id: str, week: int, season: str
+    ) -> dict[str, Any] | None:
         """
         Get player projections (ESPN doesn't provide projections directly).
 
@@ -167,10 +163,8 @@ class ESPNAPIProvider:
         return None
 
     async def get_injury_report(
-        self,
-        player_id: Optional[str] = None,
-        team: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, player_id: str | None = None, team: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Get injury reports from ESPN.
 
@@ -200,7 +194,7 @@ class ESPNAPIProvider:
 
         return injuries
 
-    async def get_teams(self, sport: str = "nfl") -> List[Dict[str, Any]]:
+    async def get_teams(self, sport: str = "nfl") -> list[dict[str, Any]]:
         """
         Get teams data from ESPN.
 
@@ -237,10 +231,10 @@ class ESPNAPIProvider:
     async def get_schedule(
         self,
         season: str,
-        week: Optional[int] = None,
-        team: Optional[str] = None,
+        week: int | None = None,
+        team: str | None = None,
         sport: str = "nfl",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get schedule data from ESPN.
 
@@ -289,9 +283,9 @@ class ESPNAPIProvider:
     async def get_scores(
         self,
         sport: str = "nfl",
-        date: Optional[date] = None,
+        date: date | None = None,
         live_only: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get live scores and game data from ESPN.
 
@@ -353,10 +347,8 @@ class ESPNAPIProvider:
         self.request_times.append(now)
 
     async def _make_request(
-        self,
-        url: str,
-        params: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        self, url: str, params: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """
         Make HTTP request to ESPN API with retries.
 
@@ -371,7 +363,9 @@ class ESPNAPIProvider:
             ESPNProviderError: On request failure
         """
         if not AIOHTTP_AVAILABLE and not HTTPX_AVAILABLE:
-            raise ESPNProviderError("No HTTP client available (aiohttp or httpx required)")
+            raise ESPNProviderError(
+                "No HTTP client available (aiohttp or httpx required)"
+            )
 
         headers = {
             "User-Agent": "Ultimate Fantasy Platform/1.0",
@@ -387,20 +381,21 @@ class ESPNAPIProvider:
 
             except aiohttp.ClientError if AIOHTTP_AVAILABLE else Exception as e:
                 if attempt == self.max_retries - 1:
-                    raise ESPNProviderError(f"Request failed after {self.max_retries} attempts: {e}")
+                    raise ESPNProviderError(
+                        f"Request failed after {self.max_retries} attempts: {e}"
+                    )
 
-                wait_time = 2 ** attempt  # Exponential backoff
-                logger.warning(f"Request failed (attempt {attempt + 1}), retrying in {wait_time}s: {e}")
+                wait_time = 2**attempt  # Exponential backoff
+                logger.warning(
+                    f"Request failed (attempt {attempt + 1}), retrying in {wait_time}s: {e}"
+                )
                 await asyncio.sleep(wait_time)
 
         raise ESPNProviderError("Request failed after all retries")
 
     async def _make_aiohttp_request(
-        self,
-        url: str,
-        params: Optional[Dict[str, str]],
-        headers: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, url: str, params: dict[str, str] | None, headers: dict[str, str]
+    ) -> dict[str, Any]:
         """Make request using aiohttp."""
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -414,11 +409,8 @@ class ESPNAPIProvider:
                 return await response.json()
 
     async def _make_httpx_request(
-        self,
-        url: str,
-        params: Optional[Dict[str, str]],
-        headers: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, url: str, params: dict[str, str] | None, headers: dict[str, str]
+    ) -> dict[str, Any]:
         """Make request using httpx."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(url, params=params, headers=headers)
@@ -432,12 +424,8 @@ class ESPNAPIProvider:
             return response.json()
 
     async def _get_team_roster(
-        self,
-        sport_path: str,
-        team: str,
-        position: Optional[str],
-        active_only: bool
-    ) -> List[Dict[str, Any]]:
+        self, sport_path: str, team: str, position: str | None, active_only: bool
+    ) -> list[dict[str, Any]]:
         """Get roster for specific team."""
         url = f"{self.base_url}/{sport_path}/teams/{team}/roster"
 
@@ -467,14 +455,11 @@ class ESPNAPIProvider:
             return []
 
     async def _get_all_players(
-        self,
-        sport_path: str,
-        position: Optional[str],
-        active_only: bool
-    ) -> List[Dict[str, Any]]:
+        self, sport_path: str, position: str | None, active_only: bool
+    ) -> list[dict[str, Any]]:
         """Get all players by fetching all team rosters."""
         # First get all teams
-        teams = await self.get_teams(sport_path.split('/')[1])
+        teams = await self.get_teams(sport_path.split("/")[1])
 
         all_players = []
 
@@ -482,7 +467,9 @@ class ESPNAPIProvider:
         for team in teams:
             team_id = team.get("abbreviation") or team.get("team_id")
             if team_id:
-                roster = await self._get_team_roster(sport_path, team_id, position, active_only)
+                roster = await self._get_team_roster(
+                    sport_path, team_id, position, active_only
+                )
                 all_players.extend(roster)
 
                 # Small delay to avoid overwhelming API
@@ -490,7 +477,7 @@ class ESPNAPIProvider:
 
         return all_players
 
-    async def _get_player_injury_status(self, player_id: str) -> Optional[Dict[str, Any]]:
+    async def _get_player_injury_status(self, player_id: str) -> dict[str, Any] | None:
         """Get injury status for specific player."""
         try:
             url = f"{self.base_url}/athletes/{player_id}"
@@ -518,14 +505,16 @@ class ESPNAPIProvider:
             logger.warning(f"Failed to get injury status for player {player_id}: {e}")
             return None
 
-    async def _get_team_injury_report(self, team: str) -> List[Dict[str, Any]]:
+    async def _get_team_injury_report(self, team: str) -> list[dict[str, Any]]:
         """Get injury report for team."""
         # ESPN doesn't have a dedicated injury report endpoint
         # Would need to check each player individually
         logger.debug(f"Team injury reports not directly available from ESPN for {team}")
         return []
 
-    def _normalize_player_data(self, athlete: Dict[str, Any], team_id: str = "") -> Dict[str, Any]:
+    def _normalize_player_data(
+        self, athlete: dict[str, Any], team_id: str = ""
+    ) -> dict[str, Any]:
         """Normalize ESPN athlete data to standard format."""
         position_data = athlete.get("position", {})
 
@@ -545,7 +534,7 @@ class ESPNAPIProvider:
             "experience": athlete.get("experience", {}).get("years"),
         }
 
-    def _normalize_team_data(self, team: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_team_data(self, team: dict[str, Any]) -> dict[str, Any]:
         """Normalize ESPN team data to standard format."""
         return {
             "team_id": team.get("abbreviation", ""),
@@ -554,11 +543,17 @@ class ESPNAPIProvider:
             "abbreviation": team.get("abbreviation", ""),
             "conference": team.get("groups", {}).get("parent", {}).get("name"),
             "division": team.get("groups", {}).get("name"),
-            "logo_url": team.get("logos", [{}])[0].get("href") if team.get("logos") else None,
-            "colors": [color.get("hex") for color in team.get("colors", []) if color.get("hex")],
+            "logo_url": (
+                team.get("logos", [{}])[0].get("href") if team.get("logos") else None
+            ),
+            "colors": [
+                color.get("hex") for color in team.get("colors", []) if color.get("hex")
+            ],
         }
 
-    def _normalize_game_data(self, event: Dict[str, Any], include_scores: bool = False) -> Dict[str, Any]:
+    def _normalize_game_data(
+        self, event: dict[str, Any], include_scores: bool = False
+    ) -> dict[str, Any]:
         """Normalize ESPN event data to standard game format."""
         competition = event.get("competitions", [{}])[0]
         competitors = competition.get("competitors", [])
@@ -575,29 +570,29 @@ class ESPNAPIProvider:
             "home_team": home_team.get("team", {}).get("abbreviation", ""),
             "away_team": away_team.get("team", {}).get("abbreviation", ""),
             "scheduled_at": event.get("date", ""),
-            "status": self._normalize_game_status(status.get("type", {}).get("name", "")),
+            "status": self._normalize_game_status(
+                status.get("type", {}).get("name", "")
+            ),
             "week": competition.get("week", {}).get("number"),
             "season": event.get("season", {}).get("year"),
         }
 
         if include_scores:
-            game_data.update({
-                "home_score": int(home_team.get("score", 0)),
-                "away_score": int(away_team.get("score", 0)),
-                "period": status.get("period"),
-                "time_remaining": status.get("displayClock"),
-                "is_final": status.get("type", {}).get("completed", False),
-            })
+            game_data.update(
+                {
+                    "home_score": int(home_team.get("score", 0)),
+                    "away_score": int(away_team.get("score", 0)),
+                    "period": status.get("period"),
+                    "time_remaining": status.get("displayClock"),
+                    "is_final": status.get("type", {}).get("completed", False),
+                }
+            )
 
         return game_data
 
     def _normalize_player_stats(
-        self,
-        stats: Dict[str, Any],
-        player_id: str,
-        season: str,
-        week: Optional[int]
-    ) -> Dict[str, Any]:
+        self, stats: dict[str, Any], player_id: str, season: str, week: int | None
+    ) -> dict[str, Any]:
         """Normalize ESPN player statistics."""
         return {
             "player_id": player_id,
@@ -610,12 +605,12 @@ class ESPNAPIProvider:
             "updated_at": datetime.utcnow().isoformat(),
         }
 
-    def _extract_sport_from_athlete(self, athlete: Dict[str, Any]) -> str:
+    def _extract_sport_from_athlete(self, athlete: dict[str, Any]) -> str:
         """Extract sport from athlete data."""
         # ESPN athlete data doesn't always include sport directly
         return "nfl"  # Default, would need sport context
 
-    def _extract_sport_from_event(self, event: Dict[str, Any]) -> str:
+    def _extract_sport_from_event(self, event: dict[str, Any]) -> str:
         """Extract sport from event data."""
         # ESPN event data includes league info
         league = event.get("league", {})
@@ -630,7 +625,7 @@ class ESPNAPIProvider:
 
         return sport_mapping.get(abbreviation, "nfl")
 
-    def _extract_injury_status(self, athlete: Dict[str, Any]) -> str:
+    def _extract_injury_status(self, athlete: dict[str, Any]) -> str:
         """Extract injury status from athlete data."""
         injury = athlete.get("injury", {})
         if not injury:
@@ -662,11 +657,11 @@ class ESPNAPIProvider:
 
         return status_mapping.get(espn_status, "scheduled")
 
-    def _game_involves_team(self, game: Dict[str, Any], team: str) -> bool:
+    def _game_involves_team(self, game: dict[str, Any], team: str) -> bool:
         """Check if game involves specific team."""
         return game.get("home_team") == team or game.get("away_team") == team
 
-    def _extract_relevant_stats(self, stats: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_relevant_stats(self, stats: dict[str, Any]) -> dict[str, Any]:
         """Extract relevant fantasy statistics."""
         # This would map ESPN stat names to our standard names
         # ESPN stats structure varies by sport
@@ -681,7 +676,7 @@ class ESPNAPIProvider:
             "receptions": stats.get("receptions", 0),
         }
 
-    def _calculate_fantasy_points(self, stats: Dict[str, Any]) -> float:
+    def _calculate_fantasy_points(self, stats: dict[str, Any]) -> float:
         """Calculate fantasy points from stats (simplified scoring)."""
         points = 0.0
 

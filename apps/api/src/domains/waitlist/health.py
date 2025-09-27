@@ -101,10 +101,18 @@ async def waitlist_detailed_health_check(
         from infrastructure.database.sql_utils import build_health_query
 
         recent_joins = db.execute(
-            text(build_health_query(
-                "waitlists",
-                time_conditions=[{"column": "created_at", "operator": ">", "interval": "24 hours"}]
-            ))
+            text(
+                build_health_query(
+                    "waitlists",
+                    time_conditions=[
+                        {
+                            "column": "created_at",
+                            "operator": ">",
+                            "interval": "24 hours",
+                        }
+                    ],
+                )
+            )
         ).scalar()
 
         detailed_status["checks"]["recent_activity"] = {
@@ -114,11 +122,19 @@ async def waitlist_detailed_health_check(
 
         # Check for expired invitations
         expired_invitations = db.execute(
-            text(build_health_query(
-                "waitlists",
-                where_conditions=["status = 'invited'"],
-                time_conditions=[{"column": "created_at", "operator": "<", "interval": "72 hours"}]
-            ))
+            text(
+                build_health_query(
+                    "waitlists",
+                    where_conditions=["status = 'invited'"],
+                    time_conditions=[
+                        {
+                            "column": "created_at",
+                            "operator": "<",
+                            "interval": "72 hours",
+                        }
+                    ],
+                )
+            )
         ).scalar()
 
         detailed_status["checks"]["expired_invitations"] = {

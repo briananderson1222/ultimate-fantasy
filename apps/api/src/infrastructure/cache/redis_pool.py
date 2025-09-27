@@ -220,9 +220,7 @@ class FantasyRedisPool:
             key = f"{key}:{suffix}"
         return key
 
-    async def get(
-        self, prefix: str, identifier: str, suffix: str = ""
-    ) -> Any | None:
+    async def get(self, prefix: str, identifier: str, suffix: str = "") -> Any | None:
         """
         Get value from cache.
 

@@ -10,8 +10,7 @@ Provides comprehensive game schedule information with:
 - Playoff and tournament schedules
 """
 
-from datetime import date, datetime
-from typing import List, Optional
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -26,6 +25,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -37,61 +37,61 @@ class GameResponse(BaseModel):
     """Game response model."""
 
     game_id: str
-    external_id: Optional[str] = None
+    external_id: str | None = None
     sport: str
     home_team: str
     away_team: str
     scheduled_at: str
     status: str = "scheduled"  # scheduled, in_progress, final, postponed, cancelled
-    week: Optional[int] = None
-    season: Optional[str] = None
+    week: int | None = None
+    season: str | None = None
 
     # Score information (if available)
-    home_score: Optional[int] = None
-    away_score: Optional[int] = None
+    home_score: int | None = None
+    away_score: int | None = None
 
     # Game state information
-    period: Optional[int] = None
-    time_remaining: Optional[str] = None
+    period: int | None = None
+    time_remaining: str | None = None
     is_final: bool = False
 
     # Additional information
-    venue: Optional[str] = None
-    attendance: Optional[int] = None
-    weather: Optional[str] = None
-    broadcast: Optional[str] = None
-    officials: List[str] = Field(default_factory=list)
+    venue: str | None = None
+    attendance: int | None = None
+    weather: str | None = None
+    broadcast: str | None = None
+    officials: list[str] = Field(default_factory=list)
 
     # Metadata
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class ScheduleResponse(BaseModel):
     """Schedule response model."""
 
-    items: List[GameResponse]
+    items: list[GameResponse]
     total: int
     sport: str
-    season: Optional[str] = None
-    week: Optional[int] = None
-    date_range: Optional[dict] = None
-    teams_involved: List[str] = Field(default_factory=list)
+    season: str | None = None
+    week: int | None = None
+    date_range: dict | None = None
+    teams_involved: list[str] = Field(default_factory=list)
 
 
 @router.get("/schedule", response_model=StandardResponse[ScheduleResponse])
 async def get_schedule(
     sport: str = Query(..., description="Sport type", regex="^(mlb|nfl|wnba)$"),
-    season: Optional[str] = Query(None, description="Season year (e.g., 2024)"),
-    week: Optional[int] = Query(None, description="Specific week number"),
-    team: Optional[str] = Query(None, description="Filter by team"),
-    date: Optional[date] = Query(None, description="Specific date (YYYY-MM-DD)"),
-    start_date: Optional[date] = Query(None, description="Start date for range"),
-    end_date: Optional[date] = Query(None, description="End date for range"),
-    status: Optional[str] = Query(
+    season: str | None = Query(None, description="Season year (e.g., 2024)"),
+    week: int | None = Query(None, description="Specific week number"),
+    team: str | None = Query(None, description="Filter by team"),
+    date: date | None = Query(None, description="Specific date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date for range"),
+    end_date: date | None = Query(None, description="End date for range"),
+    status: str | None = Query(
         None,
         description="Filter by game status",
-        regex="^(scheduled|in_progress|final|postponed|cancelled)$"
+        regex="^(scheduled|in_progress|final|postponed|cancelled)$",
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -112,7 +112,7 @@ async def get_schedule(
     """
     try:
         logger.info(
-            f"Schedule request",
+            "Schedule request",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
@@ -120,17 +120,14 @@ async def get_schedule(
                 "week": week,
                 "team": team,
                 "date": str(date) if date else None,
-            }
+            },
         )
 
         # Get sports data service
         sports_service = await get_sports_data_service()
 
         # Build parameters for schedule request
-        schedule_params = {
-            "sport": sport.upper(),
-            "use_cache": True
-        }
+        schedule_params = {"sport": sport.upper(), "use_cache": True}
 
         if season:
             schedule_params["season"] = season
@@ -153,7 +150,7 @@ async def get_schedule(
                     season=season,
                     week=week,
                 ),
-                message="No games found matching the criteria"
+                message="No games found matching the criteria",
             )
 
         # Apply additional filters
@@ -163,27 +160,31 @@ async def get_schedule(
         if date:
             target_date = date.isoformat()
             filtered_games = [
-                game for game in filtered_games
+                game
+                for game in filtered_games
                 if game.get("scheduled_at", "").startswith(target_date)
             ]
         elif start_date or end_date:
             if start_date:
                 start_str = start_date.isoformat()
                 filtered_games = [
-                    game for game in filtered_games
+                    game
+                    for game in filtered_games
                     if game.get("scheduled_at", "") >= start_str
                 ]
             if end_date:
                 end_str = end_date.isoformat()
                 filtered_games = [
-                    game for game in filtered_games
+                    game
+                    for game in filtered_games
                     if game.get("scheduled_at", "") <= end_str
                 ]
 
         # Status filtering
         if status:
             filtered_games = [
-                game for game in filtered_games
+                game
+                for game in filtered_games
                 if game.get("status", "").lower() == status.lower()
             ]
 
@@ -234,12 +235,14 @@ async def get_schedule(
         # Build date range info
         date_range = None
         if game_responses:
-            dates = [g.scheduled_at.split('T')[0] for g in game_responses if g.scheduled_at]
+            dates = [
+                g.scheduled_at.split("T")[0] for g in game_responses if g.scheduled_at
+            ]
             if dates:
                 date_range = {
                     "start_date": min(dates),
                     "end_date": max(dates),
-                    "total_days": len(set(dates))
+                    "total_days": len(set(dates)),
                 }
 
         response_data = ScheduleResponse(
@@ -249,38 +252,38 @@ async def get_schedule(
             season=season,
             week=week,
             date_range=date_range,
-            teams_involved=sorted(list(teams_involved)),
+            teams_involved=sorted(teams_involved),
         )
 
         logger.info(
-            f"Schedule request completed",
+            "Schedule request completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
                 "games_count": len(game_responses),
                 "teams_count": len(teams_involved),
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=response_data,
-            message=f"Found {len(game_responses)} games for {sport.upper()}"
+            message=f"Found {len(game_responses)} games for {sport.upper()}",
         )
 
     except Exception as e:
         logger.error(
-            f"Schedule request failed",
+            "Schedule request failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "sport": sport,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve schedule. Please try again later."
+            detail="Failed to retrieve schedule. Please try again later.",
         )
 
 
@@ -299,11 +302,11 @@ async def get_game_details(
     """
     try:
         logger.info(
-            f"Game details request",
+            "Game details request",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
-            }
+            },
         )
 
         # Get sports data service
@@ -313,13 +316,10 @@ async def get_game_details(
         game_data = None
         for sport in ["nfl", "mlb", "wnba"]:
             schedule = await sports_service.get_schedule(
-                sport=sport.upper(),
-                season="2024",  # Current season
-                use_cache=True
+                sport=sport.upper(), season="2024", use_cache=True  # Current season
             )
             game_data = next(
-                (game for game in schedule if game.get("game_id") == game_id),
-                None
+                (game for game in schedule if game.get("game_id") == game_id), None
             )
             if game_data:
                 game_data["sport"] = sport
@@ -327,8 +327,7 @@ async def get_game_details(
 
         if not game_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"Game with ID {game_id} not found"
+                status_code=404, detail=f"Game with ID {game_id} not found"
             )
 
         # Convert to response model
@@ -357,45 +356,47 @@ async def get_game_details(
         )
 
         logger.info(
-            f"Game details completed",
+            "Game details completed",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "home_team": game_response.home_team,
                 "away_team": game_response.away_team,
                 "sport": game_response.sport,
-            }
+            },
         )
 
         return StandardResponse(
             success=True,
             data=game_response,
-            message=f"Game details for {game_response.away_team} @ {game_response.home_team}"
+            message=f"Game details for {game_response.away_team} @ {game_response.home_team}",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f"Game details failed",
+            "Game details failed",
             extra={
                 "user_id": str(current_user.user_id),
                 "game_id": game_id,
                 "error": str(e),
-            }
+            },
         )
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve game details. Please try again later."
+            detail="Failed to retrieve game details. Please try again later.",
         )
 
 
-@router.get("/schedule/week/{sport}/{week}", response_model=StandardResponse[ScheduleResponse])
+@router.get(
+    "/schedule/week/{sport}/{week}", response_model=StandardResponse[ScheduleResponse]
+)
 async def get_week_schedule(
     sport: str,
     week: int,
-    season: Optional[str] = Query("2024", description="Season year"),
+    season: str | None = Query("2024", description="Season year"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StandardResponse[ScheduleResponse]:

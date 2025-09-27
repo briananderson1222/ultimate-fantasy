@@ -7,35 +7,35 @@ capabilities with real-time and historical data aggregation.
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass, field
-from enum import Enum
 import statistics
-from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, asc, and_, or_
 
 try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger
 
-from domains.users.models.user_team import UserTeam
-from domains.leagues.models.league import League
-from domains.lineups.models.lineup import Lineup
 from domains.scoring.models.scoring import GameScore
-from domains.players.models.player import Player
-from domains.trading.models.trade import Trade
+from domains.users.models.user_team import UserTeam
 from domains.waivers.models.waiver import WaiverClaim
+
+from domains.lineups.models.lineup import Lineup
+from domains.trading.models.trade import Trade
 
 logger = get_logger(__name__)
 
 
 class MetricType(str, Enum):
     """Types of metrics that can be aggregated."""
+
     SCORING = "scoring"
     EFFICIENCY = "efficiency"
     CONSISTENCY = "consistency"
@@ -47,6 +47,7 @@ class MetricType(str, Enum):
 
 class AggregationPeriod(str, Enum):
     """Time periods for metric aggregation."""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -56,6 +57,7 @@ class AggregationPeriod(str, Enum):
 
 class MetricScope(str, Enum):
     """Scope of metric calculation."""
+
     USER = "user"
     TEAM = "team"
     LEAGUE = "league"
@@ -65,23 +67,25 @@ class MetricScope(str, Enum):
 @dataclass
 class MetricValue:
     """Individual metric value with metadata."""
+
     metric_name: str
-    value: Union[float, int, str]
+    value: float | int | str
     timestamp: datetime
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class AggregatedMetric:
     """Aggregated metric with statistical summary."""
+
     metric_name: str
     scope: MetricScope
     period: AggregationPeriod
 
     # Statistical values
     current_value: float
-    previous_value: Optional[float] = None
+    previous_value: float | None = None
     average_value: float = 0.0
     median_value: float = 0.0
     min_value: float = 0.0
@@ -95,38 +99,39 @@ class AggregatedMetric:
 
     # Benchmarking
     percentile_rank: float = 50.0
-    league_average: Optional[float] = None
-    league_median: Optional[float] = None
+    league_average: float | None = None
+    league_median: float | None = None
 
     # Metadata
     sample_size: int = 0
     data_quality: float = 1.0
     last_updated: datetime = field(default_factory=datetime.utcnow)
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
 class PerformanceMetrics:
     """Comprehensive performance metrics collection."""
+
     user_team_id: str
     league_id: str
     period: AggregationPeriod
     generated_at: datetime
 
     # Core performance metrics
-    scoring_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
-    efficiency_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
-    consistency_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
-    trading_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
-    waiver_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
-    lineup_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
-    competitive_metrics: Dict[str, AggregatedMetric] = field(default_factory=dict)
+    scoring_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
+    efficiency_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
+    consistency_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
+    trading_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
+    waiver_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
+    lineup_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
+    competitive_metrics: dict[str, AggregatedMetric] = field(default_factory=dict)
 
     # Summary indicators
     overall_performance_score: float = 0.0
     performance_grade: str = "B"
-    strengths: List[str] = field(default_factory=list)
-    weaknesses: List[str] = field(default_factory=list)
+    strengths: list[str] = field(default_factory=list)
+    weaknesses: list[str] = field(default_factory=list)
 
 
 class PerformanceMetricsAggregator:
@@ -140,7 +145,7 @@ class PerformanceMetricsAggregator:
         self,
         user_team_id: str,
         period: AggregationPeriod = AggregationPeriod.WEEKLY,
-        include_benchmarks: bool = True
+        include_benchmarks: bool = True,
     ) -> PerformanceMetrics:
         """
         Aggregate comprehensive performance metrics for a team.
@@ -154,21 +159,25 @@ class PerformanceMetricsAggregator:
             PerformanceMetrics object with all aggregated data
         """
         try:
-            user_team = self.db.query(UserTeam).filter(
-                UserTeam.user_team_id == user_team_id
-            ).first()
+            user_team = (
+                self.db.query(UserTeam)
+                .filter(UserTeam.user_team_id == user_team_id)
+                .first()
+            )
 
             if not user_team:
                 raise ValueError(f"User team {user_team_id} not found")
 
-            self.logger.info(f"Aggregating metrics for team {user_team_id}, period: {period.value}")
+            self.logger.info(
+                f"Aggregating metrics for team {user_team_id}, period: {period.value}"
+            )
 
             # Initialize metrics collection
             metrics = PerformanceMetrics(
                 user_team_id=user_team_id,
                 league_id=user_team.league_id,
                 period=period,
-                generated_at=datetime.utcnow()
+                generated_at=datetime.utcnow(),
             )
 
             # Aggregate different metric categories in parallel
@@ -185,13 +194,27 @@ class PerformanceMetricsAggregator:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Process results
-            metrics.scoring_metrics = results[0] if not isinstance(results[0], Exception) else {}
-            metrics.efficiency_metrics = results[1] if not isinstance(results[1], Exception) else {}
-            metrics.consistency_metrics = results[2] if not isinstance(results[2], Exception) else {}
-            metrics.trading_metrics = results[3] if not isinstance(results[3], Exception) else {}
-            metrics.waiver_metrics = results[4] if not isinstance(results[4], Exception) else {}
-            metrics.lineup_metrics = results[5] if not isinstance(results[5], Exception) else {}
-            metrics.competitive_metrics = results[6] if not isinstance(results[6], Exception) else {}
+            metrics.scoring_metrics = (
+                results[0] if not isinstance(results[0], Exception) else {}
+            )
+            metrics.efficiency_metrics = (
+                results[1] if not isinstance(results[1], Exception) else {}
+            )
+            metrics.consistency_metrics = (
+                results[2] if not isinstance(results[2], Exception) else {}
+            )
+            metrics.trading_metrics = (
+                results[3] if not isinstance(results[3], Exception) else {}
+            )
+            metrics.waiver_metrics = (
+                results[4] if not isinstance(results[4], Exception) else {}
+            )
+            metrics.lineup_metrics = (
+                results[5] if not isinstance(results[5], Exception) else {}
+            )
+            metrics.competitive_metrics = (
+                results[6] if not isinstance(results[6], Exception) else {}
+            )
 
             # Add league benchmarking if requested
             if include_benchmarks:
@@ -199,10 +222,14 @@ class PerformanceMetricsAggregator:
 
             # Calculate overall performance score
             metrics.overall_performance_score = self._calculate_overall_score(metrics)
-            metrics.performance_grade = self._calculate_performance_grade(metrics.overall_performance_score)
+            metrics.performance_grade = self._calculate_performance_grade(
+                metrics.overall_performance_score
+            )
 
             # Identify strengths and weaknesses
-            metrics.strengths, metrics.weaknesses = self._identify_strengths_weaknesses(metrics)
+            metrics.strengths, metrics.weaknesses = self._identify_strengths_weaknesses(
+                metrics
+            )
 
             self.logger.info(
                 f"Metrics aggregation completed for team {user_team_id}",
@@ -210,16 +237,18 @@ class PerformanceMetricsAggregator:
                     "user_team_id": user_team_id,
                     "overall_score": metrics.overall_performance_score,
                     "grade": metrics.performance_grade,
-                    "metrics_count": sum([
-                        len(metrics.scoring_metrics),
-                        len(metrics.efficiency_metrics),
-                        len(metrics.consistency_metrics),
-                        len(metrics.trading_metrics),
-                        len(metrics.waiver_metrics),
-                        len(metrics.lineup_metrics),
-                        len(metrics.competitive_metrics)
-                    ])
-                }
+                    "metrics_count": sum(
+                        [
+                            len(metrics.scoring_metrics),
+                            len(metrics.efficiency_metrics),
+                            len(metrics.consistency_metrics),
+                            len(metrics.trading_metrics),
+                            len(metrics.waiver_metrics),
+                            len(metrics.lineup_metrics),
+                            len(metrics.competitive_metrics),
+                        ]
+                    ),
+                },
             )
 
             return metrics
@@ -229,10 +258,8 @@ class PerformanceMetricsAggregator:
             raise
 
     async def _aggregate_scoring_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate scoring performance metrics."""
         try:
             metrics = {}
@@ -245,7 +272,9 @@ class PerformanceMetricsAggregator:
             # Apply period filter
             period_filter = self._get_period_filter(period)
             if period_filter:
-                scoring_query = scoring_query.filter(GameScore.created_at >= period_filter)
+                scoring_query = scoring_query.filter(
+                    GameScore.created_at >= period_filter
+                )
 
             scores = scoring_query.order_by(GameScore.created_at.desc()).all()
 
@@ -265,14 +294,22 @@ class PerformanceMetricsAggregator:
                 median_value=statistics.median(total_points),
                 min_value=min(total_points),
                 max_value=max(total_points),
-                std_deviation=statistics.stdev(total_points) if len(total_points) > 1 else 0.0,
+                std_deviation=(
+                    statistics.stdev(total_points) if len(total_points) > 1 else 0.0
+                ),
                 sample_size=len(total_points),
-                tags=["scoring", "performance"]
+                tags=["scoring", "performance"],
             )
 
             # High-score games (above 90th percentile)
-            high_score_threshold = statistics.quantiles(total_points, n=10)[8] if len(total_points) >= 10 else max(total_points)
-            high_score_count = sum(1 for score in total_points if score >= high_score_threshold)
+            high_score_threshold = (
+                statistics.quantiles(total_points, n=10)[8]
+                if len(total_points) >= 10
+                else max(total_points)
+            )
+            high_score_count = sum(
+                1 for score in total_points if score >= high_score_threshold
+            )
 
             metrics["high_score_frequency"] = AggregatedMetric(
                 metric_name="high_score_frequency",
@@ -280,18 +317,28 @@ class PerformanceMetricsAggregator:
                 period=period,
                 current_value=high_score_count / len(total_points),
                 sample_size=len(total_points),
-                tags=["scoring", "ceiling"]
+                tags=["scoring", "ceiling"],
             )
 
             # Calculate trends if we have enough data
             if len(total_points) >= 5:
                 recent_avg = statistics.mean(total_points[:3])
-                earlier_avg = statistics.mean(total_points[3:6]) if len(total_points) >= 6 else statistics.mean(total_points[3:])
+                earlier_avg = (
+                    statistics.mean(total_points[3:6])
+                    if len(total_points) >= 6
+                    else statistics.mean(total_points[3:])
+                )
 
                 for metric in metrics.values():
                     if earlier_avg > 0:
-                        metric.change_percentage = ((recent_avg - earlier_avg) / earlier_avg) * 100
-                        metric.trend_direction = "up" if metric.change_percentage > 5 else "down" if metric.change_percentage < -5 else "stable"
+                        metric.change_percentage = (
+                            (recent_avg - earlier_avg) / earlier_avg
+                        ) * 100
+                        metric.trend_direction = (
+                            "up"
+                            if metric.change_percentage > 5
+                            else "down" if metric.change_percentage < -5 else "stable"
+                        )
                         metric.trend_strength = abs(metric.change_percentage) / 100
 
             return metrics
@@ -301,10 +348,8 @@ class PerformanceMetricsAggregator:
             return {}
 
     async def _aggregate_efficiency_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate efficiency metrics."""
         try:
             metrics = {}
@@ -322,15 +367,35 @@ class PerformanceMetricsAggregator:
 
             if lineups:
                 # Calculate roster utilization metrics
-                total_possible_players = len(lineups) * 9  # Assuming 9 starting positions
+                total_possible_players = (
+                    len(lineups) * 9
+                )  # Assuming 9 starting positions
                 total_set_players = sum(
-                    len([p for p in [lineup.qb_id, lineup.rb1_id, lineup.rb2_id,
-                                   lineup.wr1_id, lineup.wr2_id, lineup.te_id,
-                                   lineup.flex_id, lineup.dst_id, lineup.k_id] if p])
+                    len(
+                        [
+                            p
+                            for p in [
+                                lineup.qb_id,
+                                lineup.rb1_id,
+                                lineup.rb2_id,
+                                lineup.wr1_id,
+                                lineup.wr2_id,
+                                lineup.te_id,
+                                lineup.flex_id,
+                                lineup.dst_id,
+                                lineup.k_id,
+                            ]
+                            if p
+                        ]
+                    )
                     for lineup in lineups
                 )
 
-                roster_utilization = total_set_players / total_possible_players if total_possible_players > 0 else 0
+                roster_utilization = (
+                    total_set_players / total_possible_players
+                    if total_possible_players > 0
+                    else 0
+                )
 
                 metrics["roster_utilization"] = AggregatedMetric(
                     metric_name="roster_utilization",
@@ -338,7 +403,7 @@ class PerformanceMetricsAggregator:
                     period=period,
                     current_value=roster_utilization,
                     sample_size=len(lineups),
-                    tags=["efficiency", "roster"]
+                    tags=["efficiency", "roster"],
                 )
 
             return metrics
@@ -348,10 +413,8 @@ class PerformanceMetricsAggregator:
             return {}
 
     async def _aggregate_consistency_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate consistency metrics."""
         try:
             metrics = {}
@@ -363,7 +426,9 @@ class PerformanceMetricsAggregator:
 
             period_filter = self._get_period_filter(period)
             if period_filter:
-                scoring_query = scoring_query.filter(GameScore.created_at >= period_filter)
+                scoring_query = scoring_query.filter(
+                    GameScore.created_at >= period_filter
+                )
 
             scores = scoring_query.order_by(GameScore.created_at.desc()).all()
 
@@ -373,10 +438,14 @@ class PerformanceMetricsAggregator:
                 # Coefficient of variation (lower is more consistent)
                 mean_score = statistics.mean(total_points)
                 std_score = statistics.stdev(total_points)
-                coefficient_of_variation = (std_score / mean_score) if mean_score > 0 else 0
+                coefficient_of_variation = (
+                    (std_score / mean_score) if mean_score > 0 else 0
+                )
 
                 # Consistency score (inverse of coefficient of variation, scaled)
-                consistency_score = max(0, 1 - (coefficient_of_variation / 0.5))  # Normalize to 0-1
+                consistency_score = max(
+                    0, 1 - (coefficient_of_variation / 0.5)
+                )  # Normalize to 0-1
 
                 metrics["scoring_consistency"] = AggregatedMetric(
                     metric_name="scoring_consistency",
@@ -386,11 +455,15 @@ class PerformanceMetricsAggregator:
                     average_value=consistency_score,
                     std_deviation=coefficient_of_variation,
                     sample_size=len(total_points),
-                    tags=["consistency", "scoring"]
+                    tags=["consistency", "scoring"],
                 )
 
                 # Floor performance (25th percentile)
-                floor_score = statistics.quantiles(total_points, n=4)[0] if len(total_points) >= 4 else min(total_points)
+                floor_score = (
+                    statistics.quantiles(total_points, n=4)[0]
+                    if len(total_points) >= 4
+                    else min(total_points)
+                )
 
                 metrics["scoring_floor"] = AggregatedMetric(
                     metric_name="scoring_floor",
@@ -399,7 +472,7 @@ class PerformanceMetricsAggregator:
                     current_value=floor_score,
                     min_value=min(total_points),
                     sample_size=len(total_points),
-                    tags=["consistency", "floor"]
+                    tags=["consistency", "floor"],
                 )
 
             return metrics
@@ -409,10 +482,8 @@ class PerformanceMetricsAggregator:
             return {}
 
     async def _aggregate_trading_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate trading activity metrics."""
         try:
             metrics = {}
@@ -421,7 +492,7 @@ class PerformanceMetricsAggregator:
             trades_query = self.db.query(Trade).filter(
                 or_(
                     Trade.proposing_team_id == user_team.user_team_id,
-                    Trade.target_team_id == user_team.user_team_id
+                    Trade.target_team_id == user_team.user_team_id,
                 )
             )
 
@@ -441,7 +512,7 @@ class PerformanceMetricsAggregator:
                 period=period,
                 current_value=total_trades,
                 sample_size=total_trades,
-                tags=["trading", "activity"]
+                tags=["trading", "activity"],
             )
 
             if total_trades > 0:
@@ -453,7 +524,7 @@ class PerformanceMetricsAggregator:
                     period=period,
                     current_value=trade_success_rate,
                     sample_size=total_trades,
-                    tags=["trading", "success"]
+                    tags=["trading", "success"],
                 )
 
             return metrics
@@ -463,10 +534,8 @@ class PerformanceMetricsAggregator:
             return {}
 
     async def _aggregate_waiver_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate waiver wire activity metrics."""
         try:
             metrics = {}
@@ -478,7 +547,9 @@ class PerformanceMetricsAggregator:
 
             period_filter = self._get_period_filter(period)
             if period_filter:
-                waivers_query = waivers_query.filter(WaiverClaim.created_at >= period_filter)
+                waivers_query = waivers_query.filter(
+                    WaiverClaim.created_at >= period_filter
+                )
 
             waivers = waivers_query.all()
 
@@ -492,7 +563,7 @@ class PerformanceMetricsAggregator:
                 period=period,
                 current_value=total_claims,
                 sample_size=total_claims,
-                tags=["waiver", "activity"]
+                tags=["waiver", "activity"],
             )
 
             if total_claims > 0:
@@ -504,7 +575,7 @@ class PerformanceMetricsAggregator:
                     period=period,
                     current_value=waiver_success_rate,
                     sample_size=total_claims,
-                    tags=["waiver", "success"]
+                    tags=["waiver", "success"],
                 )
 
             return metrics
@@ -514,10 +585,8 @@ class PerformanceMetricsAggregator:
             return {}
 
     async def _aggregate_lineup_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate lineup management metrics."""
         try:
             metrics = {}
@@ -535,10 +604,14 @@ class PerformanceMetricsAggregator:
 
             if lineups:
                 # Lineup optimization rate (how often lineups were changed)
-                unique_weeks = len(set(lineup.week for lineup in lineups if lineup.week))
+                unique_weeks = len(
+                    {lineup.week for lineup in lineups if lineup.week}
+                )
                 lineup_changes = len(lineups)
 
-                optimization_rate = lineup_changes / unique_weeks if unique_weeks > 0 else 0
+                optimization_rate = (
+                    lineup_changes / unique_weeks if unique_weeks > 0 else 0
+                )
 
                 metrics["lineup_optimization_rate"] = AggregatedMetric(
                     metric_name="lineup_optimization_rate",
@@ -546,7 +619,7 @@ class PerformanceMetricsAggregator:
                     period=period,
                     current_value=optimization_rate,
                     sample_size=len(lineups),
-                    tags=["lineup", "optimization"]
+                    tags=["lineup", "optimization"],
                 )
 
             return metrics
@@ -556,10 +629,8 @@ class PerformanceMetricsAggregator:
             return {}
 
     async def _aggregate_competitive_metrics(
-        self,
-        user_team: UserTeam,
-        period: AggregationPeriod
-    ) -> Dict[str, AggregatedMetric]:
+        self, user_team: UserTeam, period: AggregationPeriod
+    ) -> dict[str, AggregatedMetric]:
         """Aggregate competitive positioning metrics."""
         try:
             metrics = {}
@@ -573,7 +644,7 @@ class PerformanceMetricsAggregator:
                 period=period,
                 current_value=6,  # Would calculate from actual standings
                 sample_size=1,
-                tags=["competitive", "rank"]
+                tags=["competitive", "rank"],
             )
 
             return metrics
@@ -586,9 +657,9 @@ class PerformanceMetricsAggregator:
         """Add league benchmarking data to metrics."""
         try:
             # Get all teams in the league for benchmarking
-            league_teams = self.db.query(UserTeam).filter(
-                UserTeam.league_id == league_id
-            ).all()
+            (
+                self.db.query(UserTeam).filter(UserTeam.league_id == league_id).all()
+            )
 
             # Calculate league averages for key metrics
             # This would involve aggregating metrics for all teams and calculating percentiles
@@ -597,7 +668,7 @@ class PerformanceMetricsAggregator:
             for category_metrics in [
                 metrics.scoring_metrics,
                 metrics.efficiency_metrics,
-                metrics.consistency_metrics
+                metrics.consistency_metrics,
             ]:
                 for metric in category_metrics.values():
                     # Placeholder league average (would calculate from actual data)
@@ -611,7 +682,6 @@ class PerformanceMetricsAggregator:
         """Calculate overall performance score from all metrics."""
         try:
             scores = []
-            weights = {}
 
             # Weight different categories
             category_weights = {
@@ -620,7 +690,7 @@ class PerformanceMetricsAggregator:
                 "consistency": 0.2,
                 "trading": 0.1,
                 "waiver": 0.1,
-                "lineup": 0.1
+                "lineup": 0.1,
             }
 
             # Collect weighted scores from each category
@@ -632,11 +702,12 @@ class PerformanceMetricsAggregator:
                         # Normalize metrics to 0-100 scale
                         if metric.percentile_rank > 0:
                             category_scores.append(metric.percentile_rank)
-                        else:
-                            # Use relative performance if percentile not available
-                            if metric.league_average and metric.league_average > 0:
-                                relative_score = (metric.current_value / metric.league_average) * 50
-                                category_scores.append(min(100, max(0, relative_score)))
+                        # Use relative performance if percentile not available
+                        elif metric.league_average and metric.league_average > 0:
+                            relative_score = (
+                                metric.current_value / metric.league_average
+                            ) * 50
+                            category_scores.append(min(100, max(0, relative_score)))
 
                     if category_scores:
                         avg_category_score = statistics.mean(category_scores)
@@ -676,9 +747,8 @@ class PerformanceMetricsAggregator:
             return "F"
 
     def _identify_strengths_weaknesses(
-        self,
-        metrics: PerformanceMetrics
-    ) -> tuple[List[str], List[str]]:
+        self, metrics: PerformanceMetrics
+    ) -> tuple[list[str], list[str]]:
         """Identify key strengths and weaknesses from metrics."""
         strengths = []
         weaknesses = []
@@ -693,7 +763,7 @@ class PerformanceMetricsAggregator:
                 metrics.trading_metrics,
                 metrics.waiver_metrics,
                 metrics.lineup_metrics,
-                metrics.competitive_metrics
+                metrics.competitive_metrics,
             ]:
                 all_metrics.extend(category_metrics.values())
 
@@ -711,7 +781,7 @@ class PerformanceMetricsAggregator:
             self.logger.error(f"Failed to identify strengths/weaknesses: {e}")
             return [], []
 
-    def _get_period_filter(self, period: AggregationPeriod) -> Optional[datetime]:
+    def _get_period_filter(self, period: AggregationPeriod) -> datetime | None:
         """Get datetime filter for the specified period."""
         now = datetime.utcnow()
 
@@ -727,22 +797,20 @@ class PerformanceMetricsAggregator:
             return None
 
     async def get_league_metrics_summary(
-        self,
-        league_id: str,
-        period: AggregationPeriod = AggregationPeriod.WEEKLY
-    ) -> Dict[str, Any]:
+        self, league_id: str, period: AggregationPeriod = AggregationPeriod.WEEKLY
+    ) -> dict[str, Any]:
         """Get aggregated metrics summary for an entire league."""
         try:
-            league_teams = self.db.query(UserTeam).filter(
-                UserTeam.league_id == league_id
-            ).all()
+            league_teams = (
+                self.db.query(UserTeam).filter(UserTeam.league_id == league_id).all()
+            )
 
             summary = {
                 "league_id": league_id,
                 "period": period.value,
                 "team_count": len(league_teams),
                 "generated_at": datetime.utcnow().isoformat(),
-                "metrics": {}
+                "metrics": {},
             }
 
             # Aggregate metrics for all teams
@@ -750,27 +818,37 @@ class PerformanceMetricsAggregator:
             for team in league_teams:
                 try:
                     metrics = await self.aggregate_team_metrics(
-                        str(team.user_team_id),
-                        period,
-                        include_benchmarks=False
+                        str(team.user_team_id), period, include_benchmarks=False
                     )
                     team_metrics.append(metrics)
                 except Exception as e:
-                    self.logger.warning(f"Failed to aggregate metrics for team {team.user_team_id}: {e}")
+                    self.logger.warning(
+                        f"Failed to aggregate metrics for team {team.user_team_id}: {e}"
+                    )
                     continue
 
             # Calculate league-wide statistics
             if team_metrics:
-                summary["metrics"]["average_score"] = statistics.mean([m.overall_performance_score for m in team_metrics])
+                summary["metrics"]["average_score"] = statistics.mean(
+                    [m.overall_performance_score for m in team_metrics]
+                )
                 summary["metrics"]["score_distribution"] = {
                     "min": min([m.overall_performance_score for m in team_metrics]),
                     "max": max([m.overall_performance_score for m in team_metrics]),
-                    "std": statistics.stdev([m.overall_performance_score for m in team_metrics]) if len(team_metrics) > 1 else 0
+                    "std": (
+                        statistics.stdev(
+                            [m.overall_performance_score for m in team_metrics]
+                        )
+                        if len(team_metrics) > 1
+                        else 0
+                    ),
                 }
                 summary["metrics"]["grade_distribution"] = {}
                 for metrics in team_metrics:
                     grade = metrics.performance_grade
-                    summary["metrics"]["grade_distribution"][grade] = summary["metrics"]["grade_distribution"].get(grade, 0) + 1
+                    summary["metrics"]["grade_distribution"][grade] = (
+                        summary["metrics"]["grade_distribution"].get(grade, 0) + 1
+                    )
 
             return summary
 
@@ -779,10 +857,8 @@ class PerformanceMetricsAggregator:
             raise
 
     async def export_metrics_data(
-        self,
-        user_team_id: str,
-        format: str = "json"
-    ) -> Dict[str, Any]:
+        self, user_team_id: str, format: str = "json"
+    ) -> dict[str, Any]:
         """Export metrics data in specified format."""
         try:
             metrics = await self.aggregate_team_metrics(user_team_id)
@@ -796,22 +872,31 @@ class PerformanceMetricsAggregator:
                     "overall_score": metrics.overall_performance_score,
                     "grade": metrics.performance_grade,
                     "categories": {
-                        "scoring": {name: {
-                            "value": metric.current_value,
-                            "percentile": metric.percentile_rank,
-                            "trend": metric.trend_direction
-                        } for name, metric in metrics.scoring_metrics.items()},
-                        "efficiency": {name: {
-                            "value": metric.current_value,
-                            "percentile": metric.percentile_rank,
-                            "trend": metric.trend_direction
-                        } for name, metric in metrics.efficiency_metrics.items()},
-                        "consistency": {name: {
-                            "value": metric.current_value,
-                            "percentile": metric.percentile_rank,
-                            "trend": metric.trend_direction
-                        } for name, metric in metrics.consistency_metrics.items()}
-                    }
+                        "scoring": {
+                            name: {
+                                "value": metric.current_value,
+                                "percentile": metric.percentile_rank,
+                                "trend": metric.trend_direction,
+                            }
+                            for name, metric in metrics.scoring_metrics.items()
+                        },
+                        "efficiency": {
+                            name: {
+                                "value": metric.current_value,
+                                "percentile": metric.percentile_rank,
+                                "trend": metric.trend_direction,
+                            }
+                            for name, metric in metrics.efficiency_metrics.items()
+                        },
+                        "consistency": {
+                            name: {
+                                "value": metric.current_value,
+                                "percentile": metric.percentile_rank,
+                                "trend": metric.trend_direction,
+                            }
+                            for name, metric in metrics.consistency_metrics.items()
+                        },
+                    },
                 }
             else:
                 raise ValueError(f"Unsupported export format: {format}")

@@ -14,15 +14,13 @@ Provides comprehensive analytics and insights including:
 
 import statistics
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from domains.leagues.models.league import League
 from domains.leagues.models.team import Team
-from domains.lineups.models.lineup import Lineup
 from domains.scoring.models.score import Score
 from domains.sports.models.player import Player
 from domains.trading.models.trade import Trade
@@ -31,6 +29,7 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
@@ -49,7 +48,7 @@ class AnalyticsService:
         team_id: str,
         timeframe: str = "season",
         include_projections: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate comprehensive team performance insights.
 
@@ -77,15 +76,21 @@ class AnalyticsService:
         # Performance ranking
         team_rankings = self._calculate_team_rankings(str(team.league_id), timeframe)
         current_rank = next(
-            (i + 1 for i, rank_team in enumerate(team_rankings) if rank_team["team_id"] == team_id),
-            len(team_rankings)
+            (
+                i + 1
+                for i, rank_team in enumerate(team_rankings)
+                if rank_team["team_id"] == team_id
+            ),
+            len(team_rankings),
         )
 
         # Consistency analysis
         consistency_score = self._calculate_consistency_score(scores)
 
         # Position analysis
-        position_breakdown = await self._analyze_position_performance(team_id, timeframe)
+        position_breakdown = await self._analyze_position_performance(
+            team_id, timeframe
+        )
 
         # Strength analysis
         strengths, weaknesses = self._identify_team_strengths_weaknesses(
@@ -102,7 +107,9 @@ class AnalyticsService:
                 "points_above_average": round(avg_points - league_avg, 2),
                 "current_rank": current_rank,
                 "total_teams": len(league_teams),
-                "percentile": round((1 - (current_rank - 1) / len(league_teams)) * 100, 1),
+                "percentile": round(
+                    (1 - (current_rank - 1) / len(league_teams)) * 100, 1
+                ),
             },
             "consistency": {
                 "score": round(consistency_score, 2),
@@ -116,7 +123,9 @@ class AnalyticsService:
         }
 
         if include_projections:
-            insights["projections"] = await self._generate_team_projections(team_id, scores)
+            insights["projections"] = await self._generate_team_projections(
+                team_id, scores
+            )
 
         return insights
 
@@ -124,7 +133,7 @@ class AnalyticsService:
         self,
         league_id: str,
         timeframe: str = "season",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate league-wide analytics and insights.
 
@@ -135,7 +144,11 @@ class AnalyticsService:
         Returns:
             Dictionary containing league analytics
         """
-        league = self.session.query(League).filter(League.league_id == UUID(league_id)).first()
+        league = (
+            self.session.query(League)
+            .filter(League.league_id == UUID(league_id))
+            .first()
+        )
         if not league:
             raise ValueError(f"League {league_id} not found")
 
@@ -146,13 +159,17 @@ class AnalyticsService:
         for team in teams:
             scores = self._get_team_scores(str(team.team_id), timeframe)
             total_points = sum(score.points for score in scores)
-            team_stats.append({
-                "team_id": str(team.team_id),
-                "team_name": getattr(team, 'team_name', getattr(team, 'name', 'Unknown')),
-                "total_points": total_points,
-                "avg_points": total_points / len(scores) if scores else 0,
-                "games_played": len(scores),
-            })
+            team_stats.append(
+                {
+                    "team_id": str(team.team_id),
+                    "team_name": getattr(
+                        team, "team_name", getattr(team, "name", "Unknown")
+                    ),
+                    "total_points": total_points,
+                    "avg_points": total_points / len(scores) if scores else 0,
+                    "games_played": len(scores),
+                }
+            )
 
         # Sort by total points
         team_stats.sort(key=lambda x: x["total_points"], reverse=True)
@@ -195,9 +212,9 @@ class AnalyticsService:
     async def get_player_analytics(
         self,
         player_id: str,
-        league_id: Optional[str] = None,
+        league_id: str | None = None,
         timeframe: str = "season",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate player performance analytics.
 
@@ -209,7 +226,11 @@ class AnalyticsService:
         Returns:
             Dictionary containing player analytics
         """
-        player = self.session.query(Player).filter(Player.player_id == UUID(player_id)).first()
+        player = (
+            self.session.query(Player)
+            .filter(Player.player_id == UUID(player_id))
+            .first()
+        )
         if not player:
             raise ValueError(f"Player {player_id} not found")
 
@@ -228,14 +249,20 @@ class AnalyticsService:
         position_avg = self._get_position_average(player.position, league_id, timeframe)
 
         # Usage analysis
-        ownership_percentage = self._calculate_ownership_percentage(player_id, league_id)
+        ownership_percentage = self._calculate_ownership_percentage(
+            player_id, league_id
+        )
 
         # Consistency metrics
         consistency = self._calculate_consistency_score(scores)
 
         # Recent trends
         recent_scores = scores[-5:] if len(scores) >= 5 else scores
-        recent_avg = sum(score.points for score in recent_scores) / len(recent_scores) if recent_scores else 0
+        recent_avg = (
+            sum(score.points for score in recent_scores) / len(recent_scores)
+            if recent_scores
+            else 0
+        )
 
         return {
             "player_id": player_id,
@@ -247,14 +274,20 @@ class AnalyticsService:
             "performance": {
                 "total_points": total_points,
                 "average_points": round(avg_points, 2),
-                "position_rank": self._get_position_rank(player_id, player.position, league_id, timeframe),
+                "position_rank": self._get_position_rank(
+                    player_id, player.position, league_id, timeframe
+                ),
                 "vs_position_average": round(avg_points - position_avg, 2),
                 "games_played": len(scores),
             },
             "usage": {
                 "ownership_percentage": round(ownership_percentage, 1),
-                "roster_percentage": self._calculate_roster_percentage(player_id, league_id),
-                "start_percentage": self._calculate_start_percentage(player_id, league_id),
+                "roster_percentage": self._calculate_roster_percentage(
+                    player_id, league_id
+                ),
+                "start_percentage": self._calculate_start_percentage(
+                    player_id, league_id
+                ),
             },
             "consistency": {
                 "score": round(consistency, 2),
@@ -278,8 +311,8 @@ class AnalyticsService:
         self,
         team1_id: str,
         team2_id: str,
-        week: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        week: int | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze head-to-head matchup between two teams.
 
@@ -317,11 +350,15 @@ class AnalyticsService:
             "matchup": {
                 "team1": {
                     "team_id": team1_id,
-                    "name": getattr(team1, 'team_name', getattr(team1, 'name', 'Team 1')),
+                    "name": getattr(
+                        team1, "team_name", getattr(team1, "name", "Team 1")
+                    ),
                 },
                 "team2": {
                     "team_id": team2_id,
-                    "name": getattr(team2, 'team_name', getattr(team2, 'name', 'Team 2')),
+                    "name": getattr(
+                        team2, "team_name", getattr(team2, "name", "Team 2")
+                    ),
                 },
                 "week": week,
             },
@@ -329,7 +366,9 @@ class AnalyticsService:
             "team_comparison": {
                 "team1_stats": team1_stats,
                 "team2_stats": team2_stats,
-                "advantage": self._determine_matchup_advantage(team1_stats, team2_stats),
+                "advantage": self._determine_matchup_advantage(
+                    team1_stats, team2_stats
+                ),
             },
             "position_breakdown": position_comparison,
             "projections": projected_scores,
@@ -340,7 +379,7 @@ class AnalyticsService:
 
     # Helper Methods
 
-    def _get_team_scores(self, team_id: str, timeframe: str) -> List[Score]:
+    def _get_team_scores(self, team_id: str, timeframe: str) -> list[Score]:
         """Get team scores for specified timeframe."""
         # This would typically join with lineups to get team's actual scores
         # For now, using a simplified approach
@@ -349,7 +388,7 @@ class AnalyticsService:
         scores = self._filter_scores_by_timeframe(query.all(), timeframe)
         return scores
 
-    def _get_league_teams(self, league_id: str) -> List[Team]:
+    def _get_league_teams(self, league_id: str) -> list[Team]:
         """Get all teams in a league."""
         return self.session.query(Team).filter(Team.league_id == UUID(league_id)).all()
 
@@ -369,7 +408,9 @@ class AnalyticsService:
 
         return total_points / total_games if total_games > 0 else 0.0
 
-    def _calculate_team_rankings(self, league_id: str, timeframe: str) -> List[Dict[str, Any]]:
+    def _calculate_team_rankings(
+        self, league_id: str, timeframe: str
+    ) -> list[dict[str, Any]]:
         """Calculate team rankings for league."""
         teams = self._get_league_teams(league_id)
         team_stats = []
@@ -377,15 +418,17 @@ class AnalyticsService:
         for team in teams:
             scores = self._get_team_scores(str(team.team_id), timeframe)
             total_points = sum(score.points for score in scores)
-            team_stats.append({
-                "team_id": str(team.team_id),
-                "total_points": total_points,
-                "avg_points": total_points / len(scores) if scores else 0,
-            })
+            team_stats.append(
+                {
+                    "team_id": str(team.team_id),
+                    "total_points": total_points,
+                    "avg_points": total_points / len(scores) if scores else 0,
+                }
+            )
 
         return sorted(team_stats, key=lambda x: x["total_points"], reverse=True)
 
-    def _calculate_consistency_score(self, scores: List[Score]) -> float:
+    def _calculate_consistency_score(self, scores: list[Score]) -> float:
         """Calculate consistency score (1 - coefficient of variation)."""
         if len(scores) < 2:
             return 1.0
@@ -415,7 +458,7 @@ class AnalyticsService:
         else:
             return "Very Poor"
 
-    def _calculate_weekly_variance(self, scores: List[Score]) -> float:
+    def _calculate_weekly_variance(self, scores: list[Score]) -> float:
         """Calculate weekly point variance."""
         if len(scores) < 2:
             return 0.0
@@ -425,7 +468,7 @@ class AnalyticsService:
 
     async def _analyze_position_performance(
         self, team_id: str, timeframe: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze team performance by position."""
         # This would analyze lineup data by position
         # Simplified implementation for now
@@ -439,21 +482,23 @@ class AnalyticsService:
         }
 
     def _identify_team_strengths_weaknesses(
-        self, position_breakdown: Dict[str, Any], league_avg: float
-    ) -> Tuple[List[str], List[str]]:
+        self, position_breakdown: dict[str, Any], league_avg: float
+    ) -> tuple[list[str], list[str]]:
         """Identify team strengths and weaknesses."""
         strengths = []
         weaknesses = []
 
         for position, stats in position_breakdown.items():
             if stats["rank"] <= 3:
-                strengths.append(f"Strong {position} production (Rank #{stats['rank']})")
+                strengths.append(
+                    f"Strong {position} production (Rank #{stats['rank']})"
+                )
             elif stats["rank"] >= 8:
                 weaknesses.append(f"Weak {position} production (Rank #{stats['rank']})")
 
         return strengths, weaknesses
 
-    def _analyze_team_trends(self, scores: List[Score]) -> Dict[str, Any]:
+    def _analyze_team_trends(self, scores: list[Score]) -> dict[str, Any]:
         """Analyze team scoring trends."""
         if len(scores) < 3:
             return {"direction": "insufficient_data", "momentum": 0}
@@ -462,10 +507,16 @@ class AnalyticsService:
         earlier_scores = scores[-6:-3] if len(scores) >= 6 else scores[:-3]
 
         recent_avg = sum(score.points for score in recent_scores) / len(recent_scores)
-        earlier_avg = sum(score.points for score in earlier_scores) / len(earlier_scores) if earlier_scores else recent_avg
+        earlier_avg = (
+            sum(score.points for score in earlier_scores) / len(earlier_scores)
+            if earlier_scores
+            else recent_avg
+        )
 
         momentum = recent_avg - earlier_avg
-        direction = "improving" if momentum > 0 else "declining" if momentum < 0 else "stable"
+        direction = (
+            "improving" if momentum > 0 else "declining" if momentum < 0 else "stable"
+        )
 
         return {
             "direction": direction,
@@ -474,15 +525,19 @@ class AnalyticsService:
         }
 
     async def _generate_team_projections(
-        self, team_id: str, historical_scores: List[Score]
-    ) -> Dict[str, Any]:
+        self, team_id: str, historical_scores: list[Score]
+    ) -> dict[str, Any]:
         """Generate team performance projections."""
         if not historical_scores:
             return {"projected_points": 0, "confidence": 0}
 
         # Simple projection based on recent performance
-        recent_avg = sum(score.points for score in historical_scores[-5:]) / min(5, len(historical_scores))
-        season_avg = sum(score.points for score in historical_scores) / len(historical_scores)
+        recent_avg = sum(score.points for score in historical_scores[-5:]) / min(
+            5, len(historical_scores)
+        )
+        season_avg = sum(score.points for score in historical_scores) / len(
+            historical_scores
+        )
 
         # Weight recent performance more heavily
         projected_points = (recent_avg * 0.7) + (season_avg * 0.3)
@@ -499,7 +554,9 @@ class AnalyticsService:
             },
         }
 
-    def _filter_scores_by_timeframe(self, scores: List[Score], timeframe: str) -> List[Score]:
+    def _filter_scores_by_timeframe(
+        self, scores: list[Score], timeframe: str
+    ) -> list[Score]:
         """Filter scores by timeframe."""
         if timeframe == "week":
             cutoff = datetime.utcnow() - timedelta(days=7)
@@ -508,9 +565,11 @@ class AnalyticsService:
         else:  # season
             cutoff = datetime.utcnow() - timedelta(days=365)
 
-        return [score for score in scores if score.created_at and score.created_at >= cutoff]
+        return [
+            score for score in scores if score.created_at and score.created_at >= cutoff
+        ]
 
-    def _calculate_parity_score(self, team_points: List[float]) -> float:
+    def _calculate_parity_score(self, team_points: list[float]) -> float:
         """Calculate competitive parity score (0-1, higher = more parity)."""
         if len(team_points) < 2:
             return 1.0
@@ -536,7 +595,9 @@ class AnalyticsService:
         else:
             return "Not Competitive"
 
-    def _analyze_league_position_usage(self, league_id: str, timeframe: str) -> Dict[str, Any]:
+    def _analyze_league_position_usage(
+        self, league_id: str, timeframe: str
+    ) -> dict[str, Any]:
         """Analyze position usage across the league."""
         # Simplified implementation
         return {
@@ -546,9 +607,11 @@ class AnalyticsService:
             "most_volatile": "WR",
         }
 
-    def _analyze_trade_activity(self, league_id: str, timeframe: str) -> Dict[str, Any]:
+    def _analyze_trade_activity(self, league_id: str, timeframe: str) -> dict[str, Any]:
         """Analyze trade activity in the league."""
-        trades = self.session.query(Trade).filter(Trade.league_id == UUID(league_id)).all()
+        trades = (
+            self.session.query(Trade).filter(Trade.league_id == UUID(league_id)).all()
+        )
 
         total_trades = len(trades)
         completed_trades = len([t for t in trades if t.status == "accepted"])
@@ -556,11 +619,15 @@ class AnalyticsService:
         return {
             "total_proposals": total_trades,
             "completed_trades": completed_trades,
-            "acceptance_rate": round(completed_trades / total_trades * 100, 1) if total_trades > 0 else 0,
+            "acceptance_rate": (
+                round(completed_trades / total_trades * 100, 1)
+                if total_trades > 0
+                else 0
+            ),
             "most_active_trader": self._find_most_active_trader(trades),
         }
 
-    def _find_most_active_trader(self, trades: List[Trade]) -> Optional[str]:
+    def _find_most_active_trader(self, trades: list[Trade]) -> str | None:
         """Find the most active trader."""
         trader_counts = {}
         for trade in trades:
@@ -575,7 +642,9 @@ class AnalyticsService:
 
         return max(trader_counts, key=trader_counts.get)
 
-    def _get_position_average(self, position: str, league_id: Optional[str], timeframe: str) -> float:
+    def _get_position_average(
+        self, position: str, league_id: str | None, timeframe: str
+    ) -> float:
         """Get average points for position."""
         # Simplified implementation
         position_averages = {
@@ -588,7 +657,9 @@ class AnalyticsService:
         }
         return position_averages.get(position, 10.0)
 
-    def _calculate_ownership_percentage(self, player_id: str, league_id: Optional[str]) -> float:
+    def _calculate_ownership_percentage(
+        self, player_id: str, league_id: str | None
+    ) -> float:
         """Calculate what percentage of teams own this player."""
         if not league_id:
             return 0.0
@@ -604,22 +675,28 @@ class AnalyticsService:
 
         return (owned_count / len(teams)) * 100
 
-    def _calculate_roster_percentage(self, player_id: str, league_id: Optional[str]) -> float:
+    def _calculate_roster_percentage(
+        self, player_id: str, league_id: str | None
+    ) -> float:
         """Calculate roster percentage (same as ownership for now)."""
         return self._calculate_ownership_percentage(player_id, league_id)
 
-    def _calculate_start_percentage(self, player_id: str, league_id: Optional[str]) -> float:
+    def _calculate_start_percentage(
+        self, player_id: str, league_id: str | None
+    ) -> float:
         """Calculate what percentage of the time this player is started."""
         # This would require analyzing lineup data
         # Simplified implementation
         return 75.0  # Default to 75%
 
-    def _get_position_rank(self, player_id: str, position: str, league_id: Optional[str], timeframe: str) -> int:
+    def _get_position_rank(
+        self, player_id: str, position: str, league_id: str | None, timeframe: str
+    ) -> int:
         """Get player's rank among their position."""
         # Simplified implementation
         return 5  # Default rank
 
-    def _calculate_trend_direction(self, scores: List[Score]) -> str:
+    def _calculate_trend_direction(self, scores: list[Score]) -> str:
         """Calculate if player is trending up, down, or stable."""
         if len(scores) < 3:
             return "insufficient_data"
@@ -628,7 +705,11 @@ class AnalyticsService:
         earlier = scores[-6:-3] if len(scores) >= 6 else scores[:-3]
 
         recent_avg = sum(score.points for score in recent) / len(recent)
-        earlier_avg = sum(score.points for score in earlier) / len(earlier) if earlier else recent_avg
+        earlier_avg = (
+            sum(score.points for score in earlier) / len(earlier)
+            if earlier
+            else recent_avg
+        )
 
         if recent_avg > earlier_avg * 1.1:
             return "trending_up"
@@ -638,7 +719,7 @@ class AnalyticsService:
             return "stable"
 
     # Additional helper methods for matchup analysis
-    def _get_head_to_head_record(self, team1_id: str, team2_id: str) -> Dict[str, Any]:
+    def _get_head_to_head_record(self, team1_id: str, team2_id: str) -> dict[str, Any]:
         """Get historical head-to-head record."""
         # Simplified implementation
         return {
@@ -649,7 +730,7 @@ class AnalyticsService:
             "avg_margin": 8.4,
         }
 
-    async def _get_team_stats_summary(self, team_id: str) -> Dict[str, Any]:
+    async def _get_team_stats_summary(self, team_id: str) -> dict[str, Any]:
         """Get team statistics summary."""
         scores = self._get_team_scores(team_id, "season")
         total_points = sum(score.points for score in scores)
@@ -663,7 +744,9 @@ class AnalyticsService:
             "worst_week": min((score.points for score in scores), default=0),
         }
 
-    async def _compare_team_positions(self, team1_id: str, team2_id: str) -> Dict[str, Any]:
+    async def _compare_team_positions(
+        self, team1_id: str, team2_id: str
+    ) -> dict[str, Any]:
         """Compare teams position by position."""
         # Simplified implementation
         return {
@@ -675,7 +758,9 @@ class AnalyticsService:
             "DEF": {"team1_advantage": False, "difference": -2.1},
         }
 
-    def _project_matchup_scores(self, team1_id: str, team2_id: str, week: Optional[int]) -> Dict[str, Any]:
+    def _project_matchup_scores(
+        self, team1_id: str, team2_id: str, week: int | None
+    ) -> dict[str, Any]:
         """Project scores for matchup."""
         # Simplified implementation
         return {
@@ -685,7 +770,9 @@ class AnalyticsService:
             "confidence": 78.5,
         }
 
-    def _determine_matchup_advantage(self, team1_stats: Dict[str, Any], team2_stats: Dict[str, Any]) -> str:
+    def _determine_matchup_advantage(
+        self, team1_stats: dict[str, Any], team2_stats: dict[str, Any]
+    ) -> str:
         """Determine which team has the advantage."""
         if team1_stats["avg_points"] > team2_stats["avg_points"]:
             return "team1"
@@ -696,10 +783,10 @@ class AnalyticsService:
 
     def _identify_key_matchup_factors(
         self,
-        team1_stats: Dict[str, Any],
-        team2_stats: Dict[str, Any],
-        position_comparison: Dict[str, Any],
-    ) -> List[str]:
+        team1_stats: dict[str, Any],
+        team2_stats: dict[str, Any],
+        position_comparison: dict[str, Any],
+    ) -> list[str]:
         """Identify key factors that could determine the matchup."""
         factors = []
 
@@ -717,7 +804,7 @@ class AnalyticsService:
 
 
 # Global service instance
-_analytics_service: Optional[AnalyticsService] = None
+_analytics_service: AnalyticsService | None = None
 
 
 def get_analytics_service(session: Session) -> AnalyticsService:

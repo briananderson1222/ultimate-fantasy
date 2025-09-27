@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from api.deps import get_user_service
@@ -42,7 +42,8 @@ class RegisterRequest(BaseModel):
     date_of_birth: datetime | None = Field(None, description="Date of birth")
     timezone: str = Field(default="UTC", description="User timezone")
 
-    @validator("username")
+    @field_validator("username")
+    @classmethod
     def validate_username(cls, v):
         if not v.isalnum() and "_" not in v:
             raise ValueError(
@@ -50,7 +51,8 @@ class RegisterRequest(BaseModel):
             )
         return v.lower()
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
@@ -81,7 +83,8 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., description="Password reset token")
     new_password: str = Field(..., min_length=8, description="New password")
 
-    @validator("new_password")
+    @field_validator("new_password")
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
@@ -98,7 +101,8 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., description="Current password")
     new_password: str = Field(..., min_length=8, description="New password")
 
-    @validator("new_password")
+    @field_validator("new_password")
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")

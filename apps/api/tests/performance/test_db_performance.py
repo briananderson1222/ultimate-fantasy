@@ -36,6 +36,7 @@ DB_PERFORMANCE_CONFIG = {
     "max_overflow": 30,
 }
 
+
 class DatabasePerformanceMetrics:
     """Container for database performance metrics."""
 
@@ -114,7 +115,9 @@ class DatabasePerformanceTester:
         self.session_factory = None
         self.metrics = DatabasePerformanceMetrics()
 
-    def setup_engine(self, pool_size: int = DB_PERFORMANCE_CONFIG["connection_pool_size"]):
+    def setup_engine(
+        self, pool_size: int = DB_PERFORMANCE_CONFIG["connection_pool_size"]
+    ):
         """Set up database engine with connection pooling."""
         self.engine = create_engine(
             self.database_url,
@@ -124,7 +127,7 @@ class DatabasePerformanceTester:
             pool_timeout=30,
             pool_recycle=3600,
             pool_pre_ping=True,
-            echo=False  # Disable SQL logging for performance tests
+            echo=False,  # Disable SQL logging for performance tests
         )
 
         self.session_factory = sessionmaker(bind=self.engine)
@@ -143,7 +146,9 @@ class DatabasePerformanceTester:
         finally:
             await conn.close()
 
-    def measure_query_execution(self, query: str, params: Optional[Dict] = None) -> tuple[float, bool, Any]:
+    def measure_query_execution(
+        self, query: str, params: Optional[Dict] = None
+    ) -> tuple[float, bool, Any]:
         """Execute query and measure performance."""
         start_time = time.time()
 
@@ -164,7 +169,9 @@ class DatabasePerformanceTester:
             execution_time = time.time() - start_time
             return execution_time, False, str(e)
 
-    async def measure_async_query(self, query: str, params: Optional[List] = None) -> tuple[float, bool, Any]:
+    async def measure_async_query(
+        self, query: str, params: Optional[List] = None
+    ) -> tuple[float, bool, Any]:
         """Execute async query and measure performance."""
         start_time = time.time()
 
@@ -182,15 +189,18 @@ class DatabasePerformanceTester:
             execution_time = time.time() - start_time
             return execution_time, False, str(e)
 
-    def run_concurrent_queries(self, queries: List[tuple[str, Optional[Dict]]],
-                             concurrent_connections: int) -> DatabasePerformanceMetrics:
+    def run_concurrent_queries(
+        self, queries: List[tuple[str, Optional[Dict]]], concurrent_connections: int
+    ) -> DatabasePerformanceMetrics:
         """Run queries concurrently to test database load."""
         metrics = DatabasePerformanceMetrics()
 
         def execute_query_batch(query_batch):
             batch_results = []
             for query, params in query_batch:
-                execution_time, success, result = self.measure_query_execution(query, params)
+                execution_time, success, result = self.measure_query_execution(
+                    query, params
+                )
                 metrics.add_query_result(execution_time, success)
                 batch_results.append((execution_time, success, result))
             return batch_results
@@ -198,13 +208,14 @@ class DatabasePerformanceTester:
         # Divide queries into batches for concurrent execution
         batch_size = max(1, len(queries) // concurrent_connections)
         query_batches = [
-            queries[i:i + batch_size]
-            for i in range(0, len(queries), batch_size)
+            queries[i : i + batch_size] for i in range(0, len(queries), batch_size)
         ]
 
         # Execute batches concurrently
         with ThreadPoolExecutor(max_workers=concurrent_connections) as executor:
-            futures = [executor.submit(execute_query_batch, batch) for batch in query_batches]
+            futures = [
+                executor.submit(execute_query_batch, batch) for batch in query_batches
+            ]
 
             # Collect results
             for future in futures:
@@ -220,39 +231,44 @@ class DatabasePerformanceTester:
         start_time = time.time()
 
         while time.time() - start_time < duration:
-            if self.engine and hasattr(self.engine.pool, 'status'):
+            if self.engine and hasattr(self.engine.pool, "status"):
                 stats = {
-                    'size': self.engine.pool.size(),
-                    'checked_in': self.engine.pool.checkedin(),
-                    'checked_out': self.engine.pool.checkedout(),
-                    'overflow': self.engine.pool.overflow(),
-                    'timestamp': time.time()
+                    "size": self.engine.pool.size(),
+                    "checked_in": self.engine.pool.checkedin(),
+                    "checked_out": self.engine.pool.checkedout(),
+                    "overflow": self.engine.pool.overflow(),
+                    "timestamp": time.time(),
                 }
                 self.metrics.add_pool_stats(stats)
 
             time.sleep(1)  # Sample every second
 
-    def benchmark_index_effectiveness(self, table_name: str, indexed_column: str,
-                                    non_indexed_column: str) -> Dict[str, float]:
+    def benchmark_index_effectiveness(
+        self, table_name: str, indexed_column: str, non_indexed_column: str
+    ) -> Dict[str, float]:
         """Compare query performance with and without indexes."""
         # Query using indexed column
-        indexed_query = f"SELECT * FROM {table_name} WHERE {indexed_column} = %(value)s LIMIT 100"
+        indexed_query = (
+            f"SELECT * FROM {table_name} WHERE {indexed_column} = %(value)s LIMIT 100"
+        )
         indexed_time, indexed_success, _ = self.measure_query_execution(
-            indexed_query, {'value': 'test_value'}
+            indexed_query, {"value": "test_value"}
         )
 
         # Query using non-indexed column
         non_indexed_query = f"SELECT * FROM {table_name} WHERE {non_indexed_column} = %(value)s LIMIT 100"
         non_indexed_time, non_indexed_success, _ = self.measure_query_execution(
-            non_indexed_query, {'value': 'test_value'}
+            non_indexed_query, {"value": "test_value"}
         )
 
         return {
-            'indexed_time': indexed_time,
-            'non_indexed_time': non_indexed_time,
-            'performance_improvement': non_indexed_time / indexed_time if indexed_time > 0 else 0,
-            'indexed_success': indexed_success,
-            'non_indexed_success': non_indexed_success
+            "indexed_time": indexed_time,
+            "non_indexed_time": non_indexed_time,
+            "performance_improvement": (
+                non_indexed_time / indexed_time if indexed_time > 0 else 0
+            ),
+            "indexed_success": indexed_success,
+            "non_indexed_success": non_indexed_success,
         }
 
 
@@ -273,18 +289,21 @@ class TestBasicQueryPerformance:
     def test_simple_select_performance(self, db_tester):
         """Test simple SELECT query performance."""
         query = "SELECT id, name FROM players WHERE sport = %(sport)s LIMIT 50"
-        params = {'sport': 'nfl'}
+        params = {"sport": "nfl"}
 
         # Run query multiple times to get average
         execution_times = []
         for _ in range(10):
-            execution_time, success, result = db_tester.measure_query_execution(query, params)
+            execution_time, success, result = db_tester.measure_query_execution(
+                query, params
+            )
             execution_times.append(execution_time)
             assert success, "Query should execute successfully"
 
         avg_time = statistics.mean(execution_times)
-        assert avg_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Average query time {avg_time:.3f}s exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
+        assert (
+            avg_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Average query time {avg_time:.3f}s exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
 
         # Verify result consistency
         assert len(execution_times) == 10, "All queries should complete"
@@ -301,18 +320,16 @@ class TestBasicQueryPerformance:
         LIMIT %(limit)s
         """
 
-        params = {
-            'sport': 'nfl',
-            'position': 'QB',
-            'min_points': 15.0,
-            'limit': 20
-        }
+        params = {"sport": "nfl", "position": "QB", "min_points": 15.0, "limit": 20}
 
-        execution_time, success, result = db_tester.measure_query_execution(query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            query, params
+        )
 
         assert success, "Player search query should execute successfully"
-        assert execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Player search took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Player search took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
 
     def test_league_data_query_performance(self, db_tester):
         """Test league data retrieval performance."""
@@ -329,13 +346,16 @@ class TestBasicQueryPerformance:
         LIMIT %(limit)s
         """
 
-        params = {'status': 'active', 'limit': 10}
+        params = {"status": "active", "limit": 10}
 
-        execution_time, success, result = db_tester.measure_query_execution(query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            query, params
+        )
 
         assert success, "League data query should execute successfully"
-        assert execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"League query took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"League query took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
 
     def test_trade_history_query_performance(self, db_tester):
         """Test trade history query performance."""
@@ -351,13 +371,16 @@ class TestBasicQueryPerformance:
         LIMIT %(limit)s
         """
 
-        params = {'league_id': 'test-league-id', 'limit': 50}
+        params = {"league_id": "test-league-id", "limit": 50}
 
-        execution_time, success, result = db_tester.measure_query_execution(query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            query, params
+        )
 
         assert success, "Trade history query should execute successfully"
-        assert execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Trade history took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Trade history took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['query_timeout_ms']}ms target"
 
 
 class TestComplexQueryPerformance:
@@ -394,18 +417,21 @@ class TestComplexQueryPerformance:
         """
 
         params = {
-            'season': 2024,
-            'current_week': 10,
-            'sport': 'nfl',
-            'min_games': 5,
-            'limit': 100
+            "season": 2024,
+            "current_week": 10,
+            "sport": "nfl",
+            "min_games": 5,
+            "limit": 100,
         }
 
-        execution_time, success, result = db_tester.measure_query_execution(query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            query, params
+        )
 
         assert success, "Player analytics query should execute successfully"
-        assert execution_time < DB_PERFORMANCE_CONFIG["complex_query_timeout_ms"] / 1000, \
-            f"Analytics query took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['complex_query_timeout_ms']}ms target"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["complex_query_timeout_ms"] / 1000
+        ), f"Analytics query took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['complex_query_timeout_ms']}ms target"
 
     def test_league_standings_query_performance(self, db_tester):
         """Test league standings calculation performance."""
@@ -450,17 +476,16 @@ class TestComplexQueryPerformance:
         ORDER BY standings_rank
         """
 
-        params = {
-            'league_id': 'test-league-id',
-            'season': 2024,
-            'current_week': 10
-        }
+        params = {"league_id": "test-league-id", "season": 2024, "current_week": 10}
 
-        execution_time, success, result = db_tester.measure_query_execution(query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            query, params
+        )
 
         assert success, "League standings query should execute successfully"
-        assert execution_time < DB_PERFORMANCE_CONFIG["complex_query_timeout_ms"] / 1000, \
-            f"Standings query took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['complex_query_timeout_ms']}ms target"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["complex_query_timeout_ms"] / 1000
+        ), f"Standings query took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['complex_query_timeout_ms']}ms target"
 
     def test_draft_analytics_query_performance(self, db_tester):
         """Test draft analytics query performance."""
@@ -501,16 +526,16 @@ class TestComplexQueryPerformance:
         ORDER BY draft_rank
         """
 
-        params = {
-            'draft_id': 'test-draft-id',
-            'season': 2024
-        }
+        params = {"draft_id": "test-draft-id", "season": 2024}
 
-        execution_time, success, result = db_tester.measure_query_execution(query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            query, params
+        )
 
         assert success, "Draft analytics query should execute successfully"
-        assert execution_time < DB_PERFORMANCE_CONFIG["complex_query_timeout_ms"] / 1000, \
-            f"Draft analytics took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['complex_query_timeout_ms']}ms target"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["complex_query_timeout_ms"] / 1000
+        ), f"Draft analytics took {execution_time:.3f}s, exceeds {DB_PERFORMANCE_CONFIG['complex_query_timeout_ms']}ms target"
 
 
 class TestConcurrentDatabaseLoad:
@@ -520,37 +545,48 @@ class TestConcurrentDatabaseLoad:
         """Test concurrent player data queries."""
         # Create multiple query variations
         queries = []
-        positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+        positions = ["QB", "RB", "WR", "TE", "K", "DEF"]
 
         for i in range(100):
             position = positions[i % len(positions)]
             query = "SELECT * FROM players WHERE position = %(position)s AND sport = 'nfl' LIMIT 20"
-            params = {'position': position}
+            params = {"position": position}
             queries.append((query, params))
 
         # Execute queries concurrently
         metrics = db_tester.run_concurrent_queries(
-            queries,
-            DB_PERFORMANCE_CONFIG["concurrent_connections"]
+            queries, DB_PERFORMANCE_CONFIG["concurrent_connections"]
         )
 
         # Validate performance
-        assert metrics.success_rate > 99.0, f"Success rate {metrics.success_rate:.1f}% too low"
-        assert metrics.average_query_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Average query time {metrics.average_query_time:.3f}s under load exceeds target"
-        assert metrics.p95_query_time < (DB_PERFORMANCE_CONFIG["query_timeout_ms"] * 1.5) / 1000, \
-            f"P95 query time {metrics.p95_query_time:.3f}s under load too high"
+        assert (
+            metrics.success_rate > 99.0
+        ), f"Success rate {metrics.success_rate:.1f}% too low"
+        assert (
+            metrics.average_query_time
+            < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Average query time {metrics.average_query_time:.3f}s under load exceeds target"
+        assert (
+            metrics.p95_query_time
+            < (DB_PERFORMANCE_CONFIG["query_timeout_ms"] * 1.5) / 1000
+        ), f"P95 query time {metrics.p95_query_time:.3f}s under load too high"
 
     def test_concurrent_read_write_operations(self, db_tester):
         """Test mixed read/write operations under load."""
         read_queries = [
             ("SELECT COUNT(*) FROM players WHERE sport = 'nfl'", None),
             ("SELECT * FROM leagues WHERE status = 'active' LIMIT 10", None),
-            ("SELECT * FROM teams WHERE league_id = %(league_id)s", {'league_id': 'test-league'}),
+            (
+                "SELECT * FROM teams WHERE league_id = %(league_id)s",
+                {"league_id": "test-league"},
+            ),
         ]
 
         write_queries = [
-            ("UPDATE players SET last_updated = NOW() WHERE id = %(player_id)s", {'player_id': f'player_{i}'})
+            (
+                "UPDATE players SET last_updated = NOW() WHERE id = %(player_id)s",
+                {"player_id": f"player_{i}"},
+            )
             for i in range(10)
         ]
 
@@ -560,9 +596,12 @@ class TestConcurrentDatabaseLoad:
         metrics = db_tester.run_concurrent_queries(all_queries, 20)
 
         # Validate mixed workload performance
-        assert metrics.success_rate > 95.0, f"Mixed workload success rate {metrics.success_rate:.1f}% too low"
-        assert metrics.average_query_time < 0.5, \
-            f"Mixed workload average time {metrics.average_query_time:.3f}s too high"
+        assert (
+            metrics.success_rate > 95.0
+        ), f"Mixed workload success rate {metrics.success_rate:.1f}% too low"
+        assert (
+            metrics.average_query_time < 0.5
+        ), f"Mixed workload average time {metrics.average_query_time:.3f}s too high"
 
     @pytest.mark.asyncio
     async def test_async_query_performance(self, db_tester):
@@ -572,20 +611,23 @@ class TestConcurrentDatabaseLoad:
         # Run multiple async queries
         tasks = []
         for i in range(50):
-            task = db_tester.measure_async_query(query, ['nfl', 20])
+            task = db_tester.measure_async_query(query, ["nfl", 20])
             tasks.append(task)
 
         results = await asyncio.gather(*tasks)
 
         # Analyze results
-        execution_times = [result[0] for result in results if result[1]]  # Only successful queries
+        execution_times = [
+            result[0] for result in results if result[1]
+        ]  # Only successful queries
         success_count = sum(1 for result in results if result[1])
 
         assert success_count == 50, "All async queries should succeed"
 
         avg_time = statistics.mean(execution_times)
-        assert avg_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Async query average time {avg_time:.3f}s exceeds target"
+        assert (
+            avg_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Async query average time {avg_time:.3f}s exceeds target"
 
 
 class TestIndexEffectiveness:
@@ -595,19 +637,19 @@ class TestIndexEffectiveness:
         """Test effectiveness of player search indexes."""
         # Test indexed columns vs non-indexed
         results = db_tester.benchmark_index_effectiveness(
-            'players',
-            'sport',  # Should be indexed
-            'name'    # Might not be indexed
+            "players", "sport", "name"  # Should be indexed  # Might not be indexed
         )
 
-        assert results['indexed_success'], "Indexed query should succeed"
-        assert results['indexed_time'] < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Indexed query time {results['indexed_time']:.3f}s too high"
+        assert results["indexed_success"], "Indexed query should succeed"
+        assert (
+            results["indexed_time"] < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Indexed query time {results['indexed_time']:.3f}s too high"
 
         # Index should provide significant performance improvement
-        if results['performance_improvement'] > 1:
-            assert results['performance_improvement'] > 2, \
-                f"Index provides minimal improvement: {results['performance_improvement']:.1f}x"
+        if results["performance_improvement"] > 1:
+            assert (
+                results["performance_improvement"] > 2
+            ), f"Index provides minimal improvement: {results['performance_improvement']:.1f}x"
 
     def test_composite_index_effectiveness(self, db_tester):
         """Test composite index performance."""
@@ -618,13 +660,16 @@ class TestIndexEffectiveness:
         LIMIT 50
         """
 
-        params = {'sport': 'nfl', 'position': 'QB'}
+        params = {"sport": "nfl", "position": "QB"}
 
-        execution_time, success, result = db_tester.measure_query_execution(composite_query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            composite_query, params
+        )
 
         assert success, "Composite index query should succeed"
-        assert execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Composite index query took {execution_time:.3f}s, too slow"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Composite index query took {execution_time:.3f}s, too slow"
 
     def test_join_performance_with_indexes(self, db_tester):
         """Test join query performance with proper indexes."""
@@ -639,13 +684,16 @@ class TestIndexEffectiveness:
         LIMIT 100
         """
 
-        params = {'sport': 'nfl', 'season': 2024, 'week': 10}
+        params = {"sport": "nfl", "season": 2024, "week": 10}
 
-        execution_time, success, result = db_tester.measure_query_execution(join_query, params)
+        execution_time, success, result = db_tester.measure_query_execution(
+            join_query, params
+        )
 
         assert success, "Join query should succeed"
-        assert execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000, \
-            f"Join query took {execution_time:.3f}s, indexes may be missing"
+        assert (
+            execution_time < DB_PERFORMANCE_CONFIG["query_timeout_ms"] / 1000
+        ), f"Join query took {execution_time:.3f}s, indexes may be missing"
 
 
 class TestConnectionPoolPerformance:
@@ -659,7 +707,7 @@ class TestConnectionPoolPerformance:
         # Start pool monitoring
         monitor_thread = threading.Thread(
             target=db_tester.monitor_connection_pool,
-            args=(20,)  # Monitor for 20 seconds
+            args=(20,),  # Monitor for 20 seconds
         )
         monitor_thread.daemon = True
         monitor_thread.start()
@@ -676,14 +724,19 @@ class TestConnectionPoolPerformance:
         monitor_thread.join(timeout=25)
 
         # Analyze pool efficiency
-        assert metrics.success_rate > 99.0, "Pool should handle concurrent load efficiently"
+        assert (
+            metrics.success_rate > 99.0
+        ), "Pool should handle concurrent load efficiently"
 
         if db_tester.metrics.pool_stats:
-            max_checked_out = max(stat['checked_out'] for stat in db_tester.metrics.pool_stats)
+            max_checked_out = max(
+                stat["checked_out"] for stat in db_tester.metrics.pool_stats
+            )
             pool_size = DB_PERFORMANCE_CONFIG["connection_pool_size"]
 
-            assert max_checked_out <= pool_size + DB_PERFORMANCE_CONFIG["max_overflow"], \
-                f"Pool exceeded expected size: {max_checked_out}"
+            assert (
+                max_checked_out <= pool_size + DB_PERFORMANCE_CONFIG["max_overflow"]
+            ), f"Pool exceeded expected size: {max_checked_out}"
 
     def test_connection_acquisition_time(self, db_tester):
         """Test connection acquisition performance."""
@@ -706,10 +759,12 @@ class TestConnectionPoolPerformance:
         avg_acquisition_time = statistics.mean(acquisition_times)
         max_acquisition_time = max(acquisition_times)
 
-        assert avg_acquisition_time < 0.01, \
-            f"Average connection acquisition time {avg_acquisition_time:.3f}s too high"
-        assert max_acquisition_time < 0.05, \
-            f"Max connection acquisition time {max_acquisition_time:.3f}s too high"
+        assert (
+            avg_acquisition_time < 0.01
+        ), f"Average connection acquisition time {avg_acquisition_time:.3f}s too high"
+        assert (
+            max_acquisition_time < 0.05
+        ), f"Max connection acquisition time {max_acquisition_time:.3f}s too high"
 
 
 class TestMemoryUsage:
@@ -729,8 +784,9 @@ class TestMemoryUsage:
         memory_increase = current_memory - baseline_memory
 
         assert success, "Large result set query should succeed"
-        assert memory_increase < DB_PERFORMANCE_CONFIG["max_memory_increase_mb"], \
-            f"Memory increased by {memory_increase:.1f}MB, exceeds {DB_PERFORMANCE_CONFIG['max_memory_increase_mb']}MB limit"
+        assert (
+            memory_increase < DB_PERFORMANCE_CONFIG["max_memory_increase_mb"]
+        ), f"Memory increased by {memory_increase:.1f}MB, exceeds {DB_PERFORMANCE_CONFIG['max_memory_increase_mb']}MB limit"
 
     def test_concurrent_operations_memory_stability(self, db_tester):
         """Test memory stability during concurrent operations."""
@@ -745,6 +801,7 @@ class TestMemoryUsage:
                 time.sleep(1)
 
         import threading
+
         monitor_thread = threading.Thread(target=monitor_memory)
         monitor_thread.daemon = True
         monitor_thread.start()
@@ -767,19 +824,15 @@ class TestMemoryUsage:
             min_memory = min(memory_samples)
             memory_range = max_memory - min_memory
 
-            assert memory_range < DB_PERFORMANCE_CONFIG["max_memory_increase_mb"], \
-                f"Memory range {memory_range:.1f}MB too high during concurrent operations"
+            assert (
+                memory_range < DB_PERFORMANCE_CONFIG["max_memory_increase_mb"]
+            ), f"Memory range {memory_range:.1f}MB too high during concurrent operations"
 
-            assert memory_variance < 20, \
-                f"Memory variance {memory_variance:.1f}MB indicates instability"
+            assert (
+                memory_variance < 20
+            ), f"Memory variance {memory_variance:.1f}MB indicates instability"
 
 
 if __name__ == "__main__":
     # Run database performance tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--durations=10",
-        "-m", "not slow"
-    ])
+    pytest.main([__file__, "-v", "--tb=short", "--durations=10", "-m", "not slow"])

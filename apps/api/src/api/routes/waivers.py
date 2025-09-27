@@ -49,7 +49,7 @@ class WaiverClaimRequest(BaseModel):
     )
 
     @validator("waiver_type")
-    def validate_waiver_type(cls, v):
+    def validate_waiver_type(self, v):
         valid_types = ["standard", "faab", "free_agent"]
         if v.lower() not in valid_types:
             raise ValueError(f"Waiver type must be one of: {valid_types}")
@@ -66,7 +66,7 @@ class BulkWaiverRequest(BaseModel):
     claims: list[WaiverClaimRequest] = Field(..., description="Multiple waiver claims")
 
     @validator("claims")
-    def validate_claims_not_empty(cls, v):
+    def validate_claims_not_empty(self, v):
         if not v or len(v) == 0:
             raise ValueError("At least one claim must be provided")
         if len(v) > 10:
@@ -268,13 +268,12 @@ async def get_waiver_claim(
 
         # Verify user has access (own claim or league member)
         team = trading_service.get_team(claim.team_id, db)
-        if team.user_id != current_user["user_id"]:
-            if not league_service.is_user_in_league(
-                claim.league_id, current_user["user_id"], db
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
-                )
+         if team.user_id != current_user["user_id"] and not league_service.is_user_in_league(
+             claim.league_id, current_user["user_id"], db
+         ):
+             raise HTTPException(
+                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+             )
 
         return APIResponse(
             success=True,
@@ -568,9 +567,7 @@ async def get_waiver_period_info(
 @router.post("/league/{league_id}/process")
 async def process_waivers(
     league_id: str,
-    week: int | None = Query(
-        None, description="Week to process (defaults to current)"
-    ),
+    week: int | None = Query(None, description="Week to process (defaults to current)"),
     force: bool = Query(
         default=False, description="Force process outside normal schedule"
     ),

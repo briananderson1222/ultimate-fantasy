@@ -4,25 +4,26 @@
 
 import os
 import sys
-sys.path.append('src')
+from contextlib import suppress
 
-import tempfile
+sys.path.append("src")
+
+import logging
 import uuid
 from datetime import datetime, timedelta
 
 import jwt
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from domains.users.services.user_service import UserService
-from domains.users.models.user import User
 
 # Create test database
 engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
 
 # Import all required models to register metadata
 import importlib
+
 required_models = [
     "domains.users.models.user",
     "domains.users.models.user_preference",
@@ -41,11 +42,10 @@ required_models = [
 ]
 
 for module in required_models:
-    try:
+    with suppress(Exception):
         importlib.import_module(module)
-        print(f"✓ Imported {module}")
-    except Exception as e:
-        print(f"✗ Failed to import {module}: {e}")
+        # print(f"✓ Imported {module}")
+        # print(f"✗ Failed to import {module}: {e}")
 
 from domains.shared.models.base import Base
 
@@ -65,12 +65,12 @@ try:
         "email": "test@example.com",
         "name": "Test User",
         "given_name": "Test",
-        "family_name": "User"
+        "family_name": "User",
     }
 
-    print(f"Creating user with claims: {test_claims}")
+# # print(f"Creating user with claims: {test_claims}")
     test_user = user_service.ensure_user_from_claims(test_claims)
-    print(f"✓ User created: {test_user.user_id}, {test_user.username}")
+# # print(f"✓ User created: {test_user.user_id}, {test_user.username}")
 
     # 2. Create JWT token
     secret_key = os.getenv("JWT_SECRET_KEY", "your-secret-key-here")
@@ -84,21 +84,23 @@ try:
         "permissions": [],
         "iat": datetime.utcnow(),
         "exp": datetime.utcnow() + timedelta(hours=24),
-        "type": "access"
+        "type": "access",
     }
 
     token = jwt.encode(payload, secret_key, algorithm=algorithm)
-    print(f"✓ Token created: {token[:50]}...")
+# # print(f"✓ Token created: {token[:50]}...")
 
     # 3. Test user lookup
-    print(f"Looking up user by ID: {str(test_user.user_id)}")
+# # print(f"Looking up user by ID: {test_user.user_id!s}")
     found_user = user_service.get_user_sync(str(test_user.user_id))
-    print(f"✓ User found: {found_user.username}")
+# # print(f"✓ User found: {found_user.username}")
 
 except Exception as e:
-    print(f"✗ Error: {e}")
-    import traceback
-    traceback.print_exc()
+    logging.warning(f"Error: {e}")
+    # # print(f"✗ Error: {e}")
+    # import traceback
+
+    # traceback.print_exc()
 
 finally:
     session.close()

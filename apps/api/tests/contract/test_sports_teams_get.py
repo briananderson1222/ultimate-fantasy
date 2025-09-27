@@ -30,7 +30,9 @@ class TestSportsTeamsGetContract:
         assert "teams" in data
         assert isinstance(data["teams"], list)
 
-    def test_get_teams_with_sport_filter_returns_filtered_results(self, authenticated_client):
+    def test_get_teams_with_sport_filter_returns_filtered_results(
+        self, authenticated_client
+    ):
         """
         Contract Test: GET /api/v1/sports/teams?sport=NFL returns NFL teams only.
 

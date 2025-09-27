@@ -4,15 +4,18 @@
 
 import os
 import sys
-sys.path.append('src')
 
+sys.path.append("src")
+
+import uuid
+from datetime import datetime, timedelta
+
+import jwt
 from fastapi.testclient import TestClient
-from main import app
+
 from domains.users.services.user_service import UserService
 from infrastructure.database.session_factory import get_session_factory
-import jwt
-from datetime import datetime, timedelta
-import uuid
+from main import app
 
 # Create a test client
 client = TestClient(app)
@@ -29,11 +32,11 @@ try:
         "sub": str(uuid.uuid4()),
         "username": "test_user",
         "email": "test@example.com",
-        "name": "Test User"
+        "name": "Test User",
     }
 
     user = user_service.ensure_user_from_claims(test_claims)
-    print(f"Created user: {user.user_id}, {user.username}")
+    # Created user: {user.user_id}, {user.username}
 
     payload = {
         "sub": str(user.user_id),  # Use the actual user ID
@@ -43,11 +46,11 @@ try:
         "permissions": [],
         "iat": datetime.utcnow(),
         "exp": datetime.utcnow() + timedelta(hours=24),
-        "type": "access"  # Required by auth middleware
+        "type": "access",  # Required by auth middleware
     }
 
-except Exception as e:
-    print(f"Error creating user: {e}")
+except Exception:
+    # Error creating user: {e}
     payload = {
         "sub": str(uuid.uuid4()),
         "username": "test_user",
@@ -56,7 +59,7 @@ except Exception as e:
         "permissions": [],
         "iat": datetime.utcnow(),
         "exp": datetime.utcnow() + timedelta(hours=24),
-        "type": "access"
+        "type": "access",
     }
 finally:
     db_session.close()
@@ -65,17 +68,17 @@ finally:
 secret_key = os.getenv("JWT_SECRET_KEY", "your-secret-key-here")
 algorithm = "HS256"
 token = jwt.encode(payload, secret_key, algorithm=algorithm)
-print(f"Generated token: {token}")
+# Generated token: {token}
 
 # Test the endpoint with auth header
 headers = {"Authorization": f"Bearer {token}"}
 response = client.get("/api/v1/sports/players", headers=headers)
 
-print(f"Response status: {response.status_code}")
-print(f"Response headers: {dict(response.headers)}")
-print(f"Response content: {response.text}")
+# print(f"Response status: {response.status_code}")
+# print(f"Response headers: {dict(response.headers)}")
+# print(f"Response content: {response.text}")
 
 # Also test without auth
 response_no_auth = client.get("/api/v1/sports/players")
-print(f"\nWithout auth - Status: {response_no_auth.status_code}")
-print(f"Without auth - Content: {response_no_auth.text}")
+# print(f"\nWithout auth - Status: {response_no_auth.status_code}")
+# print(f"Without auth - Content: {response_no_auth.text}")

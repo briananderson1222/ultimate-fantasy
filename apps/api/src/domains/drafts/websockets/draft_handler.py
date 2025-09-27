@@ -12,10 +12,8 @@ Provides comprehensive draft event handling including:
 - Integration with draft timer and evaluation systems
 """
 
-import asyncio
-import json
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -23,26 +21,31 @@ try:
     from infrastructure.logging.domain_logger import get_logger
 except ImportError:
     import logging
+
     get_logger = logging.getLogger  # type: ignore[assignment]
 
-from infrastructure.events.redis_pubsub import (
-    get_event_system, Event, EventType, EventFilter
-)
-from infrastructure.websockets.connection_manager import (
-    get_connection_manager, MessageType, RoomType
-)
+from domains.teams.models.team import Team
+
 from domains.drafts.services.draft_timer import get_draft_timer_service
 from domains.leagues.models.league import League
-from domains.teams.models.team import Team
-from domains.users.models.user import User
 from domains.sports.services.sports_data_service import get_sports_data_service
+from infrastructure.events.redis_pubsub import (
+    Event,
+    EventFilter,
+    EventType,
+    get_event_system,
+)
+from infrastructure.websockets.connection_manager import (
+    MessageType,
+    RoomType,
+    get_connection_manager,
+)
 
 logger = get_logger(__name__)
 
 
 class DraftWebSocketError(Exception):
     """Draft WebSocket handler errors."""
-    pass
 
 
 class DraftWebSocketHandler:
@@ -55,10 +58,10 @@ class DraftWebSocketHandler:
         self.draft_timer_service = get_draft_timer_service()
 
         # Active draft rooms
-        self.active_draft_rooms: Dict[str, Dict[str, Any]] = {}
+        self.active_draft_rooms: dict[str, dict[str, Any]] = {}
 
         # Event subscription
-        self.subscription_id: Optional[str] = None
+        self.subscription_id: str | None = None
 
     async def initialize(self):
         """Initialize the draft handler."""
@@ -86,7 +89,7 @@ class DraftWebSocketHandler:
             self.subscription_id = await self.event_system.subscribe(
                 handler=self._handle_draft_event,
                 event_filter=draft_filter,
-                subscription_id="draft_websocket_handler"
+                subscription_id="draft_websocket_handler",
             )
 
             logger.info("Draft WebSocket handler initialized")
@@ -106,10 +109,9 @@ class DraftWebSocketHandler:
         except Exception as e:
             logger.error(f"Error shutting down draft handler: {e}")
 
-    async def join_draft_room(self,
-                             connection_id: str,
-                             league_id: str,
-                             user_id: str) -> Dict[str, Any]:
+    async def join_draft_room(
+        self, connection_id: str, league_id: str, user_id: str
+    ) -> dict[str, Any]:
         """
         Join a user to a draft room.
 
@@ -139,11 +141,13 @@ class DraftWebSocketHandler:
                     "league_id": league_id,
                     "draft_type": "snake",
                     "created_at": datetime.utcnow().isoformat(),
-                }
+                },
             )
 
             # Join the room
-            join_success = await self.connection_manager.join_room(connection_id, room_id)
+            join_success = await self.connection_manager.join_room(
+                connection_id, room_id
+            )
             if not join_success:
                 return {
                     "success": False,
@@ -186,19 +190,21 @@ class DraftWebSocketHandler:
                     "action": "user_joined",
                     "user_id": user_id,
                     "user_name": access_result["user_info"]["team_name"],
-                    "participant_count": len(self.active_draft_rooms[room_id]["participants"]),
+                    "participant_count": len(
+                        self.active_draft_rooms[room_id]["participants"]
+                    ),
                 },
                 exclude_connections={connection_id},
             )
 
             logger.info(
-                f"User joined draft room",
+                "User joined draft room",
                 extra={
                     "user_id": user_id,
                     "league_id": league_id,
                     "room_id": room_id,
                     "connection_id": connection_id,
-                }
+                },
             )
 
             return {
@@ -240,8 +246,10 @@ class DraftWebSocketHandler:
                     data={
                         "action": "user_left",
                         "user_id": user_id,
-                        "participant_count": len(self.active_draft_rooms[room_id]["participants"]),
-                    }
+                        "participant_count": len(
+                            self.active_draft_rooms[room_id]["participants"]
+                        ),
+                    },
                 )
 
                 # Clean up empty rooms
@@ -278,12 +286,16 @@ class DraftWebSocketHandler:
                 await self._broadcast_draft_completed(room_id, event.data)
 
             elif event.event_type in [EventType.DRAFT_PAUSED, EventType.DRAFT_RESUMED]:
-                await self._broadcast_draft_status_change(room_id, event.event_type, event.data)
+                await self._broadcast_draft_status_change(
+                    room_id, event.event_type, event.data
+                )
 
         except Exception as e:
             logger.error(f"Error handling draft event: {e}")
 
-    async def _handle_draft_pick_message(self, connection_id: str, data: Dict[str, Any], room_id: str):
+    async def _handle_draft_pick_message(
+        self, connection_id: str, data: dict[str, Any], room_id: str
+    ):
         """Handle draft pick submission from WebSocket."""
         try:
             # This would typically validate and forward to the draft service
@@ -295,13 +307,15 @@ class DraftWebSocketHandler:
                 data={
                     "message": "Draft picks must be submitted via API endpoints",
                     "redirect": f"/api/v1/draft/{data.get('league_id')}/pick",
-                }
+                },
             )
 
         except Exception as e:
             logger.error(f"Error handling draft pick message: {e}")
 
-    async def _handle_draft_status_request(self, connection_id: str, data: Dict[str, Any], room_id: str):
+    async def _handle_draft_status_request(
+        self, connection_id: str, data: dict[str, Any], room_id: str
+    ):
         """Handle request for current draft status."""
         try:
             league_id = data.get("league_id")
@@ -309,7 +323,7 @@ class DraftWebSocketHandler:
                 await self.connection_manager.send_message(
                     connection_id=connection_id,
                     message_type=MessageType.ERROR,
-                    data={"message": "league_id required"}
+                    data={"message": "league_id required"},
                 )
                 return
 
@@ -331,7 +345,7 @@ class DraftWebSocketHandler:
 
     # Broadcast methods
 
-    async def _broadcast_draft_started(self, room_id: str, data: Dict[str, Any]):
+    async def _broadcast_draft_started(self, room_id: str, data: dict[str, Any]):
         """Broadcast draft started event."""
         await self.connection_manager.broadcast_to_room(
             room_id=room_id,
@@ -342,10 +356,10 @@ class DraftWebSocketHandler:
                 "current_pick": data.get("current_pick"),
                 "timer_settings": data.get("timer_settings", {}),
                 "started_at": data.get("started_at"),
-            }
+            },
         )
 
-    async def _broadcast_pick_made(self, room_id: str, data: Dict[str, Any]):
+    async def _broadcast_pick_made(self, room_id: str, data: dict[str, Any]):
         """Broadcast pick made event."""
         # Enhance pick data with player details
         enhanced_data = await self._enhance_pick_data(data)
@@ -356,10 +370,10 @@ class DraftWebSocketHandler:
             data={
                 "action": "pick_made",
                 **enhanced_data,
-            }
+            },
         )
 
-    async def _broadcast_timer_update(self, room_id: str, data: Dict[str, Any]):
+    async def _broadcast_timer_update(self, room_id: str, data: dict[str, Any]):
         """Broadcast timer update event."""
         await self.connection_manager.broadcast_to_room(
             room_id=room_id,
@@ -370,10 +384,10 @@ class DraftWebSocketHandler:
                 "current_pick": data.get("current_pick"),
                 "is_paused": data.get("is_paused", False),
                 "warning_threshold": data.get("warning_threshold"),
-            }
+            },
         )
 
-    async def _broadcast_draft_completed(self, room_id: str, data: Dict[str, Any]):
+    async def _broadcast_draft_completed(self, room_id: str, data: dict[str, Any]):
         """Broadcast draft completion event."""
         await self.connection_manager.broadcast_to_room(
             room_id=room_id,
@@ -383,12 +397,16 @@ class DraftWebSocketHandler:
                 "total_picks": data.get("total_picks"),
                 "completed_at": data.get("completed_at"),
                 "final_results": data.get("final_results", {}),
-            }
+            },
         )
 
-    async def _broadcast_draft_status_change(self, room_id: str, event_type: EventType, data: Dict[str, Any]):
+    async def _broadcast_draft_status_change(
+        self, room_id: str, event_type: EventType, data: dict[str, Any]
+    ):
         """Broadcast draft status change (pause/resume)."""
-        action = "draft_paused" if event_type == EventType.DRAFT_PAUSED else "draft_resumed"
+        action = (
+            "draft_paused" if event_type == EventType.DRAFT_PAUSED else "draft_resumed"
+        )
 
         await self.connection_manager.broadcast_to_room(
             room_id=room_id,
@@ -398,18 +416,18 @@ class DraftWebSocketHandler:
                 "time_remaining": data.get("time_remaining"),
                 "current_pick": data.get("current_pick"),
                 "reason": data.get("reason"),
-            }
+            },
         )
 
     # Helper methods
 
-    async def _validate_draft_access(self, league_id: str, user_id: str) -> Dict[str, Any]:
+    async def _validate_draft_access(
+        self, league_id: str, user_id: str
+    ) -> dict[str, Any]:
         """Validate if user can access the draft."""
         try:
             # Get league
-            league = self.db.query(League).filter(
-                League.league_id == league_id
-            ).first()
+            league = self.db.query(League).filter(League.league_id == league_id).first()
 
             if not league:
                 return {
@@ -418,10 +436,11 @@ class DraftWebSocketHandler:
                 }
 
             # Check if user is in this league
-            user_team = self.db.query(Team).filter(
-                Team.league_id == league_id,
-                Team.owner_id == user_id
-            ).first()
+            user_team = (
+                self.db.query(Team)
+                .filter(Team.league_id == league_id, Team.owner_id == user_id)
+                .first()
+            )
 
             if not user_team:
                 # Check if user is commissioner
@@ -440,7 +459,7 @@ class DraftWebSocketHandler:
                             "team_id": None,
                             "team_name": "Commissioner",
                             "role": "commissioner",
-                        }
+                        },
                     }
 
             return {
@@ -451,7 +470,7 @@ class DraftWebSocketHandler:
                     "team_id": user_team.team_id,
                     "team_name": user_team.team_name,
                     "role": "team_owner",
-                }
+                },
             }
 
         except Exception as e:
@@ -461,7 +480,7 @@ class DraftWebSocketHandler:
                 "reason": f"Validation error: {e}",
             }
 
-    async def _get_draft_status(self, league_id: str) -> Dict[str, Any]:
+    async def _get_draft_status(self, league_id: str) -> dict[str, Any]:
         """Get comprehensive draft status."""
         try:
             # Get draft timer
@@ -485,7 +504,8 @@ class DraftWebSocketHandler:
                     "pick_in_round": pick.pick_in_round,
                     "team_id": pick.team_id,
                     "has_pick": pick.player_id is not None,
-                    "is_current": pick.overall_pick == (timer_status.get("current_pick", {}).get("overall_pick")),
+                    "is_current": pick.overall_pick
+                    == (timer_status.get("current_pick", {}).get("overall_pick")),
                 }
                 for pick in draft_order.picks[:50]  # Limit for performance
             ]
@@ -498,7 +518,12 @@ class DraftWebSocketHandler:
                 "completed_picks": timer_status.get("completed_picks", 0),
                 "total_picks": timer_status.get("total_picks", 0),
                 "progress_percentage": round(
-                    (timer_status.get("completed_picks", 0) / max(timer_status.get("total_picks", 1), 1)) * 100, 1
+                    (
+                        timer_status.get("completed_picks", 0)
+                        / max(timer_status.get("total_picks", 1), 1)
+                    )
+                    * 100,
+                    1,
                 ),
                 "draft_order_preview": order_summary,
                 "teams": draft_order.teams,
@@ -515,7 +540,7 @@ class DraftWebSocketHandler:
                 "message": f"Error getting draft status: {e}",
             }
 
-    async def _enhance_pick_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _enhance_pick_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Enhance pick data with player details."""
         try:
             player_id = data.get("player_id")
@@ -541,7 +566,7 @@ class DraftWebSocketHandler:
             logger.error(f"Error enhancing pick data: {e}")
             return data
 
-    def get_active_rooms_stats(self) -> Dict[str, Any]:
+    def get_active_rooms_stats(self) -> dict[str, Any]:
         """Get statistics about active draft rooms."""
         return {
             "total_active_rooms": len(self.active_draft_rooms),
@@ -553,12 +578,12 @@ class DraftWebSocketHandler:
                     "last_activity": room_info["last_activity"].isoformat(),
                 }
                 for room_id, room_info in self.active_draft_rooms.items()
-            }
+            },
         }
 
 
 # Global handler instance
-_draft_handler: Optional[DraftWebSocketHandler] = None
+_draft_handler: DraftWebSocketHandler | None = None
 
 
 def get_draft_handler(db_session: Session) -> DraftWebSocketHandler:
